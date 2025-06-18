@@ -5,10 +5,10 @@ import { Header } from '@/components/bookly/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle } from 'lucide-react';
+import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import type { Booking, AdminConfigItem } from '@/types';
-import { getAllBookings, updateSlotDuration as serverUpdateSlotDuration } from '@/lib/actions'; // Renamed import
+import { getAllBookings, updateSlotDuration as serverUpdateSlotDuration, updateWorkdayHours as serverUpdateWorkdayHours } from '@/lib/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
@@ -23,10 +23,10 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [showBookingsTable, setShowBookingsTable] = useState(false);
 
-  // Initial value should reflect the default in actions.ts (e.g., 60 minutes = "1 hour")
   const [configItems, setConfigItems] = useState<AdminConfigItem[]>([
     { id: 'slotDuration', description: 'Booking Slot Duration', value: '1 hour' },
-    // Future configuration items can be added here
+    { id: 'startOfDay', description: 'Start of Work Day (HH:MM)', value: '09:00' },
+    { id: 'endOfDay', description: 'End of Work Day (HH:MM)', value: '17:00' },
   ]);
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
 
@@ -68,34 +68,81 @@ export default function AdminPage() {
 
   const handleApplyChanges = async () => {
     setIsApplyingChanges(true);
+    let allSucceeded = true;
+
+    // Update Slot Duration
     const slotDurationItem = configItems.find(item => item.id === 'slotDuration');
     if (slotDurationItem) {
       const durationInMinutes = convertDurationValueToMinutes(slotDurationItem.value);
       try {
-        const result = await serverUpdateSlotDuration(durationInMinutes); // Call server action
+        const result = await serverUpdateSlotDuration(durationInMinutes);
         if (result.success) {
           toast({
-            title: 'Configuration Updated',
+            title: 'Slot Duration Updated',
             description: `Booking slot duration set to ${slotDurationItem.value}.`,
             action: <CheckCircle className="text-green-500" />,
           });
         } else {
+          allSucceeded = false;
           toast({
             variant: 'destructive',
-            title: 'Update Failed',
+            title: 'Slot Duration Update Failed',
             description: result.error || 'Could not apply slot duration change.',
           });
         }
       } catch (err) {
+        allSucceeded = false;
         toast({
           variant: 'destructive',
-          title: 'Error',
+          title: 'Error updating slot duration',
           description: 'Failed to apply changes. Please try again.',
         });
       }
     }
+
+    // Update Workday Hours
+    const startOfDayItem = configItems.find(item => item.id === 'startOfDay');
+    const endOfDayItem = configItems.find(item => item.id === 'endOfDay');
+
+    if (startOfDayItem && endOfDayItem) {
+      try {
+        const result = await serverUpdateWorkdayHours(startOfDayItem.value, endOfDayItem.value);
+        if (result.success) {
+          toast({
+            title: 'Workday Hours Updated',
+            description: `Workday hours set from ${startOfDayItem.value} to ${endOfDayItem.value}.`,
+            action: <CheckCircle className="text-green-500" />,
+          });
+        } else {
+          allSucceeded = false;
+          toast({
+            variant: 'destructive',
+            title: 'Workday Hours Update Failed',
+            description: result.error || 'Could not apply workday hours change.',
+          });
+        }
+      } catch (err) {
+        allSucceeded = false;
+        toast({
+          variant: 'destructive',
+          title: 'Error updating workday hours',
+          description: 'Failed to apply changes. Please try again.',
+        });
+      }
+    }
+    
     setIsApplyingChanges(false);
   };
+  
+  const getIconForItem = (itemId: string) => {
+    switch(itemId) {
+      case 'slotDuration': return <Clock className="mr-2 h-4 w-4 text-muted-foreground" />;
+      case 'startOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />; // Icon for start of day
+      case 'endOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />;   // Icon for end of day
+      default: return null;
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -195,7 +242,10 @@ export default function AdminPage() {
                       <TableBody>
                         {configItems.map((item) => (
                           <TableRow key={item.id}>
-                            <TableCell className="font-medium pl-6">{item.description}</TableCell>
+                            <TableCell className="font-medium pl-6 flex items-center">
+                                {getIconForItem(item.id)}
+                                {item.description}
+                            </TableCell>
                             <TableCell className="text-right pr-6">
                               {item.id === 'slotDuration' ? (
                                 <Select
@@ -213,10 +263,11 @@ export default function AdminPage() {
                                 </Select>
                               ) : (
                                 <Input 
-                                  type="text"
+                                  type={item.id === 'startOfDay' || item.id === 'endOfDay' ? 'text' : 'text'}
                                   value={item.value}
                                   onChange={(e) => handleConfigChange(item.id, e.target.value)}
-                                  className="text-right"
+                                  className="text-right sm:w-[180px] ml-auto"
+                                  placeholder={item.id === 'startOfDay' || item.id === 'endOfDay' ? 'HH:MM' : ''}
                                 />
                               )}
                             </TableCell>
