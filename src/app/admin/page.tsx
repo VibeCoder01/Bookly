@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import type { Booking, AdminConfigItem } from '@/types';
-import { getAllBookings } from '@/lib/actions';
+import { getAllBookings, updateSlotDuration as serverUpdateSlotDuration } from '@/lib/actions'; // Renamed import
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
@@ -23,10 +23,13 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [showBookingsTable, setShowBookingsTable] = useState(false);
 
+  // Initial value should reflect the default in actions.ts (e.g., 60 minutes = "1 hour")
   const [configItems, setConfigItems] = useState<AdminConfigItem[]>([
-    { id: 'slotDuration', description: 'Default booking slot duration', value: '1 hour' },
+    { id: 'slotDuration', description: 'Booking Slot Duration', value: '1 hour' },
     // Future configuration items can be added here
   ]);
+  const [isApplyingChanges, setIsApplyingChanges] = useState(false);
+
 
   const handleShowAllBookings = async () => {
     setIsLoadingBookings(true);
@@ -56,14 +59,42 @@ export default function AdminPage() {
     );
   };
 
-  const handleApplyChanges = () => {
-    // In a real application, you would persist these changes (e.g., to a database or config file)
-    console.log('Applying configuration changes:', configItems);
-    toast({
-      title: 'Configuration Updated',
-      description: 'Your changes have been applied (simulated).',
-      action: <CheckCircle className="text-green-500" />,
-    });
+  const convertDurationValueToMinutes = (value: string): number => {
+    if (value === '15 minutes') return 15;
+    if (value === '30 minutes') return 30;
+    if (value === '1 hour') return 60;
+    return 60; // Default to 60 if somehow invalid
+  };
+
+  const handleApplyChanges = async () => {
+    setIsApplyingChanges(true);
+    const slotDurationItem = configItems.find(item => item.id === 'slotDuration');
+    if (slotDurationItem) {
+      const durationInMinutes = convertDurationValueToMinutes(slotDurationItem.value);
+      try {
+        const result = await serverUpdateSlotDuration(durationInMinutes); // Call server action
+        if (result.success) {
+          toast({
+            title: 'Configuration Updated',
+            description: `Booking slot duration set to ${slotDurationItem.value}.`,
+            action: <CheckCircle className="text-green-500" />,
+          });
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Update Failed',
+            description: result.error || 'Could not apply slot duration change.',
+          });
+        }
+      } catch (err) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to apply changes. Please try again.',
+        });
+      }
+    }
+    setIsApplyingChanges(false);
   };
 
   return (
@@ -118,11 +149,11 @@ export default function AdminPage() {
                       <Table>
                         <TableHeader>
                           <TableRow>
-                            <TableHead>Room Name</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Time</TableHead>
-                            <TableHead>Booked By</TableHead>
-                            <TableHead>Email</TableHead>
+                            <TableHead className="font-semibold">Room Name</TableHead>
+                            <TableHead className="font-semibold">Date</TableHead>
+                            <TableHead className="font-semibold">Time</TableHead>
+                            <TableHead className="font-semibold">Booked By</TableHead>
+                            <TableHead className="font-semibold">Email</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -199,7 +230,8 @@ export default function AdminPage() {
                 <p className="text-muted-foreground">No configuration items defined.</p>
               )}
               <div className="mt-6 flex justify-end">
-                <Button onClick={handleApplyChanges} variant="default">
+                <Button onClick={handleApplyChanges} variant="default" disabled={isApplyingChanges}>
+                  {isApplyingChanges && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Apply Changes
                 </Button>
               </div>

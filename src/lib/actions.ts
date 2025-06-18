@@ -2,56 +2,96 @@
 'use server';
 
 import type { Booking, Room, TimeSlot, AIResponse, AISuggestion } from '@/types';
-import { mockRooms, mockBookings, allPossibleTimeSlots, addMockBooking } from './mock-data';
+import { mockRooms, mockBookings, addMockBooking } from './mock-data'; // allPossibleTimeSlots removed
 import { z } from 'zod';
-import { format } from 'date-fns';
+import { format, parse } from 'date-fns';
 
 // Hypothetical AI flow import - replace with actual flow if available
 // import { bookingSuggestionsFlow } from '@/ai/flows/bookingSuggestions';
+
+// --- Configuration Store (Mock) ---
+let currentSystemSlotDurationMinutes = 60; // Default to 60 minutes
+const MIN_SLOT_DURATION = 15;
+const MAX_SLOT_DURATION = 120; // Example max
+// --- End Configuration Store ---
+
+export async function updateSlotDuration(
+  newDurationMinutes: number
+): Promise<{ success: boolean; error?: string }> {
+  await new Promise(resolve => setTimeout(resolve, 200)); // Simulate network delay
+  if (newDurationMinutes < MIN_SLOT_DURATION || newDurationMinutes > MAX_SLOT_DURATION) {
+    return { success: false, error: `Duration must be between ${MIN_SLOT_DURATION} and ${MAX_SLOT_DURATION} minutes.` };
+  }
+  if (newDurationMinutes % 15 !== 0) { // Example: only allow multiples of 15
+      return { success: false, error: 'Duration must be in multiples of 15 minutes.'}
+  }
+  currentSystemSlotDurationMinutes = newDurationMinutes;
+  console.log(`System slot duration updated to: ${currentSystemSlotDurationMinutes} minutes.`);
+  return { success: true };
+}
+
 
 // Placeholder for the actual AI flow function
 async function callAIFlow(
   bookingDetails: { roomId: string; roomName: string; date: string; time: string; userName: string; userEmail: string },
   allRooms: Room[],
-  existingBookings: Booking[]
+  existingBookings: Booking[],
+  availableSlotsForSuggestion: TimeSlot[] // Pass generated slots for better suggestions
 ): Promise<AIResponse> {
-  // This is a mock implementation of the AI flow call.
-  // In a real scenario, you would call your Genkit flow here.
-  // e.g., const result = await bookingSuggestionsFlow.run({ currentBookingAttempt: bookingDetails, allRooms, existingBookings });
   console.log('AI Flow called with:', bookingDetails, allRooms.length, existingBookings.length);
 
-  // Mocked AI Response
   const summary = `Successfully processed booking for ${bookingDetails.roomName} on ${bookingDetails.date} at ${bookingDetails.time} for ${bookingDetails.userName}.`;
   
   const suggestions: AISuggestion[] = [];
-  // Suggest an alternative time in the same room
-  const currentSlotIndex = allPossibleTimeSlots.findIndex(s => s.display === bookingDetails.time);
-  if (currentSlotIndex !== -1) {
-    const nextSlot = allPossibleTimeSlots[currentSlotIndex + 1] || allPossibleTimeSlots[currentSlotIndex -1];
-    if (nextSlot && !existingBookings.find(b => b.roomId === bookingDetails.roomId && b.date === bookingDetails.date && b.time === nextSlot.display)) {
-      suggestions.push({
-        roomName: bookingDetails.roomName,
-        roomId: bookingDetails.roomId,
-        date: bookingDetails.date,
-        time: nextSlot.display,
-        reason: 'Alternative time in the same room.',
-      });
-    }
-  }
 
-  // Suggest a different room at the same time
-  const alternativeRoom = allRooms.find(r => r.id !== bookingDetails.roomId);
-  if (alternativeRoom && !existingBookings.find(b => b.roomId === alternativeRoom.id && b.date === bookingDetails.date && b.time === bookingDetails.time)) {
+  // Suggest an alternative time in the same room from the available slots
+  const alternativeSlotInSameRoom = availableSlotsForSuggestion.find(
+    slot => slot.startTime !== bookingDetails.time.split(' - ')[0] // A simple way to find a *different* slot
+  );
+  if (alternativeSlotInSameRoom) {
     suggestions.push({
-      roomName: alternativeRoom.name,
-      roomId: alternativeRoom.id,
+      roomName: bookingDetails.roomName,
+      roomId: bookingDetails.roomId,
       date: bookingDetails.date,
-      time: bookingDetails.time,
-      reason: 'Same time, different room.',
+      time: alternativeSlotInSameRoom.display,
+      reason: 'Alternative time in the same room.',
     });
   }
+
+  // Suggest a different room at the same time (if that time is generally valid)
+  const alternativeRoom = allRooms.find(r => r.id !== bookingDetails.roomId);
+  if (alternativeRoom) {
+    // Check if the *original* time slot is available in the alternative room
+    // This requires checking existingBookings for the alternativeRoom at the original time
+    const isOriginalTimeBookedInAlternativeRoom = existingBookings.find(
+        b => b.roomId === alternativeRoom.id && b.date === bookingDetails.date && b.time === bookingDetails.time
+    );
+    if (!isOriginalTimeBookedInAlternativeRoom) {
+         suggestions.push({
+            roomName: alternativeRoom.name,
+            roomId: alternativeRoom.id,
+            date: bookingDetails.date,
+            time: bookingDetails.time, // original time
+            reason: 'Same time, different room.',
+        });
+    }
+  }
   
-  return { summary, suggestions: suggestions.slice(0,2) }; // Limit to 2 suggestions
+  return { summary, suggestions: suggestions.slice(0,2) };
+}
+
+// Helper to parse "HH:mm - HH:mm" booking time string
+function parseBookingTime(timeStr: string, date: string): { start: Date; end: Date } | null {
+  const parts = timeStr.split(' - ');
+  if (parts.length !== 2) return null;
+  try {
+    const startDate = parse(`${date} ${parts[0]}`, 'yyyy-MM-dd HH:mm', new Date());
+    const endDate = parse(`${date} ${parts[1]}`, 'yyyy-MM-dd HH:mm', new Date());
+    return { start: startDate, end: endDate };
+  } catch (e) {
+    console.error("Error parsing booking time string:", timeStr, e);
+    return null;
+  }
 }
 
 
@@ -65,12 +105,58 @@ export async function getAvailableTimeSlots(
     return { slots: [], error: 'Room and date are required.' };
   }
 
+  const dayStartHour = 9;
+  const dayEndHour = 17; // 5 PM (exclusive for slot end)
+  const generatedSlots: TimeSlot[] = [];
+  
+  // Parse the input date string to ensure it's a valid date object for manipulation
+  const baseDate = parse(date, 'yyyy-MM-dd', new Date());
+  if (isNaN(baseDate.getTime())) {
+    return { slots: [], error: 'Invalid date format provided.' };
+  }
+
+  let currentTime = new Date(baseDate);
+  currentTime.setHours(dayStartHour, 0, 0, 0);
+
+  const dayEndTime = new Date(baseDate);
+  dayEndTime.setHours(dayEndHour, 0, 0, 0);
+
+  while (currentTime.getTime() < dayEndTime.getTime()) {
+    const slotStart = new Date(currentTime);
+    const slotEnd = new Date(slotStart.getTime() + currentSystemSlotDurationMinutes * 60000);
+
+    if (slotEnd.getTime() > dayEndTime.getTime()) {
+        break; 
+    }
+
+    const formatTime = (d: Date) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }).replace(':',':'); // HH:MM
+    const startTimeStr = formatTime(slotStart);
+    const endTimeStr = formatTime(slotEnd);
+    
+    generatedSlots.push({
+      startTime: startTimeStr,
+      endTime: endTimeStr,
+      display: `${startTimeStr} - ${endTimeStr}`,
+    });
+
+    currentTime = slotEnd;
+  }
+  
   const existingBookingsForRoomAndDate = mockBookings.filter(
     (booking) => booking.roomId === roomId && booking.date === date
   );
 
-  const availableSlots = allPossibleTimeSlots.filter((slot) => {
-    return !existingBookingsForRoomAndDate.some((booking) => booking.time === slot.display);
+  const availableSlots = generatedSlots.filter((slot) => {
+    const slotStartDateTime = parse(`${date} ${slot.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
+    const slotEndDateTime = parse(`${date} ${slot.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
+
+    return !existingBookingsForRoomAndDate.some((booking) => {
+      const existingBookingTimes = parseBookingTime(booking.time, booking.date);
+      if (!existingBookingTimes) return false; // Skip if parsing failed
+
+      // Check for overlap: (StartA < EndB) and (EndA > StartB)
+      return slotStartDateTime < existingBookingTimes.end && slotEndDateTime > existingBookingTimes.start;
+    });
   });
 
   return { slots: availableSlots };
@@ -79,7 +165,7 @@ export async function getAvailableTimeSlots(
 const bookingFormSchema = z.object({
   roomId: z.string().min(1, 'Room selection is required.'),
   date: z.string().min(1, 'Date is required.'), // Expecting YYYY-MM-DD string
-  time: z.string().min(1, 'Time slot is required.'),
+  time: z.string().min(1, 'Time slot is required.'), // This is the display string "HH:mm - HH:mm"
   userName: z.string().min(2, 'Name must be at least 2 characters.'),
   userEmail: z.string().email('Invalid email address.'),
 });
@@ -98,29 +184,24 @@ export async function submitBooking(
   await new Promise(resolve => setTimeout(resolve, 700)); // Simulate network delay
 
   // Double check availability (mitigate race conditions)
-  const todaysBookings = mockBookings.filter(
-    (b) => b.roomId === roomId && b.date === date && b.time === time
-  );
-
-  if (todaysBookings.length > 0) {
-    // Attempt to get AI suggestions even if booking fails
-    const room = mockRooms.find(r => r.id === roomId);
-    let aiResponse: AIResponse | undefined;
-    if (room) {
-      try {
-        aiResponse = await callAIFlow(
-        { roomId, roomName: room.name, date, time, userName, userEmail },
-        mockRooms,
-        mockBookings
-      );
-      } catch (aiError) {
-        console.error("AI flow error:", aiError);
-        // Don't let AI error block the process, provide a default or empty response
-         aiResponse = { summary: "Could not generate AI suggestions at this time.", suggestions: [] };
+  // Re-fetch available slots for the given room and date to ensure the selected slot is still valid
+  const currentAvailability = await getAvailableTimeSlots(roomId, date);
+  if (currentAvailability.error || !currentAvailability.slots.find(s => s.display === time)) {
+      const room = mockRooms.find(r => r.id === roomId);
+      let aiResponseForFailure: AIResponse | undefined;
+      if (room) {
+          try {
+              aiResponseForFailure = await callAIFlow(
+                  { roomId, roomName: room.name, date, time, userName, userEmail },
+                  mockRooms,
+                  mockBookings,
+                  currentAvailability.slots || [] // Pass current slots for suggestions
+              );
+          } catch (aiError) { console.error("AI flow error on booking failure:", aiError); }
       }
-    }
-    return { error: 'Sorry, this time slot was just booked. Please try another.', aiResponse };
+    return { error: 'Sorry, this time slot is no longer available or invalid. Please refresh and try again.', aiResponse: aiResponseForFailure };
   }
+
 
   const room = mockRooms.find(r => r.id === roomId);
   if (!room) {
@@ -131,8 +212,8 @@ export async function submitBooking(
     id: `booking-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     roomId,
     roomName: room.name,
-    date,
-    time,
+    date, // YYYY-MM-DD
+    time, // "HH:mm - HH:mm"
     userName,
     userEmail,
   };
@@ -140,11 +221,15 @@ export async function submitBooking(
   addMockBooking(newBooking);
 
   let aiResponse: AIResponse | undefined;
+  // Get fresh slots again for AI suggestions *after* booking is made
+  const slotsAfterBooking = await getAvailableTimeSlots(roomId, date);
+
   try {
      aiResponse = await callAIFlow(
-      { ...newBooking }, // Pass all newBooking details
+      { ...newBooking }, 
       mockRooms,
-      mockBookings // Pass current state of bookings *after* adding the new one
+      mockBookings, // Pass current state of bookings *after* adding the new one
+      slotsAfterBooking.slots || [] // Pass available slots for suggestion
     );
   } catch (aiError) {
     console.error("AI flow error:", aiError);
@@ -171,7 +256,11 @@ export async function getBookingsForRoomAndDate(
 
   const bookingsForRoomAndDate = mockBookings.filter(
     (booking) => booking.roomId === roomId && booking.date === date
-  ).sort((a,b) => a.time.localeCompare(b.time)); // Sort by time
+  ).sort((a,b) => {
+      const aStartTime = a.time.split(' - ')[0];
+      const bStartTime = b.time.split(' - ')[0];
+      return aStartTime.localeCompare(bStartTime);
+  });
 
   return { bookings: bookingsForRoomAndDate, roomName: room.name };
 }
@@ -179,14 +268,16 @@ export async function getBookingsForRoomAndDate(
 export async function getAllBookings(): Promise<{ bookings: Booking[]; error?: string }> {
   await new Promise(resolve => setTimeout(resolve, 600)); // Simulate network delay
   
-  // Sort bookings by date, then by time
   const sortedBookings = [...mockBookings].sort((a, b) => {
     const dateComparison = a.date.localeCompare(b.date);
     if (dateComparison !== 0) {
       return dateComparison;
     }
-    return a.time.localeCompare(b.time);
+    const aStartTime = a.time.split(' - ')[0];
+    const bStartTime = b.time.split(' - ')[0];
+    return aStartTime.localeCompare(bStartTime);
   });
 
   return { bookings: sortedBookings };
 }
+
