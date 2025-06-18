@@ -1,13 +1,32 @@
 
-import { CalendarCheck, UserCog } from 'lucide-react';
+'use client';
+
+import { CalendarCheck, UserCog, Wifi } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import React, { useState, useEffect } from 'react';
 
 interface HeaderProps {
   userName?: string | null;
 }
 
 export function Header({ userName }: HeaderProps) {
+  const [ipAddress, setIpAddress] = useState<string | null>(null);
+  const [isLoadingIp, setIsLoadingIp] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/ip')
+      .then((res) => res.json())
+      .then((data) => {
+        setIpAddress(data.ip || 'N/A');
+        setIsLoadingIp(false);
+      })
+      .catch(() => {
+        setIpAddress('Error fetching IP');
+        setIsLoadingIp(false);
+      });
+  }, []);
+
   return (
     <header className="py-6 border-b border-border">
       <div className="container mx-auto px-4 flex items-center justify-between">
@@ -18,6 +37,16 @@ export function Header({ userName }: HeaderProps) {
           </h1>
         </Link>
         <div className="flex items-center space-x-4">
+          {isLoadingIp ? (
+            <span className="text-xs text-muted-foreground">Loading IP...</span>
+          ) : (
+            ipAddress && (
+              <div className="flex items-center text-xs text-muted-foreground" title="Your IP Address">
+                <Wifi className="mr-1 h-3 w-3" />
+                <span>{ipAddress}</span>
+              </div>
+            )
+          )}
           {userName && (
             <span className="text-foreground text-sm">
               Welcome, <span className="font-semibold text-primary">{userName}</span>!
