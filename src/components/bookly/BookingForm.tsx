@@ -50,7 +50,6 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
   const [availableEndTimesForSelect, setAvailableEndTimesForSelect] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
-  // const [selectedDateForSlots, setSelectedDateForSlots] = useState<Date | undefined>(); // No longer needed with new effect logic
 
   const [isBookingsDialogOpen, setIsBookingsDialogOpen] = useState(false);
   const [bookingsForSelectedRoomDate, setBookingsForSelectedRoomDate] = useState<Booking[]>([]);
@@ -72,34 +71,74 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
   const selectedRoomId = form.watch('roomId');
   const selectedDate = form.watch('date');
   const selectedStartTimeValue = form.watch('startTime');
+  const watchedEndTime = form.watch('endTime'); // For reactive button disabling
+  const watchedUserName = form.watch('userName');
+  const watchedUserEmail = form.watch('userEmail');
+
+  // Load user details from localStorage on mount
+  useEffect(() => {
+    try {
+        const storedUserName = localStorage.getItem('booklyUserName');
+        const storedUserEmail = localStorage.getItem('booklyUserEmail');
+        if (storedUserName) {
+        form.setValue('userName', storedUserName);
+        }
+        if (storedUserEmail) {
+        form.setValue('userEmail', storedUserEmail);
+        }
+    } catch (error) {
+        console.warn("Could not access localStorage for user details:", error);
+    }
+  }, [form]);
+
+  // Save user details to localStorage on change
+  useEffect(() => {
+    try {
+        if (watchedUserName !== undefined) {
+            localStorage.setItem('booklyUserName', watchedUserName);
+        }
+    } catch (error) {
+        console.warn("Could not save userName to localStorage:", error);
+    }
+  }, [watchedUserName]);
+
+  useEffect(() => {
+    try {
+        if (watchedUserEmail !== undefined) {
+            localStorage.setItem('booklyUserEmail', watchedUserEmail);
+        }
+    } catch (error) {
+        console.warn("Could not save userEmail to localStorage:", error);
+    }
+  }, [watchedUserEmail]);
+
 
   const fetchIndividualSlots = useCallback(async (roomIdToFetch: string, dateToFetch: Date) => {
     setIsLoadingSlots(true);
+    setAllAvailableIndividualSlots([]); // Clear previous slots immediately
+    form.resetField('startTime');
+    form.resetField('endTime');
+    setAvailableEndTimesForSelect([]);
     try {
       const result = await getAvailableTimeSlots(roomIdToFetch, format(dateToFetch, 'yyyy-MM-dd'));
       if (result.error) {
         toast({ variant: 'destructive', title: 'Error fetching slots', description: result.error });
-        setAllAvailableIndividualSlots([]);
+        // setAllAvailableIndividualSlots([]); // Already cleared
       } else {
         setAllAvailableIndividualSlots(result.slots);
       }
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch time slots.' });
-      setAllAvailableIndividualSlots([]);
+      // setAllAvailableIndividualSlots([]); // Already cleared
     } finally {
       setIsLoadingSlots(false);
     }
-  }, [toast]);
+  }, [toast, form]);
 
   useEffect(() => {
     if (selectedRoomId && selectedDate) {
-      // When room or date changes, reset time fields and fetch new slots.
-      form.resetField('startTime');
-      form.resetField('endTime');
-      setAvailableEndTimesForSelect([]); 
       fetchIndividualSlots(selectedRoomId, selectedDate);
     } else {
-      // Clear all slot related data if room/date is not selected
       setAllAvailableIndividualSlots([]);
       setAvailableEndTimesForSelect([]);
       form.resetField('startTime');
@@ -111,14 +150,14 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
   useEffect(() => {
     if (!selectedStartTimeValue || allAvailableIndividualSlots.length === 0) {
       setAvailableEndTimesForSelect([]);
-      form.resetField('endTime');
+      if(form.getValues('endTime')) form.resetField('endTime'); // Only reset if it has a value
       return;
     }
 
     const startSlot = allAvailableIndividualSlots.find(slot => slot.startTime === selectedStartTimeValue);
     if (!startSlot) {
       setAvailableEndTimesForSelect([]);
-      form.resetField('endTime');
+      if(form.getValues('endTime')) form.resetField('endTime');
       return;
     }
 
@@ -140,9 +179,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
     }
     
     setAvailableEndTimesForSelect(validEndTimes);
-    // Only reset endTime if it's no longer a valid option or if start time changes.
-    // The current logic of resetting endTime when selectedStartTimeValue changes OR allAvailableIndividualSlots changes is correct.
-    // This effect's form.resetField('endTime') will handle it.
+    
     if (!validEndTimes.includes(form.getValues('endTime'))){
         form.resetField('endTime');
     }
@@ -182,10 +219,17 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
           description: `Room ${result.booking.roomName} booked for ${result.booking.date} from ${data.startTime} to ${data.endTime}.`,
         });
         onBookingAttemptCompleted(result.booking, result.aiResponse);
-        form.reset();
+        form.reset({ 
+            // Persist user name and email after successful booking, reset other fields
+            userName: form.getValues('userName'), 
+            userEmail: form.getValues('userEmail'),
+            roomId: '',
+            date: undefined,
+            startTime: '',
+            endTime: ''
+        });
         setAllAvailableIndividualSlots([]);
         setAvailableEndTimesForSelect([]);
-        //setSelectedDateForSlots(undefined); // No longer used
       }
     } catch (error) {
       toast({
@@ -224,7 +268,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
   };
   
   const isDetailsButtonDisabled = !selectedRoomId || !selectedDate || isLoadingSlots || isLoadingRoomBookings || isSubmittingForm;
-  const isBookRoomButtonDisabled = isSubmittingForm || isLoadingSlots || isLoadingRoomBookings || !selectedStartTimeValue || !form.getValues('endTime');
+  const isBookRoomButtonDisabled = isSubmittingForm || isLoadingSlots || isLoadingRoomBookings || !selectedStartTimeValue || !watchedEndTime;
 
 
   return (
@@ -242,7 +286,6 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
                 <Select 
                   onValueChange={(value) => {
                     field.onChange(value);
-                    // Other resets are handled by useEffect watching selectedRoomId
                   }} 
                   defaultValue={field.value} 
                   value={field.value}
@@ -292,7 +335,6 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
                       selected={field.value}
                       onSelect={(date) => {
                           field.onChange(date);
-                           // Other resets are handled by useEffect watching selectedDate
                       }}
                       disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) }
                       initialFocus
@@ -326,7 +368,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
                     <Select 
                         onValueChange={(value) => {
                             field.onChange(value);
-                            form.resetField('endTime'); 
+                            // form.resetField('endTime'); // Handled by useEffect watching startTime
                         }} 
                         value={field.value}
                         defaultValue={field.value}
@@ -460,5 +502,6 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
     </>
   );
 }
+    
 
     
