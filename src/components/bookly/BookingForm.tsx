@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Room, TimeSlot, Booking, BookingFormData, AIResponse } from '@/types';
@@ -12,14 +13,14 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format, parseISO } from 'date-fns';
+import { format } from 'date-fns';
 import { CalendarIcon, Clock, Building2, User, Mail, Loader2, AlertTriangle } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
 import { getAvailableTimeSlots, submitBooking } from '@/lib/actions';
 
 interface BookingFormProps {
   rooms: Room[];
-  onBookingSuccess: (booking: Booking, aiResponse?: AIResponse) => void;
+  onBookingAttemptCompleted: (booking: Booking | null, aiResponse?: AIResponse) => void;
 }
 
 const formSchema = z.object({
@@ -32,7 +33,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function BookingForm({ rooms, onBookingSuccess }: BookingFormProps) {
+export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormProps) {
   const { toast } = useToast();
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
@@ -67,7 +68,6 @@ export function BookingForm({ rooms, onBookingSuccess }: BookingFormProps) {
         setAvailableSlots([]);
       } else {
         setAvailableSlots(result.slots);
-        // If the previously selected time slot is no longer available, reset it
         const currentSelectedTime = form.getValues('time');
         if (currentSelectedTime && !result.slots.find(slot => slot.display === currentSelectedTime)) {
           form.setValue('time', '');
@@ -83,7 +83,6 @@ export function BookingForm({ rooms, onBookingSuccess }: BookingFormProps) {
 
   useEffect(() => {
     if (selectedRoomId && selectedDate) {
-      // Fetch slots only if date is different from the one for which slots were last fetched
       if (!selectedDateForSlots || format(selectedDate, 'yyyy-MM-dd') !== format(selectedDateForSlots, 'yyyy-MM-dd')) {
         fetchSlots(selectedRoomId, selectedDate);
       }
@@ -113,9 +112,12 @@ export function BookingForm({ rooms, onBookingSuccess }: BookingFormProps) {
                 form.setError(field as keyof FormValues, { type: 'server', message: errors.join(', ') });
             });
         }
-        // If booking failed because slot was taken, refresh slots for current selection
         if (result.error.includes("slot was just booked") && selectedRoomId && selectedDate) {
            fetchSlots(selectedRoomId, selectedDate);
+        }
+        // Call handler even on failure if AI response is present
+        if(result.aiResponse || result.error) {
+           onBookingAttemptCompleted(null, result.aiResponse);
         }
 
       } else if (result.booking) {
@@ -123,7 +125,7 @@ export function BookingForm({ rooms, onBookingSuccess }: BookingFormProps) {
           title: 'Booking Successful!',
           description: `Room ${result.booking.roomName} booked for ${result.booking.date} at ${result.booking.time}.`,
         });
-        onBookingSuccess(result.booking, result.aiResponse);
+        onBookingAttemptCompleted(result.booking, result.aiResponse);
         form.reset();
         setAvailableSlots([]);
         setSelectedDateForSlots(undefined);
@@ -134,6 +136,8 @@ export function BookingForm({ rooms, onBookingSuccess }: BookingFormProps) {
         title: 'An Unexpected Error Occurred',
         description: 'Please try again later.',
       });
+      // Call handler on unexpected error too, perhaps without AI response
+      onBookingAttemptCompleted(null, undefined);
     } finally {
       setIsSubmittingForm(false);
     }
@@ -142,7 +146,6 @@ export function BookingForm({ rooms, onBookingSuccess }: BookingFormProps) {
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Room Selection */}
         <div className="space-y-2">
           <Label htmlFor="roomId" className="flex items-center">
             <Building2 className="mr-2 h-5 w-5 text-primary" /> Room
@@ -170,7 +173,6 @@ export function BookingForm({ rooms, onBookingSuccess }: BookingFormProps) {
           )}
         </div>
 
-        {/* Date Selection */}
         <div className="space-y-2">
           <Label htmlFor="date" className="flex items-center">
             <CalendarIcon className="mr-2 h-5 w-5 text-primary" /> Date
@@ -198,10 +200,9 @@ export function BookingForm({ rooms, onBookingSuccess }: BookingFormProps) {
                     selected={field.value}
                     onSelect={(date) => {
                         field.onChange(date);
-                        // Clear selected time when date changes, as slots will be different
                         form.setValue('time', ''); 
                     }}
-                    disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) } // Disable past dates
+                    disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) }
                     initialFocus
                   />
                 </PopoverContent>
@@ -214,7 +215,6 @@ export function BookingForm({ rooms, onBookingSuccess }: BookingFormProps) {
         </div>
       </div>
 
-      {/* Time Slot Selection */}
       {selectedRoomId && selectedDate && (
         <div className="space-y-2">
           <Label htmlFor="time" className="flex items-center">
@@ -256,7 +256,6 @@ export function BookingForm({ rooms, onBookingSuccess }: BookingFormProps) {
         </div>
       )}
 
-      {/* User Details */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="space-y-2">
           <Label htmlFor="userName" className="flex items-center">
