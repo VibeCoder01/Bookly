@@ -7,9 +7,11 @@ import { z } from 'zod';
 import { format, parse, setHours, setMinutes, isBefore, isEqual } from 'date-fns';
 
 // --- Configuration Store (Mock) ---
-let currentSystemSlotDurationMinutes = 60; // Default to 60 minutes
-let currentSystemStartOfDay = '09:00'; // Default start time HH:MM
-let currentSystemEndOfDay = '17:00';   // Default end time HH:MM
+// These values are updated by admin actions and used by getAvailableTimeSlots
+// to dynamically generate booking slots according to administrative settings.
+let currentSystemSlotDurationMinutes = 60; // Default: 60 minutes. Defines the length of each booking slot.
+let currentSystemStartOfDay = '09:00'; // Default: 09:00 (HH:MM). Defines the earliest time for slot generation.
+let currentSystemEndOfDay = '17:00';   // Default: 17:00 (HH:MM). Defines the latest time for slot generation.
 
 const MIN_SLOT_DURATION = 15;
 const MAX_SLOT_DURATION = 120;
@@ -139,21 +141,24 @@ export async function getAvailableTimeSlots(
     return { slots: [], error: 'Invalid date format provided.' };
   }
 
+  // Use administratively configured start/end of day and slot duration
   const [startHour, startMinute] = currentSystemStartOfDay.split(':').map(Number);
   const [endHour, endMinute] = currentSystemEndOfDay.split(':').map(Number);
+  const configuredSlotDuration = currentSystemSlotDurationMinutes;
   
   const generatedSlots: TimeSlot[] = [];
   
   let currentTime = new Date(baseDate);
-  currentTime = setHours(setMinutes(currentTime, startMinute), startHour);
+  currentTime = setHours(setMinutes(currentTime, startMinute), startHour); // Set to configured start of day
 
-  const dayEndTime = setHours(setMinutes(new Date(baseDate), endMinute), endHour);
+  const dayEndTime = setHours(setMinutes(new Date(baseDate), endMinute), endHour); // Set to configured end of day
 
+  // Generate slots based on configured duration and work hours
   while (isBefore(currentTime, dayEndTime)) {
     const slotStart = new Date(currentTime);
-    const slotEnd = new Date(slotStart.getTime() + currentSystemSlotDurationMinutes * 60000);
+    const slotEnd = new Date(slotStart.getTime() + configuredSlotDuration * 60000); // Use configured duration
 
-    if (isBefore(dayEndTime, slotEnd) || isEqual(dayEndTime, slotStart)) { // Ensure slot doesn't exceed or start at end time
+    if (isBefore(dayEndTime, slotEnd) || isEqual(dayEndTime, slotStart)) { 
         break; 
     }
 
@@ -210,6 +215,7 @@ export async function submitBooking(
   
   await new Promise(resolve => setTimeout(resolve, 700)); 
 
+  // Re-check availability using current system configurations
   const currentAvailability = await getAvailableTimeSlots(roomId, date);
   if (currentAvailability.error || !currentAvailability.slots.find(s => s.display === time)) {
       const room = mockRooms.find(r => r.id === roomId);
@@ -246,6 +252,7 @@ export async function submitBooking(
   addMockBooking(newBooking);
 
   let aiResponse: AIResponse | undefined;
+  // Get available slots *after* this booking for AI suggestions, respecting current configuration
   const slotsAfterBooking = await getAvailableTimeSlots(roomId, date);
 
   try {
@@ -304,3 +311,4 @@ export async function getAllBookings(): Promise<{ bookings: Booking[]; error?: s
 
   return { bookings: sortedBookings };
 }
+
