@@ -5,8 +5,8 @@ import { Header } from '@/components/bookly/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Booking, AdminConfigItem } from '@/types';
 import { getAllBookings, updateSlotDuration as serverUpdateSlotDuration, updateWorkdayHours as serverUpdateWorkdayHours } from '@/lib/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,6 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+
+interface GroupedBookings {
+  [roomName: string]: Booking[];
+}
 
 export default function AdminPage() {
   const { toast } = useToast();
@@ -50,6 +54,18 @@ export default function AdminPage() {
       setIsLoadingBookings(false);
     }
   };
+
+  const groupedBookings = useMemo(() => {
+    if (!allBookings.length) return {};
+    return allBookings.reduce((acc, booking) => {
+      const roomName = booking.roomName || 'Unknown Room';
+      if (!acc[roomName]) {
+        acc[roomName] = [];
+      }
+      acc[roomName].push(booking);
+      return acc;
+    }, {} as GroupedBookings);
+  }, [allBookings]);
 
   const handleConfigChange = (itemId: string, newValue: string) => {
     setConfigItems(prevItems => 
@@ -137,8 +153,8 @@ export default function AdminPage() {
   const getIconForItem = (itemId: string) => {
     switch(itemId) {
       case 'slotDuration': return <Clock className="mr-2 h-4 w-4 text-muted-foreground" />;
-      case 'startOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />; // Icon for start of day
-      case 'endOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />;   // Icon for end of day
+      case 'startOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />;
+      case 'endOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />;
       default: return null;
     }
   };
@@ -188,33 +204,38 @@ export default function AdminPage() {
                       <AlertTriangle className="h-5 w-5 text-destructive" />
                       <span>Error: {error}</span>
                     </div>
-                  ) : allBookings.length === 0 ? (
+                  ) : Object.keys(groupedBookings).length === 0 ? (
                     <p className="text-muted-foreground">No bookings found.</p>
                   ) : (
-                    <ScrollArea className="h-[500px] w-full rounded-md border p-4 bg-card">
-                      <h4 className="text-lg font-medium mb-4">All Bookings</h4>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="font-semibold">Room Name</TableHead>
-                            <TableHead className="font-semibold">Date</TableHead>
-                            <TableHead className="font-semibold">Time</TableHead>
-                            <TableHead className="font-semibold">Booked By</TableHead>
-                            <TableHead className="font-semibold">Email</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {allBookings.map((booking) => (
-                            <TableRow key={booking.id}>
-                              <TableCell className="font-medium">{booking.roomName || booking.roomId}</TableCell>
-                              <TableCell>{format(new Date(booking.date), 'PPP')}</TableCell>
-                              <TableCell>{booking.time}</TableCell>
-                              <TableCell>{booking.userName}</TableCell>
-                              <TableCell>{booking.userEmail}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                    <ScrollArea className="h-[600px] w-full rounded-md border p-4 bg-card">
+                      {Object.entries(groupedBookings).map(([roomName, bookingsInRoom]) => (
+                        <div key={roomName} className="mb-8">
+                          <h4 className="text-lg font-headline font-semibold mb-3 text-primary flex items-center">
+                            <Building className="mr-2 h-5 w-5" />
+                            {roomName}
+                          </h4>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead className="font-semibold">Date</TableHead>
+                                <TableHead className="font-semibold">Time</TableHead>
+                                <TableHead className="font-semibold">Booked By</TableHead>
+                                <TableHead className="font-semibold">Email</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {bookingsInRoom.map((booking) => (
+                                <TableRow key={booking.id}>
+                                  <TableCell>{format(new Date(booking.date), 'PPP')}</TableCell>
+                                  <TableCell>{booking.time}</TableCell>
+                                  <TableCell>{booking.userName}</TableCell>
+                                  <TableCell>{booking.userEmail}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      ))}
                     </ScrollArea>
                   )}
                 </div>
