@@ -50,3 +50,9 @@ export interface RoomBookingsDialogProps {
   date: string;
   bookings: Booking[];
 }
+
+export interface AdminConfigItem {
+  id: string;
+  description: string;
+  value: string; // Using string for display simplicity for now
+}
