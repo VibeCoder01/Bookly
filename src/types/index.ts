@@ -1,3 +1,4 @@
+
 export interface Room {
   id: string;
   name: string;
@@ -40,4 +41,12 @@ export interface BookingFormData {
   time: string;
   userName: string;
   userEmail: string;
+}
+
+export interface RoomBookingsDialogProps {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  roomName: string;
+  date: string;
+  bookings: Booking[];
 }

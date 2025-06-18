@@ -1,3 +1,4 @@
+
 'use server';
 
 import type { Booking, Room, TimeSlot, AIResponse, AISuggestion } from '@/types';
@@ -58,7 +59,7 @@ export async function getAvailableTimeSlots(
   roomId: string,
   date: string // YYYY-MM-DD format
 ): Promise<{ slots: TimeSlot[]; error?: string }> {
-  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
 
   if (!roomId || !date) {
     return { slots: [], error: 'Room and date are required.' };
@@ -94,7 +95,7 @@ export async function submitBooking(
   
   const { roomId, date, time, userName, userEmail } = validationResult.data;
   
-  await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
+  await new Promise(resolve => setTimeout(resolve, 700)); // Simulate network delay
 
   // Double check availability (mitigate race conditions)
   const todaysBookings = mockBookings.filter(
@@ -145,13 +146,32 @@ export async function submitBooking(
       mockRooms,
       mockBookings // Pass current state of bookings *after* adding the new one
     );
-    // Optionally attach AI summary to the booking itself if your model supports it
-    // newBooking.summary = aiResponse.summary; 
   } catch (aiError) {
     console.error("AI flow error:", aiError);
-    // Don't let AI error block the process, provide a default or empty response
     aiResponse = { summary: "Booking successful! Could not generate AI summary at this time.", suggestions: [] };
   }
   
   return { booking: newBooking, aiResponse };
+}
+
+export async function getBookingsForRoomAndDate(
+  roomId: string,
+  date: string // YYYY-MM-DD format
+): Promise<{ bookings: Booking[]; roomName?: string; error?: string }> {
+  await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+
+  if (!roomId || !date) {
+    return { bookings: [], error: 'Room and date are required.' };
+  }
+
+  const room = mockRooms.find(r => r.id === roomId);
+  if (!room) {
+    return { bookings: [], error: 'Room not found.' };
+  }
+
+  const bookingsForRoomAndDate = mockBookings.filter(
+    (booking) => booking.roomId === roomId && booking.date === date
+  ).sort((a,b) => a.time.localeCompare(b.time)); // Sort by time
+
+  return { bookings: bookingsForRoomAndDate, roomName: room.name };
 }
