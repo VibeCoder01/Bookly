@@ -68,7 +68,6 @@ export default function AdminPage() {
         title: 'Error Fetching Configuration',
         description: 'Could not load current settings. Displaying defaults.',
       });
-      // Fallback to initial defaults if fetch fails (or keep previously set if any)
       setConfigItems(prev => prev.length ? prev : initialConfigItems.map(item => ({...item, value: item.id === 'slotDuration' ? '1 hour' : item.id === 'startOfDay' ? '09:00' : '17:00'})));
     } finally {
       setIsLoadingConfig(false);
@@ -124,7 +123,6 @@ export default function AdminPage() {
     setIsApplyingChanges(true);
     let allSucceeded = true;
 
-    // Update Slot Duration
     const slotDurationItem = configItems.find(item => item.id === 'slotDuration');
     if (slotDurationItem) {
       const durationInMinutes = convertDurationValueToMinutes(slotDurationItem.value);
@@ -154,7 +152,6 @@ export default function AdminPage() {
       }
     }
 
-    // Update Workday Hours
     const startOfDayItem = configItems.find(item => item.id === 'startOfDay');
     const endOfDayItem = configItems.find(item => item.id === 'endOfDay');
 
@@ -187,7 +184,7 @@ export default function AdminPage() {
     
     setIsApplyingChanges(false);
     if(allSucceeded) {
-        fetchAdminConfiguration(); // Re-fetch to confirm and display persisted values
+        fetchAdminConfiguration(); 
     }
   };
   
@@ -277,7 +274,7 @@ export default function AdminPage() {
 
                                   return (
                                     <TableRow key={booking.id} className={cn(rowClassName)}>
-                                      <TableCell>{format(new Date(booking.date + 'T00:00:00'), 'PPP')}</TableCell> {/* Ensure date is parsed correctly for formatting */}
+                                      <TableCell>{format(new Date(booking.date + 'T00:00:00'), 'PPP')}</TableCell>
                                       <TableCell>{booking.time}</TableCell>
                                       <TableCell>{booking.userName}</TableCell>
                                       <TableCell>{booking.userEmail}</TableCell>
