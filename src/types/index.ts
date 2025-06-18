@@ -6,8 +6,8 @@ export interface Room {
 }
 
 export interface TimeSlot {
-  startTime: string;
-  endTime: string;
+  startTime: string; // HH:MM
+  endTime: string;   // HH:MM
   display: string; // e.g., "09:00 - 10:00"
 }
 
@@ -16,7 +16,7 @@ export interface Booking {
   roomId: string;
   roomName?: string; // For display purposes
   date: string; // YYYY-MM-DD
-  time: string; // Corresponds to TimeSlot.display
+  time: string; // Combined range, e.g., "09:00 - 11:00"
   userName: string;
   userEmail: string;
   summary?: string; // AI generated summary
@@ -38,7 +38,8 @@ export interface AIResponse {
 export interface BookingFormData {
   roomId: string;
   date: Date | undefined;
-  time: string;
+  startTime: string; // Individual slot start time HH:MM
+  endTime: string;   // Individual slot end time HH:MM for the selected range
   userName: string;
   userEmail: string;
 }
@@ -52,7 +53,7 @@ export interface RoomBookingsDialogProps {
 }
 
 export interface AdminConfigItem {
-  id: string;
+  id:string;
   description: string;
-  value: string; // Using string for display simplicity for now
+  value: string; 
 }
