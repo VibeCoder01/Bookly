@@ -6,9 +6,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building } from 'lucide-react';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import type { Booking, AdminConfigItem } from '@/types';
-import { getAllBookings, updateSlotDuration as serverUpdateSlotDuration, updateWorkdayHours as serverUpdateWorkdayHours } from '@/lib/actions';
+import { getAllBookings, updateSlotDuration as serverUpdateSlotDuration, updateWorkdayHours as serverUpdateWorkdayHours, getCurrentConfiguration } from '@/lib/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
@@ -21,6 +21,26 @@ interface GroupedBookings {
   [roomName: string]: Booking[];
 }
 
+const initialConfigItems: AdminConfigItem[] = [
+  { id: 'slotDuration', description: 'Booking Slot Duration', value: '' }, // Will be populated from server
+  { id: 'startOfDay', description: 'Start of Work Day (HH:MM)', value: '' }, // Will be populated
+  { id: 'endOfDay', description: 'End of Work Day (HH:MM)', value: '' },   // Will be populated
+];
+
+const convertMinutesToDurationString = (minutes: number): string => {
+  if (minutes === 15) return '15 minutes';
+  if (minutes === 30) return '30 minutes';
+  if (minutes === 60) return '1 hour';
+  return '1 hour'; // Default fallback
+};
+
+const convertDurationValueToMinutes = (value: string): number => {
+  if (value === '15 minutes') return 15;
+  if (value === '30 minutes') return 30;
+  if (value === '1 hour') return 60;
+  return 60; // Default to 60 if somehow invalid
+};
+
 export default function AdminPage() {
   const { toast } = useToast();
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
@@ -28,12 +48,36 @@ export default function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [showBookingsTable, setShowBookingsTable] = useState(false);
 
-  const [configItems, setConfigItems] = useState<AdminConfigItem[]>([
-    { id: 'slotDuration', description: 'Booking Slot Duration', value: '1 hour' },
-    { id: 'startOfDay', description: 'Start of Work Day (HH:MM)', value: '09:00' },
-    { id: 'endOfDay', description: 'End of Work Day (HH:MM)', value: '17:00' },
-  ]);
+  const [configItems, setConfigItems] = useState<AdminConfigItem[]>(initialConfigItems);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
+
+  const fetchAdminConfiguration = useCallback(async () => {
+    setIsLoadingConfig(true);
+    try {
+      const currentConfig = await getCurrentConfiguration();
+      setConfigItems([
+        { id: 'slotDuration', description: 'Booking Slot Duration', value: convertMinutesToDurationString(currentConfig.slotDurationMinutes) },
+        { id: 'startOfDay', description: 'Start of Work Day (HH:MM)', value: currentConfig.startOfDay },
+        { id: 'endOfDay', description: 'End of Work Day (HH:MM)', value: currentConfig.endOfDay },
+      ]);
+    } catch (err) {
+      console.error("Failed to fetch admin configuration:", err);
+      toast({
+        variant: 'destructive',
+        title: 'Error Fetching Configuration',
+        description: 'Could not load current settings. Displaying defaults.',
+      });
+      // Fallback to initial defaults if fetch fails (or keep previously set if any)
+      setConfigItems(prev => prev.length ? prev : initialConfigItems.map(item => ({...item, value: item.id === 'slotDuration' ? '1 hour' : item.id === 'startOfDay' ? '09:00' : '17:00'})));
+    } finally {
+      setIsLoadingConfig(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchAdminConfiguration();
+  }, [fetchAdminConfiguration]);
 
 
   const handleShowAllBookings = async () => {
@@ -74,13 +118,6 @@ export default function AdminPage() {
         item.id === itemId ? { ...item, value: newValue } : item
       )
     );
-  };
-
-  const convertDurationValueToMinutes = (value: string): number => {
-    if (value === '15 minutes') return 15;
-    if (value === '30 minutes') return 30;
-    if (value === '1 hour') return 60;
-    return 60; // Default to 60 if somehow invalid
   };
 
   const handleApplyChanges = async () => {
@@ -149,6 +186,9 @@ export default function AdminPage() {
     }
     
     setIsApplyingChanges(false);
+    if(allSucceeded) {
+        fetchAdminConfiguration(); // Re-fetch to confirm and display persisted values
+    }
   };
   
   const getIconForItem = (itemId: string) => {
@@ -237,7 +277,7 @@ export default function AdminPage() {
 
                                   return (
                                     <TableRow key={booking.id} className={cn(rowClassName)}>
-                                      <TableCell>{format(new Date(booking.date), 'PPP')}</TableCell>
+                                      <TableCell>{format(new Date(booking.date + 'T00:00:00'), 'PPP')}</TableCell> {/* Ensure date is parsed correctly for formatting */}
                                       <TableCell>{booking.time}</TableCell>
                                       <TableCell>{booking.userName}</TableCell>
                                       <TableCell>{booking.userEmail}</TableCell>
@@ -263,7 +303,12 @@ export default function AdminPage() {
                 <Settings className="mr-2 h-5 w-5" />
                 Configuration
               </h3>
-              {configItems.length > 0 ? (
+              {isLoadingConfig ? (
+                <div className="flex items-center justify-center p-8 text-muted-foreground">
+                    <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                    <p>Loading configuration...</p>
+                </div>
+              ) : configItems.length > 0 ? (
                 <Card className="bg-card">
                   <CardContent className="p-0">
                     <Table>
@@ -285,6 +330,7 @@ export default function AdminPage() {
                                 <Select
                                   value={item.value}
                                   onValueChange={(newValue) => handleConfigChange(item.id, newValue)}
+                                  disabled={isLoadingConfig || isApplyingChanges}
                                 >
                                   <SelectTrigger className="w-full sm:w-[180px] ml-auto text-right">
                                     <SelectValue placeholder="Select duration" />
@@ -302,6 +348,7 @@ export default function AdminPage() {
                                   onChange={(e) => handleConfigChange(item.id, e.target.value)}
                                   className="text-right sm:w-[180px] ml-auto"
                                   placeholder={item.id === 'startOfDay' || item.id === 'endOfDay' ? 'HH:MM' : ''}
+                                  disabled={isLoadingConfig || isApplyingChanges}
                                 />
                               )}
                             </TableCell>
@@ -312,10 +359,10 @@ export default function AdminPage() {
                   </CardContent>
                 </Card>
               ) : (
-                <p className="text-muted-foreground">No configuration items defined.</p>
+                <p className="text-muted-foreground">No configuration items defined or loaded.</p>
               )}
               <div className="mt-6 flex justify-end">
-                <Button onClick={handleApplyChanges} variant="default" disabled={isApplyingChanges}>
+                <Button onClick={handleApplyChanges} variant="default" disabled={isApplyingChanges || isLoadingConfig}>
                   {isApplyingChanges && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Apply Changes
                 </Button>

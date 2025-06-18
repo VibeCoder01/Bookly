@@ -71,6 +71,20 @@ export async function updateWorkdayHours(
   return { success: true };
 }
 
+export async function getCurrentConfiguration(): Promise<{
+  slotDurationMinutes: number;
+  startOfDay: string;
+  endOfDay: string;
+}> {
+  // Simulate async operation if needed, though direct return is fine for mock
+  await new Promise(resolve => setTimeout(resolve, 100)); 
+  return {
+    slotDurationMinutes: currentSystemSlotDurationMinutes,
+    startOfDay: currentSystemStartOfDay,
+    endOfDay: currentSystemEndOfDay,
+  };
+}
+
 
 // Placeholder for the actual AI flow function
 async function callAIFlow(
@@ -152,6 +166,7 @@ function parseBookingTime(timeStr: string, date: string): { start: Date; end: Da
 
 // This function now generates individual time slots based on system configuration.
 // It is a critical function for determining what slots are offered to the user.
+// These configurations are set in the Admin panel and affect live booking availability.
 export async function getAvailableTimeSlots(
   roomId: string,
   date: string // YYYY-MM-DD format
@@ -172,6 +187,7 @@ export async function getAvailableTimeSlots(
   // Use administratively configured start/end of day and slot duration
   // These variables (currentSystemStartOfDay, currentSystemEndOfDay, currentSystemSlotDurationMinutes)
   // are set by admin actions and dictate the available booking windows.
+  // This means the Admin configuration is *enforced* here for slot generation.
   const [startHour, startMinute] = currentSystemStartOfDay.split(':').map(Number);
   const [endHour, endMinute] = currentSystemEndOfDay.split(':').map(Number);
   const configuredSlotDuration = currentSystemSlotDurationMinutes;
@@ -264,6 +280,7 @@ export async function submitBooking(
   await new Promise(resolve => setTimeout(resolve, 700)); 
 
   // --- Crucial: Re-validate the entire requested range against current availability ---
+  // This uses getAvailableTimeSlots, which in turn uses the current admin-defined configuration.
   const { slots: currentIndividualSlots, error: availabilityError } = await getAvailableTimeSlots(roomId, date);
   if (availabilityError) {
     return { error: `Could not verify slot availability: ${availabilityError}` };
@@ -384,5 +401,3 @@ export async function getAllBookings(): Promise<{ bookings: Booking[]; error?: s
   console.log(`[Bookly Debug] getAllBookings executed. Returning ${sortedBookings.length} bookings.`);
   return { bookings: sortedBookings };
 }
-
-    
