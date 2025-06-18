@@ -5,23 +5,26 @@ import { Header } from '@/components/bookly/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, ListChecks, Loader2, AlertTriangle, Settings } from 'lucide-react';
+import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import type { Booking, AdminConfigItem } from '@/types';
 import { getAllBookings } from '@/lib/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
 export default function AdminPage() {
+  const { toast } = useToast();
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showBookingsTable, setShowBookingsTable] = useState(false);
 
   const [configItems, setConfigItems] = useState<AdminConfigItem[]>([
-    { id: 'slotDuration', description: 'Default booking slot duration', value: '60 minutes' },
+    { id: 'slotDuration', description: 'Default booking slot duration', value: '1 hour' },
     // Future configuration items can be added here
   ]);
 
@@ -51,6 +54,16 @@ export default function AdminPage() {
         item.id === itemId ? { ...item, value: newValue } : item
       )
     );
+  };
+
+  const handleApplyChanges = () => {
+    // In a real application, you would persist these changes (e.g., to a database or config file)
+    console.log('Applying configuration changes:', configItems);
+    toast({
+      title: 'Configuration Updated',
+      description: 'Your changes have been applied (simulated).',
+      action: <CheckCircle className="text-green-500" />,
+    });
   };
 
   return (
@@ -153,12 +166,28 @@ export default function AdminPage() {
                           <TableRow key={item.id}>
                             <TableCell className="font-medium pl-6">{item.description}</TableCell>
                             <TableCell className="text-right pr-6">
-                              <Input 
-                                type="text"
-                                value={item.value}
-                                onChange={(e) => handleConfigChange(item.id, e.target.value)}
-                                className="text-right"
-                              />
+                              {item.id === 'slotDuration' ? (
+                                <Select
+                                  value={item.value}
+                                  onValueChange={(newValue) => handleConfigChange(item.id, newValue)}
+                                >
+                                  <SelectTrigger className="w-full sm:w-[180px] ml-auto text-right">
+                                    <SelectValue placeholder="Select duration" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="15 minutes">15 minutes</SelectItem>
+                                    <SelectItem value="30 minutes">30 minutes</SelectItem>
+                                    <SelectItem value="1 hour">1 hour</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Input 
+                                  type="text"
+                                  value={item.value}
+                                  onChange={(e) => handleConfigChange(item.id, e.target.value)}
+                                  className="text-right"
+                                />
+                              )}
                             </TableCell>
                           </TableRow>
                         ))}
@@ -169,6 +198,11 @@ export default function AdminPage() {
               ) : (
                 <p className="text-muted-foreground">No configuration items defined.</p>
               )}
+              <div className="mt-6 flex justify-end">
+                <Button onClick={handleApplyChanges} variant="default">
+                  Apply Changes
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
