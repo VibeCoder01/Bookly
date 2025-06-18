@@ -175,3 +175,18 @@ export async function getBookingsForRoomAndDate(
 
   return { bookings: bookingsForRoomAndDate, roomName: room.name };
 }
+
+export async function getAllBookings(): Promise<{ bookings: Booking[]; error?: string }> {
+  await new Promise(resolve => setTimeout(resolve, 600)); // Simulate network delay
+  
+  // Sort bookings by date, then by time
+  const sortedBookings = [...mockBookings].sort((a, b) => {
+    const dateComparison = a.date.localeCompare(b.date);
+    if (dateComparison !== 0) {
+      return dateComparison;
+    }
+    return a.time.localeCompare(b.time);
+  });
+
+  return { bookings: sortedBookings };
+}
