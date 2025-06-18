@@ -50,7 +50,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
   const [availableEndTimesForSelect, setAvailableEndTimesForSelect] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
-  const [selectedDateForSlots, setSelectedDateForSlots] = useState<Date | undefined>();
+  // const [selectedDateForSlots, setSelectedDateForSlots] = useState<Date | undefined>(); // No longer needed with new effect logic
 
   const [isBookingsDialogOpen, setIsBookingsDialogOpen] = useState(false);
   const [bookingsForSelectedRoomDate, setBookingsForSelectedRoomDate] = useState<Booking[]>([]);
@@ -73,22 +73,10 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
   const selectedDate = form.watch('date');
   const selectedStartTimeValue = form.watch('startTime');
 
-  const fetchIndividualSlots = useCallback(async (roomId: string, date: Date | undefined) => {
-    if (!roomId || !date) {
-      setAllAvailableIndividualSlots([]);
-      setAvailableEndTimesForSelect([]);
-      form.resetField('startTime');
-      form.resetField('endTime');
-      return;
-    }
+  const fetchIndividualSlots = useCallback(async (roomIdToFetch: string, dateToFetch: Date) => {
     setIsLoadingSlots(true);
-    setSelectedDateForSlots(date);
-    form.resetField('startTime');
-    form.resetField('endTime');
-    setAvailableEndTimesForSelect([]);
-
     try {
-      const result = await getAvailableTimeSlots(roomId, format(date, 'yyyy-MM-dd'));
+      const result = await getAvailableTimeSlots(roomIdToFetch, format(dateToFetch, 'yyyy-MM-dd'));
       if (result.error) {
         toast({ variant: 'destructive', title: 'Error fetching slots', description: result.error });
         setAllAvailableIndividualSlots([]);
@@ -101,20 +89,23 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
     } finally {
       setIsLoadingSlots(false);
     }
-  }, [toast, form]);
+  }, [toast]);
 
   useEffect(() => {
     if (selectedRoomId && selectedDate) {
-       if (!selectedDateForSlots || format(selectedDate, 'yyyy-MM-dd') !== format(selectedDateForSlots, 'yyyy-MM-dd') || 
-           form.getValues('roomId') !== selectedRoomId // Added this condition to refetch if room changes too
-       ) {
-            fetchIndividualSlots(selectedRoomId, selectedDate);
-       }
+      // When room or date changes, reset time fields and fetch new slots.
+      form.resetField('startTime');
+      form.resetField('endTime');
+      setAvailableEndTimesForSelect([]); 
+      fetchIndividualSlots(selectedRoomId, selectedDate);
     } else {
+      // Clear all slot related data if room/date is not selected
       setAllAvailableIndividualSlots([]);
       setAvailableEndTimesForSelect([]);
+      form.resetField('startTime');
+      form.resetField('endTime');
     }
-  }, [selectedRoomId, selectedDate, fetchIndividualSlots, selectedDateForSlots, form]);
+  }, [selectedRoomId, selectedDate, fetchIndividualSlots, form]);
 
 
   useEffect(() => {
@@ -133,23 +124,28 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
 
     const validEndTimes: string[] = [];
     let currentPossibleEndTime = startSlot.endTime;
-    validEndTimes.push(currentPossibleEndTime); // The first possible end time is the end of the selected start slot
+    validEndTimes.push(currentPossibleEndTime); 
 
     let lastSlotEndTimeInChain = startSlot.endTime;
     const startIndex = allAvailableIndividualSlots.findIndex(slot => slot.startTime === selectedStartTimeValue);
 
     for (let i = startIndex + 1; i < allAvailableIndividualSlots.length; i++) {
       const nextSlot = allAvailableIndividualSlots[i];
-      if (nextSlot.startTime === lastSlotEndTimeInChain) { // Check for contiguity
+      if (nextSlot.startTime === lastSlotEndTimeInChain) { 
         validEndTimes.push(nextSlot.endTime);
         lastSlotEndTimeInChain = nextSlot.endTime;
       } else {
-        break; // Chain of contiguous slots is broken
+        break; 
       }
     }
     
     setAvailableEndTimesForSelect(validEndTimes);
-    form.resetField('endTime'); // Reset end time when start time or available slots change
+    // Only reset endTime if it's no longer a valid option or if start time changes.
+    // The current logic of resetting endTime when selectedStartTimeValue changes OR allAvailableIndividualSlots changes is correct.
+    // This effect's form.resetField('endTime') will handle it.
+    if (!validEndTimes.includes(form.getValues('endTime'))){
+        form.resetField('endTime');
+    }
 
   }, [selectedStartTimeValue, allAvailableIndividualSlots, form]);
 
@@ -160,7 +156,6 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
       const submissionData = {
         ...data,
         date: format(data.date, 'yyyy-MM-dd'),
-        // time: `${data.startTime} - ${data.endTime}`, // This is now handled in actions.ts
       };
       const result = await submitBooking(submissionData);
 
@@ -175,7 +170,6 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
                 form.setError(field as keyof FormValues, { type: 'server', message: errors.join(', ') });
             });
         }
-        // If it's a slot availability issue, refresh slots
         if (result.error.toLowerCase().includes("slot") || result.error.toLowerCase().includes("unavailable") || result.error.toLowerCase().includes("range")) {
            if(selectedRoomId && selectedDate) fetchIndividualSlots(selectedRoomId, selectedDate);
         }
@@ -191,7 +185,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
         form.reset();
         setAllAvailableIndividualSlots([]);
         setAvailableEndTimesForSelect([]);
-        setSelectedDateForSlots(undefined);
+        //setSelectedDateForSlots(undefined); // No longer used
       }
     } catch (error) {
       toast({
@@ -230,6 +224,8 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
   };
   
   const isDetailsButtonDisabled = !selectedRoomId || !selectedDate || isLoadingSlots || isLoadingRoomBookings || isSubmittingForm;
+  const isBookRoomButtonDisabled = isSubmittingForm || isLoadingSlots || isLoadingRoomBookings || !selectedStartTimeValue || !form.getValues('endTime');
+
 
   return (
     <>
@@ -246,10 +242,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
                 <Select 
                   onValueChange={(value) => {
                     field.onChange(value);
-                    form.resetField('startTime');
-                    form.resetField('endTime');
-                    setAvailableEndTimesForSelect([]);
-                    // fetchIndividualSlots(value, form.getValues('date')); // fetchIndividualSlots is called by useEffect
+                    // Other resets are handled by useEffect watching selectedRoomId
                   }} 
                   defaultValue={field.value} 
                   value={field.value}
@@ -299,10 +292,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
                       selected={field.value}
                       onSelect={(date) => {
                           field.onChange(date);
-                          form.resetField('startTime');
-                          form.resetField('endTime');
-                          setAvailableEndTimesForSelect([]);
-                          // fetchIndividualSlots(form.getValues('roomId'), date); // fetchIndividualSlots is called by useEffect
+                           // Other resets are handled by useEffect watching selectedDate
                       }}
                       disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) }
                       initialFocus
@@ -336,7 +326,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
                     <Select 
                         onValueChange={(value) => {
                             field.onChange(value);
-                            form.resetField('endTime'); // Reset endTime when startTime changes
+                            form.resetField('endTime'); 
                         }} 
                         value={field.value}
                         defaultValue={field.value}
@@ -369,7 +359,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
               <Label htmlFor="endTime" className="flex items-center">
                 <ArrowRight className="mr-2 h-5 w-5 text-primary" /> End Time
               </Label>
-              {isLoadingSlots && selectedStartTimeValue ? (
+              {isLoadingSlots && selectedStartTimeValue ? ( 
                  <div className="flex items-center space-x-2 text-muted-foreground h-10">
                   <Loader2 className="h-5 w-5 animate-spin" />
                   <span>Loading end times...</span>
@@ -380,7 +370,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
                   control={form.control}
                   render={({ field }) => (
                     <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
-                      <SelectTrigger id="endTime" aria-label="Select End Time">
+                      <SelectTrigger id="endTime" aria-label="Select End Time" disabled={!selectedStartTimeValue || isLoadingSlots}>
                         <SelectValue placeholder="Select an end time" />
                       </SelectTrigger>
                       <SelectContent>
@@ -396,7 +386,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
               ) : selectedStartTimeValue ? (
                 <div className="flex items-center space-x-2 text-muted-foreground bg-muted/20 p-3 rounded-md border h-10">
                     <Clock className="h-5 w-5 text-muted-foreground" />
-                    <span>Select start time first or no further slots.</span>
+                    <span>Select start time or no further slots.</span>
                 </div>
               ) : (
                 <div className="flex items-center space-x-2 text-muted-foreground bg-muted/20 p-3 rounded-md border h-10">
@@ -448,7 +438,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
           </div>
         </div>
 
-        <Button type="submit" className="w-full md:w-auto bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isSubmittingForm || isLoadingSlots || isLoadingRoomBookings || !selectedStartTimeValue || !form.getValues('endTime')}>
+        <Button type="submit" className="w-full md:w-auto bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isBookRoomButtonDisabled}>
           {isSubmittingForm ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
@@ -470,3 +460,5 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
     </>
   );
 }
+
+    

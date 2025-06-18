@@ -30,7 +30,7 @@ export async function updateSlotDuration(
       return { success: false, error: 'Duration must be in multiples of 15 minutes.'}
   }
   currentSystemSlotDurationMinutes = newDurationMinutes;
-  console.log(`System slot duration updated to: ${currentSystemSlotDurationMinutes} minutes.`);
+  console.log(`[Bookly Config] System slot duration updated to: ${currentSystemSlotDurationMinutes} minutes.`);
   return { success: true };
 }
 
@@ -67,7 +67,7 @@ export async function updateWorkdayHours(
 
   currentSystemStartOfDay = startTime;
   currentSystemEndOfDay = endTime;
-  console.log(`System workday hours updated to: ${currentSystemStartOfDay} - ${currentSystemEndOfDay}.`);
+  console.log(`[Bookly Config] System workday hours updated to: ${currentSystemStartOfDay} - ${currentSystemEndOfDay}.`);
   return { success: true };
 }
 
@@ -79,7 +79,7 @@ async function callAIFlow(
   existingBookings: Booking[],
   availableSlotsForSuggestion: TimeSlot[] // These are individual slots
 ): Promise<AIResponse> {
-  console.log('AI Flow called with:', bookingDetails, allRooms.length, existingBookings.length);
+  console.log('[Bookly AI] AI Flow called with:', bookingDetails, allRooms.length, existingBookings.length);
   // The 'time' in bookingDetails is now a range like "09:00 - 11:00"
   const summary = `Successfully processed booking for ${bookingDetails.roomName} on ${bookingDetails.date} for the period ${bookingDetails.time} for ${bookingDetails.userName}.`;
   
@@ -144,13 +144,14 @@ function parseBookingTime(timeStr: string, date: string): { start: Date; end: Da
     const endDate = parse(`${date} ${parts[1]}`, 'yyyy-MM-dd HH:mm', new Date());
     return { start: startDate, end: endDate };
   } catch (e) {
-    console.error("Error parsing booking time string:", timeStr, e);
+    console.error("[Bookly Error] Error parsing booking time string:", timeStr, e);
     return null;
   }
 }
 
 
 // This function now generates individual time slots based on system configuration.
+// It is a critical function for determining what slots are offered to the user.
 export async function getAvailableTimeSlots(
   roomId: string,
   date: string // YYYY-MM-DD format
@@ -169,6 +170,8 @@ export async function getAvailableTimeSlots(
   }
 
   // Use administratively configured start/end of day and slot duration
+  // These variables (currentSystemStartOfDay, currentSystemEndOfDay, currentSystemSlotDurationMinutes)
+  // are set by admin actions and dictate the available booking windows.
   const [startHour, startMinute] = currentSystemStartOfDay.split(':').map(Number);
   const [endHour, endMinute] = currentSystemEndOfDay.split(':').map(Number);
   const configuredSlotDuration = currentSystemSlotDurationMinutes;
@@ -239,7 +242,6 @@ const bookingSubmissionSchema = z.object({
 }).refine(data => {
     // Ensure startTime is before endTime
     // This basic string comparison works for HH:MM format if both are on the same day.
-    // For more robust comparison, parse to Date objects if necessary.
     return data.startTime < data.endTime;
 }, {
     message: "End time must be after start time.",
@@ -278,20 +280,8 @@ export async function submitBooking(
       isRangeValid = false;
       break;
     }
-    // Check if the found slot ends before or at the desired overall booking end time
-    if (!isBefore(parse(foundSlot.endTime, "HH:mm", tempDateForParsing), parse(endTime, "HH:mm", tempDateForParsing)) && foundSlot.endTime !== endTime) {
-       // This can happen if a slot ends after the desired endTime, meaning the endTime isn't a valid slot boundary
-       // or the chain is broken.
-       if(expectedCurrentSlotStartTime === startTime && foundSlot.endTime !== endTime){
-            // If it's the first slot and its end time isn't the requested end time,
-            // and we expect more slots, then we move to its end.
-            // But if its end time is beyond the requested end time, it's an issue.
-            // This complex case should ideally be caught by UI, but good to double check.
-       }
-    }
-    expectedCurrentSlotStartTime = foundSlot.endTime; // Move to the end of this slot for the next check
+    expectedCurrentSlotStartTime = foundSlot.endTime; 
   }
-   // After the loop, if expectedCurrentSlotStartTime is not equal to endTime, it means the range was not perfectly covered.
   if (expectedCurrentSlotStartTime !== endTime) {
     isRangeValid = false;
   }
@@ -308,7 +298,7 @@ export async function submitBooking(
                 mockBookings,
                 currentIndividualSlots || [] 
             );
-        } catch (aiError) { console.error("AI flow error on booking failure:", aiError); }
+        } catch (aiError) { console.error("[Bookly Error] AI flow error on booking failure:", aiError); }
     }
     return { error: 'Sorry, one or more time slots in the selected range are no longer available or the range is invalid. Please refresh and try again.', aiResponse: aiResponseForFailure };
   }
@@ -317,7 +307,6 @@ export async function submitBooking(
 
   const room = mockRooms.find(r => r.id === roomId);
   if (!room) {
-    // This should ideally not happen if roomId is validated from a list
     return { error: 'Selected room not found.' };
   }
 
@@ -341,14 +330,13 @@ export async function submitBooking(
 
   try {
      aiResponse = await callAIFlow(
-      { ...newBooking }, // newBooking already has time as "startTime - endTime"
+      { ...newBooking }, 
       mockRooms,
       mockBookings, 
       slotsAfterBooking.slots || [] 
     );
   } catch (aiError) {
-    console.error("AI flow error:", aiError);
-    // Fallback AI response
+    console.error("[Bookly Error] AI flow error:", aiError);
     aiResponse = { summary: `Booking successful for ${room.name} from ${startTime} to ${endTime}! Could not generate AI summary at this time.`, suggestions: [] };
   }
   
@@ -359,7 +347,6 @@ export async function getBookingsForRoomAndDate(
   roomId: string,
   date: string // YYYY-MM-DD
 ): Promise<{ bookings: Booking[]; roomName?: string; error?: string }> {
-  // Simulate async operation
   await new Promise(resolve => setTimeout(resolve, 500)); 
 
   if (!roomId || !date) {
@@ -374,7 +361,6 @@ export async function getBookingsForRoomAndDate(
   const bookingsForRoomAndDate = mockBookings.filter(
     (booking) => booking.roomId === roomId && booking.date === date
   ).sort((a,b) => {
-      // Sort by the start time of the booking range
       const aStartTime = a.time.split(' - ')[0];
       const bStartTime = b.time.split(' - ')[0];
       return aStartTime.localeCompare(bStartTime);
@@ -384,20 +370,19 @@ export async function getBookingsForRoomAndDate(
 }
 
 export async function getAllBookings(): Promise<{ bookings: Booking[]; error?: string }> {
-  // Simulate async operation
   await new Promise(resolve => setTimeout(resolve, 600)); 
   
-  // Sort all bookings primarily by date, then by the start time of the booking range
   const sortedBookings = [...mockBookings].sort((a, b) => {
     const dateComparison = a.date.localeCompare(b.date);
     if (dateComparison !== 0) {
       return dateComparison;
     }
-    // If dates are the same, sort by start time
     const aStartTime = a.time.split(' - ')[0];
     const bStartTime = b.time.split(' - ')[0];
     return aStartTime.localeCompare(bStartTime);
   });
-
+  console.log(`[Bookly Debug] getAllBookings executed. Returning ${sortedBookings.length} bookings.`);
   return { bookings: sortedBookings };
 }
+
+    

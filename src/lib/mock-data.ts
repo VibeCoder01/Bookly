@@ -77,9 +77,12 @@ export const addMockBooking = (newBooking: Booking): void => {
   const existingIndex = mockBookings.findIndex(b => b.id === newBooking.id);
   if (existingIndex > -1) {
       // Potentially update existing booking if needed, or handle as error
-      console.warn(`Booking with id ${newBooking.id} already exists. Overwriting.`);
+      console.warn(`[Bookly Debug] Booking with id ${newBooking.id} already exists. Overwriting.`);
       mockBookings[existingIndex] = newBooking;
   } else {
       mockBookings.push(newBooking);
   }
+  console.log(`[Bookly Debug] addMockBooking executed. Current mockBookings count: ${mockBookings.length}. Last added ID: ${newBooking.id}, Time: ${newBooking.time}`);
 };
+
+    
