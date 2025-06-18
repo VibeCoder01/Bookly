@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface GroupedBookings {
   [roomName: string]: Booking[];
@@ -208,34 +209,46 @@ export default function AdminPage() {
                     <p className="text-muted-foreground">No bookings found.</p>
                   ) : (
                     <ScrollArea className="h-[600px] w-full rounded-md border p-4 bg-card">
-                      {Object.entries(groupedBookings).map(([roomName, bookingsInRoom]) => (
-                        <div key={roomName} className="mb-8">
-                          <h4 className="text-lg font-headline font-semibold mb-3 text-primary flex items-center">
-                            <Building className="mr-2 h-5 w-5" />
-                            {roomName}
-                          </h4>
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead className="font-semibold">Date</TableHead>
-                                <TableHead className="font-semibold">Time</TableHead>
-                                <TableHead className="font-semibold">Booked By</TableHead>
-                                <TableHead className="font-semibold">Email</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {bookingsInRoom.map((booking) => (
-                                <TableRow key={booking.id}>
-                                  <TableCell>{format(new Date(booking.date), 'PPP')}</TableCell>
-                                  <TableCell>{booking.time}</TableCell>
-                                  <TableCell>{booking.userName}</TableCell>
-                                  <TableCell>{booking.userEmail}</TableCell>
+                      {Object.entries(groupedBookings).map(([roomName, bookingsInRoom]) => {
+                        let lastDateProcessedForRoom: string | null = null;
+                        let useAlternateRowStyle = false;
+                        return (
+                          <div key={roomName} className="mb-8">
+                            <h4 className="text-lg font-headline font-semibold mb-3 text-primary flex items-center">
+                              <Building className="mr-2 h-5 w-5" />
+                              {roomName}
+                            </h4>
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="font-semibold">Date</TableHead>
+                                  <TableHead className="font-semibold">Time</TableHead>
+                                  <TableHead className="font-semibold">Booked By</TableHead>
+                                  <TableHead className="font-semibold">Email</TableHead>
                                 </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
-                      ))}
+                              </TableHeader>
+                              <TableBody>
+                                {bookingsInRoom.map((booking) => {
+                                  if (lastDateProcessedForRoom !== null && booking.date !== lastDateProcessedForRoom) {
+                                    useAlternateRowStyle = !useAlternateRowStyle;
+                                  }
+                                  lastDateProcessedForRoom = booking.date;
+                                  const rowClassName = useAlternateRowStyle ? 'bg-primary/5' : '';
+
+                                  return (
+                                    <TableRow key={booking.id} className={cn(rowClassName)}>
+                                      <TableCell>{format(new Date(booking.date), 'PPP')}</TableCell>
+                                      <TableCell>{booking.time}</TableCell>
+                                      <TableCell>{booking.userName}</TableCell>
+                                      <TableCell>{booking.userEmail}</TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        );
+                      })}
                     </ScrollArea>
                   )}
                 </div>
