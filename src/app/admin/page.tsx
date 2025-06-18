@@ -11,6 +11,7 @@ import type { Booking, AdminConfigItem } from '@/types';
 import { getAllBookings } from '@/lib/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
 import { format } from 'date-fns';
 
 export default function AdminPage() {
@@ -42,6 +43,14 @@ export default function AdminPage() {
     } finally {
       setIsLoadingBookings(false);
     }
+  };
+
+  const handleConfigChange = (itemId: string, newValue: string) => {
+    setConfigItems(prevItems => 
+      prevItems.map(item => 
+        item.id === itemId ? { ...item, value: newValue } : item
+      )
+    );
   };
 
   return (
@@ -127,7 +136,7 @@ export default function AdminPage() {
             <div className="pt-6 border-t">
               <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
                 <Settings className="mr-2 h-5 w-5" />
-                Application Configuration
+                Configuration
               </h3>
               {configItems.length > 0 ? (
                 <Card className="bg-card">
@@ -135,15 +144,22 @@ export default function AdminPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="pl-6">Setting Description</TableHead>
-                          <TableHead className="text-right pr-6">Current Value</TableHead>
+                          <TableHead className="pl-6 font-semibold">Setting Description</TableHead>
+                          <TableHead className="text-right pr-6 font-semibold">Current Value</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {configItems.map((item) => (
                           <TableRow key={item.id}>
                             <TableCell className="font-medium pl-6">{item.description}</TableCell>
-                            <TableCell className="text-right pr-6">{item.value}</TableCell>
+                            <TableCell className="text-right pr-6">
+                              <Input 
+                                type="text"
+                                value={item.value}
+                                onChange={(e) => handleConfigChange(item.id, e.target.value)}
+                                className="text-right"
+                              />
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
