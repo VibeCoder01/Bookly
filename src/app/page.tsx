@@ -5,7 +5,7 @@ import { Header } from '@/components/bookly/Header';
 import { BookingForm } from '@/components/bookly/BookingForm';
 import { AISuggestionsCard } from '@/components/bookly/AISuggestionsCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockRooms } from '@/lib/mock-data';
+import { mockRooms } from '@/lib/room-data'; // Updated import
 import type { Booking, AIResponse } from '@/types';
 import React, { useState } from 'react';
 

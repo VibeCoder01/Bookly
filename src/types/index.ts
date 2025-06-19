@@ -1,4 +1,5 @@
 
+
 export interface Room {
   id: string;
   name: string;
@@ -56,4 +57,11 @@ export interface AdminConfigItem {
   id:string;
   description: string;
   value: string; 
+}
+
+// Interface for application configuration stored in app-config.json
+export interface AppConfiguration {
+  slotDurationMinutes: number;
+  startOfDay: string; // HH:MM format
+  endOfDay: string;   // HH:MM format
 }

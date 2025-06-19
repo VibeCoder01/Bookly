@@ -1,31 +1,37 @@
 
-import type { Room, Booking, TimeSlot } from '@/types';
+'use server';
 
-export const mockRooms: Room[] = [
-  { id: 'room-1', name: 'Conference Room Alpha', capacity: 10 },
-  { id: 'room-2', name: 'Meeting Room Bravo', capacity: 4 },
-  { id: 'room-3', name: 'Quiet Pod Charlie', capacity: 1 },
-  { id: 'room-4', name: 'Workshop Delta', capacity: 20 },
-];
+import type { Booking } from '@/types';
+import fs from 'fs';
+import path from 'path';
 
-// Ensure date strings are in YYYY-MM-DD format for consistency
-const today = new Date();
-const tomorrowDate = new Date(today);
-tomorrowDate.setDate(today.getDate() + 1);
-const dayAfterTomorrowDate = new Date(today);
-dayAfterTomorrowDate.setDate(today.getDate() + 2);
+// Define the path to the data directory and the bookings JSON file
+const DATA_DIR = path.join(process.cwd(), 'data');
+const BOOKINGS_FILE_PATH = path.join(DATA_DIR, 'bookings.json');
+
+// Ensure the data directory exists
+const ensureDataDirectoryExists = () => {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+};
 
 const formatDateToYYYYMMDD = (date: Date): string => {
   return date.toISOString().split('T')[0];
 };
 
-export const mockBookings: Booking[] = [
+const today = new Date();
+const tomorrowDate = new Date(today);
+tomorrowDate.setDate(today.getDate() + 1);
+
+// Initial default bookings if the JSON file is not found or is empty
+const initialBookingsData: Booking[] = [
   {
     id: 'booking-1',
     roomId: 'room-1',
     roomName: 'Conference Room Alpha',
-    date: formatDateToYYYYMMDD(tomorrowDate), 
-    time: '10:00 - 11:00', // Assumes 60-min slots initially
+    date: formatDateToYYYYMMDD(tomorrowDate),
+    time: '10:00 - 11:00',
     userName: 'Alice Wonderland',
     userEmail: 'alice@example.com',
   },
@@ -33,56 +39,68 @@ export const mockBookings: Booking[] = [
     id: 'booking-2',
     roomId: 'room-2',
     roomName: 'Meeting Room Bravo',
-    date: formatDateToYYYYMMDD(tomorrowDate), 
-    time: '14:00 - 15:00', // Assumes 60-min slots initially
+    date: formatDateToYYYYMMDD(tomorrowDate),
+    time: '14:00 - 15:00',
     userName: 'Bob The Builder',
     userEmail: 'bob@example.com',
   },
-  {
-    id: 'booking-3',
-    roomId: 'room-1',
-    roomName: 'Conference Room Alpha',
-    date: formatDateToYYYYMMDD(dayAfterTomorrowDate),
-    time: '09:00 - 10:00', // Assumes 60-min slots initially
-    userName: 'Carol Danvers',
-    userEmail: 'carol@example.com',
-  },
-   {
-    id: 'booking-4',
-    roomId: 'room-1',
-    roomName: 'Conference Room Alpha',
-    date: formatDateToYYYYMMDD(tomorrowDate),
-    time: '11:00 - 12:00', // Another booking for tomorrow
-    userName: 'David Copperfield',
-    userEmail: 'david@example.com',
-  },
 ];
 
-// This is no longer the primary source for getAvailableTimeSlots but can be kept for reference
-// or other utilities if needed.
-export const allPossibleTimeSlotsLEGACY: TimeSlot[] = [
-  { startTime: '09:00', endTime: '10:00', display: '09:00 - 10:00' },
-  { startTime: '10:00', endTime: '11:00', display: '10:00 - 11:00' },
-  { startTime: '11:00', endTime: '12:00', display: '11:00 - 12:00' },
-  { startTime: '12:00', endTime: '13:00', display: '12:00 - 13:00' },
-  { startTime: '13:00', endTime: '14:00', display: '13:00 - 14:00' },
-  { startTime: '14:00', endTime: '15:00', display: '14:00 - 15:00' },
-  { startTime: '15:00', endTime: '16:00', display: '15:00 - 16:00' },
-  { startTime: '16:00', endTime: '17:00', display: '16:00 - 17:00' },
-];
-
-// Function to add a booking to the mock data (simulates DB write)
-export const addMockBooking = (newBooking: Booking): void => {
-  // Check if booking already exists (simple check by ID or more complex logic)
-  const existingIndex = mockBookings.findIndex(b => b.id === newBooking.id);
-  if (existingIndex > -1) {
-      // Potentially update existing booking if needed, or handle as error
-      console.warn(`[Bookly Debug] Booking with id ${newBooking.id} already exists. Overwriting.`);
-      mockBookings[existingIndex] = newBooking;
-  } else {
-      mockBookings.push(newBooking);
+// Function to load bookings from the JSON file
+const loadBookings = (): Booking[] => {
+  ensureDataDirectoryExists();
+  try {
+    if (fs.existsSync(BOOKINGS_FILE_PATH)) {
+      const fileContent = fs.readFileSync(BOOKINGS_FILE_PATH, 'utf-8');
+      const bookings = JSON.parse(fileContent) as Booking[];
+      // Basic validation: ensure it's an array
+      if (Array.isArray(bookings)) {
+        console.log(`[Bookly Data] Loaded ${bookings.length} bookings from ${BOOKINGS_FILE_PATH}`);
+        return bookings;
+      }
+      console.warn(`[Bookly Data] Invalid content in ${BOOKINGS_FILE_PATH}. Using initial data.`);
+    }
+  } catch (error) {
+    console.error(`[Bookly Data] Error reading or parsing ${BOOKINGS_FILE_PATH}:`, error);
   }
-  console.log(`[Bookly Debug] addMockBooking executed. Current mockBookings count: ${mockBookings.length}. Last added ID: ${newBooking.id}, Time: ${newBooking.time}`);
+  // If file doesn't exist, is empty, or parsing failed, save and return initial data
+  console.log(`[Bookly Data] ${BOOKINGS_FILE_PATH} not found or invalid. Initializing with default bookings and creating file.`);
+  fs.writeFileSync(BOOKINGS_FILE_PATH, JSON.stringify(initialBookingsData, null, 2));
+  return [...initialBookingsData]; // Return a copy
 };
 
-    
+// Function to save bookings to the JSON file
+const saveBookings = async (bookings: Booking[]): Promise<void> => {
+  ensureDataDirectoryExists();
+  try {
+    await fs.promises.writeFile(BOOKINGS_FILE_PATH, JSON.stringify(bookings, null, 2));
+    console.log(`[Bookly Data] Saved ${bookings.length} bookings to ${BOOKINGS_FILE_PATH}`);
+  } catch (error) {
+    console.error(`[Bookly Data] Error writing to ${BOOKINGS_FILE_PATH}:`, error);
+  }
+};
+
+// `mockBookings` is now initialized from the file and acts as the in-memory store,
+// which is kept in sync with the file.
+let mockBookings: Booking[] = loadBookings();
+
+// Exported async function to get current bookings
+export async function getPersistedBookings(): Promise<Booking[]> {
+  // In a more complex scenario, this might re-read from file or a database
+  // For this setup, returning the module-scoped variable is sufficient as it's updated.
+  return mockBookings;
+}
+
+// Function to add a booking to the mock data and save to file
+export async function addMockBooking(newBooking: Booking): Promise<void> {
+  const existingIndex = mockBookings.findIndex(b => b.id === newBooking.id);
+  if (existingIndex > -1) {
+    mockBookings[existingIndex] = newBooking;
+    console.log(`[Bookly Data] Booking with id ${newBooking.id} updated.`);
+  } else {
+    mockBookings.push(newBooking);
+    console.log(`[Bookly Data] Booking with id ${newBooking.id} added.`);
+  }
+  await saveBookings(mockBookings); // Persist changes to the file
+  console.log(`[Bookly Data] addMockBooking executed. Current mockBookings count: ${mockBookings.length}. Last added ID: ${newBooking.id}, Time: ${newBooking.time}`);
+};

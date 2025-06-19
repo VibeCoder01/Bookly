@@ -17,6 +17,7 @@ import { format } from 'date-fns';
 import { CalendarIcon, Clock, Building2, User, Mail, Loader2, AlertTriangle, Eye, ArrowRight } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
 import { getAvailableTimeSlots, submitBooking, getBookingsForRoomAndDate } from '@/lib/actions';
+import { mockRooms } from '@/lib/room-data'; // Import static room data
 import { RoomBookingsDialog } from './RoomBookingsDialog';
 
 interface BookingFormProps {
@@ -115,7 +116,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
 
   const fetchIndividualSlots = useCallback(async (roomIdToFetch: string, dateToFetch: Date) => {
     setIsLoadingSlots(true);
-    setAllAvailableIndividualSlots([]); // Clear previous slots immediately
+    setAllAvailableIndividualSlots([]); 
     form.resetField('startTime');
     form.resetField('endTime');
     setAvailableEndTimesForSelect([]);
@@ -123,13 +124,11 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
       const result = await getAvailableTimeSlots(roomIdToFetch, format(dateToFetch, 'yyyy-MM-dd'));
       if (result.error) {
         toast({ variant: 'destructive', title: 'Error fetching slots', description: result.error });
-        // setAllAvailableIndividualSlots([]); // Already cleared
       } else {
         setAllAvailableIndividualSlots(result.slots);
       }
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch time slots.' });
-      // setAllAvailableIndividualSlots([]); // Already cleared
     } finally {
       setIsLoadingSlots(false);
     }
@@ -150,7 +149,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
   useEffect(() => {
     if (!selectedStartTimeValue || allAvailableIndividualSlots.length === 0) {
       setAvailableEndTimesForSelect([]);
-      if(form.getValues('endTime')) form.resetField('endTime'); // Only reset if it has a value
+      if(form.getValues('endTime')) form.resetField('endTime'); 
       return;
     }
 
@@ -220,7 +219,6 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
         });
         onBookingAttemptCompleted(result.booking, result.aiResponse);
         form.reset({ 
-            // Persist user name and email after successful booking, reset other fields
             userName: form.getValues('userName'), 
             userEmail: form.getValues('userEmail'),
             roomId: '',
@@ -368,7 +366,6 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
                     <Select 
                         onValueChange={(value) => {
                             field.onChange(value);
-                            // form.resetField('endTime'); // Handled by useEffect watching startTime
                         }} 
                         value={field.value}
                         defaultValue={field.value}
@@ -502,6 +499,3 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
     </>
   );
 }
-    
-
-    
