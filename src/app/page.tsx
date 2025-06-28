@@ -44,7 +44,7 @@ export default function HomePage() {
             <Card className="shadow-xl rounded-xl overflow-hidden">
               <CardHeader className="bg-card">
                 <CardTitle className="font-headline text-2xl text-primary">
-                  Book Your Ideal Room
+                  Book your room
                 </CardTitle>
                 <CardDescription>
                   Select a room, date, and time.
