@@ -101,38 +101,51 @@
 }
 
 @layer utilities {
-  @media print {
-    body * {
-      visibility: hidden;
-    }
-    .print-section, .print-section * {
-      visibility: visible;
-    }
-    .print-section {
-      position: absolute !important;
-      left: 0 !important;
-      top: 0 !important;
-      width: 100% !important;
-      height: auto !important;
-      max-width: 100% !important;
-      border: none !important;
-      box-shadow: none !important;
-      background: white !important;
-      padding: 1rem !important;
+  /* The print styles have been moved out of this layer to ensure they have higher specificity. */
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-section, .print-section * {
+    visibility: visible;
+  }
+  .print-section {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    max-width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: white !important;
+    padding: 1rem !important;
+    color: black !important;
+    font-size: 12pt;
+  }
+  /* Force text colors to be legible for printing */
+  .print-section [class*="text-"],
+  .print-section h1, .print-section h2, .print-section h3, .print-section h4, .print-section p, .print-section span, .print-section div, .print-section th, .print-section td {
       color: black !important;
-      font-size: 12pt;
-    }
-    /* Special handling for ShadCN ScrollArea */
-    .print-section [data-radix-scroll-area-viewport] {
-      height: auto !important;
-      max-height: none !important;
-      overflow: visible !important;
-    }
-    .print-section [data-radix-scroll-area-scrollbar] {
-      display: none !important;
-    }
-    .no-print {
-      display: none !important;
-    }
+  }
+  .print-section .text-muted-foreground, .print-section .text-muted-foreground * {
+      color: #555 !important;
+  }
+  .print-section svg {
+      color: #555 !important;
+  }
+  /* Special handling for ShadCN ScrollArea */
+  .print-section [data-radix-scroll-area-viewport] {
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .print-section [data-radix-scroll-area-scrollbar] {
+    display: none !important;
+  }
+  .no-print {
+    display: none !important;
   }
 }
