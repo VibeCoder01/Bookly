@@ -17,7 +17,6 @@ import { format } from 'date-fns';
 import { CalendarIcon, Clock, Building2, User, Mail, Loader2, AlertTriangle, Eye, ArrowRight } from 'lucide-react';
 import React, { useState, useEffect, useCallback } from 'react';
 import { getAvailableTimeSlots, submitBooking, getBookingsForRoomAndDate } from '@/lib/actions';
-import { mockRooms } from '@/lib/room-data'; // Import static room data
 import { RoomBookingsDialog } from './RoomBookingsDialog';
 
 interface BookingFormProps {

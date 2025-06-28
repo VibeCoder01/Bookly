@@ -5,10 +5,17 @@ import { Header } from '@/components/bookly/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building } from 'lucide-react';
+import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa } from 'lucide-react';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import type { Booking, AdminConfigItem } from '@/types';
-import { getAllBookings, updateSlotDuration as serverUpdateSlotDuration, updateWorkdayHours as serverUpdateWorkdayHours, getCurrentConfiguration } from '@/lib/actions';
+import type { Booking, AdminConfigItem, Room } from '@/types';
+import { 
+    getAllBookings, 
+    updateSlotDuration as serverUpdateSlotDuration, 
+    updateWorkdayHours as serverUpdateWorkdayHours, 
+    getCurrentConfiguration,
+    getRooms,
+    deleteRoom
+} from '@/lib/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
@@ -16,6 +23,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { RoomFormDialog } from '@/components/bookly/RoomFormDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+
 
 interface GroupedBookings {
   [roomName: string]: Booking[];
@@ -43,14 +53,23 @@ const convertDurationValueToMinutes = (value: string): number => {
 
 export default function AdminPage() {
   const { toast } = useToast();
+  // Bookings state
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showBookingsTable, setShowBookingsTable] = useState(false);
 
+  // Configuration state
   const [configItems, setConfigItems] = useState<AdminConfigItem[]>(initialConfigItems);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
+
+  // Rooms state
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [isLoadingRooms, setIsLoadingRooms] = useState(true);
+  const [isRoomFormOpen, setIsRoomFormOpen] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
+  const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
 
   const fetchAdminConfiguration = useCallback(async () => {
     setIsLoadingConfig(true);
@@ -74,9 +93,22 @@ export default function AdminPage() {
     }
   }, [toast]);
 
+  const fetchRooms = useCallback(async () => {
+    setIsLoadingRooms(true);
+    try {
+        const result = await getRooms();
+        setRooms(result.rooms);
+    } catch (err) {
+        toast({ variant: 'destructive', title: 'Error Fetching Rooms', description: 'Could not load the list of rooms.' });
+    } finally {
+        setIsLoadingRooms(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
     fetchAdminConfiguration();
-  }, [fetchAdminConfiguration]);
+    fetchRooms();
+  }, [fetchAdminConfiguration, fetchRooms]);
 
 
   const handleShowAllBookings = async () => {
@@ -197,177 +229,289 @@ export default function AdminPage() {
     }
   };
 
+  const handleAddNewRoom = () => {
+    setSelectedRoom(null);
+    setIsRoomFormOpen(true);
+  };
+
+  const handleEditRoom = (room: Room) => {
+    setSelectedRoom(room);
+    setIsRoomFormOpen(true);
+  };
+  
+  const handleDeleteRoom = async () => {
+      if (!roomToDelete) return;
+      const result = await deleteRoom(roomToDelete.id);
+      if (result.success) {
+          toast({ title: 'Room Deleted', description: `Room "${roomToDelete.name}" has been deleted.` });
+          fetchRooms(); // Refresh the list
+      } else {
+          toast({ variant: 'destructive', title: 'Error Deleting Room', description: result.error });
+      }
+      setRoomToDelete(null);
+  }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Header />
-      <main className="container mx-auto py-8 px-4">
-        <Card className="shadow-xl rounded-xl">
-          <CardHeader>
-            <CardTitle className="font-headline text-3xl text-primary">Admin Dashboard</CardTitle>
-            <CardDescription>Manage your Bookly application settings, view bookings, and configure parameters.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-8">
-            <div>
-              <h3 className="text-xl font-semibold mb-3 font-headline text-primary flex items-center">
-                <ListChecks className="mr-2 h-5 w-5" />
-                Bookings Overview
-              </h3>
-              <div className="flex space-x-4">
-                <Button onClick={handleShowAllBookings} disabled={isLoadingBookings} variant="secondary">
-                  {isLoadingBookings && showBookingsTable ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <ListChecks className="mr-2 h-4 w-4" />
-                  )}
-                  {showBookingsTable ? 'Refresh All Bookings' : 'Show All Bookings'}
-                </Button>
-                <Link href="/" passHref>
-                  <Button variant="outline">
-                    <Home className="mr-2 h-4 w-4" />
-                    Back to Home
+    <>
+      <div className="min-h-screen bg-background text-foreground">
+        <Header />
+        <main className="container mx-auto py-8 px-4">
+          <Card className="shadow-xl rounded-xl">
+            <CardHeader>
+              <CardTitle className="font-headline text-3xl text-primary">Admin Dashboard</CardTitle>
+              <CardDescription>Manage your Bookly application settings, view bookings, and configure parameters.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              {/* --- BOOKINGS OVERVIEW --- */}
+              <div>
+                <h3 className="text-xl font-semibold mb-3 font-headline text-primary flex items-center">
+                  <ListChecks className="mr-2 h-5 w-5" />
+                  Bookings Overview
+                </h3>
+                <div className="flex space-x-4">
+                  <Button onClick={handleShowAllBookings} disabled={isLoadingBookings} variant="secondary">
+                    {isLoadingBookings && showBookingsTable ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <ListChecks className="mr-2 h-4 w-4" />
+                    )}
+                    {showBookingsTable ? 'Refresh All Bookings' : 'Show All Bookings'}
                   </Button>
-                </Link>
+                  <Link href="/" passHref>
+                    <Button variant="outline">
+                      <Home className="mr-2 h-4 w-4" />
+                      Back to Home
+                    </Button>
+                  </Link>
+                </div>
+                {showBookingsTable && (
+                  <div className="mt-6">
+                    {isLoadingBookings && !allBookings.length ? (
+                      <div className="flex items-center justify-center p-8 text-muted-foreground">
+                        <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                        <p>Loading bookings...</p>
+                      </div>
+                    ) : error ? (
+                      <div className="flex items-center space-x-2 text-destructive-foreground bg-destructive/10 p-3 rounded-md border border-destructive">
+                        <AlertTriangle className="h-5 w-5 text-destructive" />
+                        <span>Error: {error}</span>
+                      </div>
+                    ) : Object.keys(groupedBookings).length === 0 ? (
+                      <p className="text-muted-foreground">No bookings found.</p>
+                    ) : (
+                      <ScrollArea className="h-[600px] w-full rounded-md border p-4 bg-card">
+                        {Object.entries(groupedBookings).map(([roomName, bookingsInRoom]) => {
+                          let lastDateProcessedForRoom: string | null = null;
+                          let useAlternateRowStyle = false;
+                          return (
+                            <div key={roomName} className="mb-8">
+                              <h4 className="text-lg font-headline font-semibold mb-3 text-primary flex items-center">
+                                <Building className="mr-2 h-5 w-5" />
+                                {roomName}
+                              </h4>
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="font-semibold">Date</TableHead>
+                                    <TableHead className="font-semibold">Time</TableHead>
+                                    <TableHead className="font-semibold">Booked By</TableHead>
+                                    <TableHead className="font-semibold">Email</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {bookingsInRoom.map((booking) => {
+                                    if (lastDateProcessedForRoom !== null && booking.date !== lastDateProcessedForRoom) {
+                                      useAlternateRowStyle = !useAlternateRowStyle;
+                                    }
+                                    lastDateProcessedForRoom = booking.date;
+                                    const rowClassName = useAlternateRowStyle ? 'bg-primary/5' : '';
+
+                                    return (
+                                      <TableRow key={booking.id} className={cn(rowClassName)}>
+                                        <TableCell>{format(new Date(booking.date + 'T00:00:00'), 'PPP')}</TableCell>
+                                        <TableCell>{booking.time}</TableCell>
+                                        <TableCell>{booking.userName}</TableCell>
+                                        <TableCell>{booking.userEmail}</TableCell>
+                                      </TableRow>
+                                    );
+                                  })}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          );
+                        })}
+                      </ScrollArea>
+                    )}
+                  </div>
+                )}
+                {!showBookingsTable && (
+                     <p className="mt-4 text-muted-foreground">Click "Show All Bookings" to view the booking list.</p>
+                )}
               </div>
 
-              {showBookingsTable && (
-                <div className="mt-6">
-                  {isLoadingBookings && !allBookings.length ? (
-                    <div className="flex items-center justify-center p-8 text-muted-foreground">
-                      <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                      <p>Loading bookings...</p>
+             {/* --- ROOM MANAGEMENT --- */}
+              <div className="pt-6 border-t">
+                  <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
+                    <Sofa className="mr-2 h-5 w-5" />
+                    Manage Rooms
+                  </h3>
+                  {isLoadingRooms ? (
+                     <div className="flex items-center justify-center p-8 text-muted-foreground">
+                        <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                        <p>Loading rooms...</p>
                     </div>
-                  ) : error ? (
-                    <div className="flex items-center space-x-2 text-destructive-foreground bg-destructive/10 p-3 rounded-md border border-destructive">
-                      <AlertTriangle className="h-5 w-5 text-destructive" />
-                      <span>Error: {error}</span>
-                    </div>
-                  ) : Object.keys(groupedBookings).length === 0 ? (
-                    <p className="text-muted-foreground">No bookings found.</p>
                   ) : (
-                    <ScrollArea className="h-[600px] w-full rounded-md border p-4 bg-card">
-                      {Object.entries(groupedBookings).map(([roomName, bookingsInRoom]) => {
-                        let lastDateProcessedForRoom: string | null = null;
-                        let useAlternateRowStyle = false;
-                        return (
-                          <div key={roomName} className="mb-8">
-                            <h4 className="text-lg font-headline font-semibold mb-3 text-primary flex items-center">
-                              <Building className="mr-2 h-5 w-5" />
-                              {roomName}
-                            </h4>
+                    <Card className="bg-card">
+                        <CardHeader>
+                             <div className="flex justify-between items-center">
+                                <div>
+                                    <CardTitle className="text-lg">Room List</CardTitle>
+                                    <CardDescription>Add, edit, or delete meeting rooms.</CardDescription>
+                                </div>
+                                <Button onClick={handleAddNewRoom}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Add New Room
+                                </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
                             <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead className="font-semibold">Date</TableHead>
-                                  <TableHead className="font-semibold">Time</TableHead>
-                                  <TableHead className="font-semibold">Booked By</TableHead>
-                                  <TableHead className="font-semibold">Email</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {bookingsInRoom.map((booking) => {
-                                  if (lastDateProcessedForRoom !== null && booking.date !== lastDateProcessedForRoom) {
-                                    useAlternateRowStyle = !useAlternateRowStyle;
-                                  }
-                                  lastDateProcessedForRoom = booking.date;
-                                  const rowClassName = useAlternateRowStyle ? 'bg-primary/5' : '';
-
-                                  return (
-                                    <TableRow key={booking.id} className={cn(rowClassName)}>
-                                      <TableCell>{format(new Date(booking.date + 'T00:00:00'), 'PPP')}</TableCell>
-                                      <TableCell>{booking.time}</TableCell>
-                                      <TableCell>{booking.userName}</TableCell>
-                                      <TableCell>{booking.userEmail}</TableCell>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead className="text-center w-[100px]">Capacity</TableHead>
+                                        <TableHead className="text-right w-[150px]">Actions</TableHead>
                                     </TableRow>
-                                  );
-                                })}
-                              </TableBody>
+                                </TableHeader>
+                                <TableBody>
+                                    {rooms.length > 0 ? rooms.map(room => (
+                                        <TableRow key={room.id}>
+                                            <TableCell className="font-medium">{room.name}</TableCell>
+                                            <TableCell className="text-center">{room.capacity}</TableCell>
+                                            <TableCell className="text-right space-x-2">
+                                                <Button variant="outline" size="icon" onClick={() => handleEditRoom(room)}>
+                                                    <Pencil className="h-4 w-4" />
+                                                    <span className="sr-only">Edit Room</span>
+                                                </Button>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button variant="destructive" size="icon" onClick={() => setRoomToDelete(room)}>
+                                                        <Trash2 className="h-4 w-4" />
+                                                        <span className="sr-only">Delete Room</span>
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                            </TableCell>
+                                        </TableRow>
+                                    )) : (
+                                        <TableRow>
+                                            <TableCell colSpan={3} className="text-center text-muted-foreground">No rooms found. Add one to get started.</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
                             </Table>
-                          </div>
-                        );
-                      })}
-                    </ScrollArea>
+                        </CardContent>
+                    </Card>
                   )}
-                </div>
-              )}
-              {!showBookingsTable && (
-                   <p className="mt-4 text-muted-foreground">Click "Show All Bookings" to view the booking list.</p>
-              )}
-            </div>
-
-            <div className="pt-6 border-t">
-              <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
-                <Settings className="mr-2 h-5 w-5" />
-                Configuration
-              </h3>
-              {isLoadingConfig ? (
-                <div className="flex items-center justify-center p-8 text-muted-foreground">
-                    <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                    <p>Loading configuration...</p>
-                </div>
-              ) : configItems.length > 0 ? (
-                <Card className="bg-card">
-                  <CardContent className="p-0">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="pl-6 font-semibold">Setting Description</TableHead>
-                          <TableHead className="text-right pr-6 font-semibold">Current Value</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {configItems.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium pl-6 flex items-center">
-                                {getIconForItem(item.id)}
-                                {item.description}
-                            </TableCell>
-                            <TableCell className="text-right pr-6">
-                              {item.id === 'slotDuration' ? (
-                                <Select
-                                  value={item.value}
-                                  onValueChange={(newValue) => handleConfigChange(item.id, newValue)}
-                                  disabled={isLoadingConfig || isApplyingChanges}
-                                >
-                                  <SelectTrigger className="w-full sm:w-[180px] ml-auto text-right">
-                                    <SelectValue placeholder="Select duration" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="15 minutes">15 minutes</SelectItem>
-                                    <SelectItem value="30 minutes">30 minutes</SelectItem>
-                                    <SelectItem value="1 hour">1 hour</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <Input 
-                                  type={item.id === 'startOfDay' || item.id === 'endOfDay' ? 'text' : 'text'}
-                                  value={item.value}
-                                  onChange={(e) => handleConfigChange(item.id, e.target.value)}
-                                  className="text-right sm:w-[180px] ml-auto"
-                                  placeholder={item.id === 'startOfDay' || item.id === 'endOfDay' ? 'HH:MM' : ''}
-                                  disabled={isLoadingConfig || isApplyingChanges}
-                                />
-                              )}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              ) : (
-                <p className="text-muted-foreground">No configuration items defined or loaded.</p>
-              )}
-              <div className="mt-6 flex justify-end">
-                <Button onClick={handleApplyChanges} variant="default" disabled={isApplyingChanges || isLoadingConfig}>
-                  {isApplyingChanges && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Apply Changes
-                </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </main>
-    </div>
+
+
+              {/* --- CONFIGURATION --- */}
+              <div className="pt-6 border-t">
+                <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
+                  <Settings className="mr-2 h-5 w-5" />
+                  Configuration
+                </h3>
+                {isLoadingConfig ? (
+                  <div className="flex items-center justify-center p-8 text-muted-foreground">
+                      <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                      <p>Loading configuration...</p>
+                  </div>
+                ) : configItems.length > 0 ? (
+                  <Card className="bg-card">
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="pl-6 font-semibold">Setting Description</TableHead>
+                            <TableHead className="text-right pr-6 font-semibold">Current Value</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {configItems.map((item) => (
+                            <TableRow key={item.id}>
+                              <TableCell className="font-medium pl-6 flex items-center">
+                                  {getIconForItem(item.id)}
+                                  {item.description}
+                              </TableCell>
+                              <TableCell className="text-right pr-6">
+                                {item.id === 'slotDuration' ? (
+                                  <Select
+                                    value={item.value}
+                                    onValueChange={(newValue) => handleConfigChange(item.id, newValue)}
+                                    disabled={isLoadingConfig || isApplyingChanges}
+                                  >
+                                    <SelectTrigger className="w-full sm:w-[180px] ml-auto text-right">
+                                      <SelectValue placeholder="Select duration" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="15 minutes">15 minutes</SelectItem>
+                                      <SelectItem value="30 minutes">30 minutes</SelectItem>
+                                      <SelectItem value="1 hour">1 hour</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <Input 
+                                    type={item.id === 'startOfDay' || item.id === 'endOfDay' ? 'text' : 'text'}
+                                    value={item.value}
+                                    onChange={(e) => handleConfigChange(item.id, e.target.value)}
+                                    className="text-right sm:w-[180px] ml-auto"
+                                    placeholder={item.id === 'startOfDay' || item.id === 'endOfDay' ? 'HH:MM' : ''}
+                                    disabled={isLoadingConfig || isApplyingChanges}
+                                  />
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <p className="text-muted-foreground">No configuration items defined or loaded.</p>
+                )}
+                <div className="mt-6 flex justify-end">
+                  <Button onClick={handleApplyChanges} variant="default" disabled={isApplyingChanges || isLoadingConfig}>
+                    {isApplyingChanges && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Apply Changes
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+
+      <RoomFormDialog 
+        isOpen={isRoomFormOpen}
+        onOpenChange={setIsRoomFormOpen}
+        onSuccess={fetchRooms}
+        room={selectedRoom}
+      />
+
+       <AlertDialog open={!!roomToDelete} onOpenChange={(isOpen) => !isOpen && setRoomToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will permanently delete the room "{roomToDelete?.name}". This action cannot be undone. Bookings associated with this room will remain but may become orphaned.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setRoomToDelete(null)}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteRoom}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+    </>
   );
 }

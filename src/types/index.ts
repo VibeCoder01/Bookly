@@ -65,3 +65,9 @@ export interface AppConfiguration {
   startOfDay: string; // HH:MM format
   endOfDay: string;   // HH:MM format
 }
+
+export interface RoomFormData {
+    id?: string;
+    name: string;
+    capacity: number;
+}
