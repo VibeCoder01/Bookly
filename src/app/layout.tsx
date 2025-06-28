@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
   title: 'Bookly - Room Booking App',
-  description: 'Book rooms easily with Bookly.',
+  description: 'Simple room scheduling demo built with Next.js and Firebase.',
 };
 
 export default function RootLayout({
