@@ -27,7 +27,7 @@ interface RoomBookingsDialogProps {
 export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, bookings }: RoomBookingsDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="font-headline text-2xl text-primary">
             Bookings for {roomName}
@@ -44,21 +44,24 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[120px]">Time Slot</TableHead>
-                  <TableHead>Booked By</TableHead>
-                  <TableHead>Email</TableHead>
+                  <TableHead>Booking Details</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {bookings.map((booking) => (
                   <TableRow key={booking.id}>
                     <TableCell className="font-medium">{booking.time}</TableCell>
-                    <TableCell className="flex items-center">
-                       <UserCircle className="mr-2 h-4 w-4 text-muted-foreground" />
-                       {booking.userName}
-                    </TableCell>
-                    <TableCell className="flex items-center">
-                       <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
-                       {booking.userEmail}
+                    <TableCell>
+                      <div className="flex flex-col space-y-1 sm:flex-row sm:space-y-0 sm:space-x-4 sm:items-center">
+                        <span className="flex items-center">
+                          <UserCircle className="mr-2 h-4 w-4 text-muted-foreground" />
+                          {booking.userName}
+                        </span>
+                        <span className="flex items-center text-sm text-muted-foreground">
+                          <Mail className="mr-2 h-4 w-4" />
+                          {booking.userEmail}
+                        </span>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
