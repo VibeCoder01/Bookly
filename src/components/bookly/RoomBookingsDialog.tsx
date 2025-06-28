@@ -8,8 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -27,7 +25,6 @@ interface RoomBookingsDialogProps {
 export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, bookings }: RoomBookingsDialogProps) {
   
   const handlePrint = () => {
-    // This triggers the browser's print dialog
     window.print();
   };
   
@@ -80,17 +77,15 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
           </div>
         )}
 
-        <DialogFooter className="mt-2 no-print">
-          <Button type="button" variant="secondary" onClick={handlePrint}>
-            <Printer className="mr-2 h-4 w-4" />
-            Print
-          </Button>
-          <DialogClose asChild>
-            <Button type="button" variant="outline">
-              Close
+        <div className="mt-4 flex justify-end space-x-2 pt-4 border-t no-print">
+            <Button type="button" variant="secondary" onClick={handlePrint}>
+                <Printer className="mr-2 h-4 w-4" />
+                Print
             </Button>
-          </DialogClose>
-        </DialogFooter>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Close
+            </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
