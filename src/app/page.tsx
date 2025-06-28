@@ -47,7 +47,7 @@ export default function HomePage() {
                   Book Your Ideal Room
                 </CardTitle>
                 <CardDescription>
-                  Select a room, date, and time. Our system will find the best options for you.
+                  Select a room, date, and time.
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-6">
