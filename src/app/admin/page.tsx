@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { RoomFormDialog } from '@/components/bookly/RoomFormDialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 
 interface GroupedBookings {
@@ -393,12 +393,10 @@ export default function AdminPage() {
                                                     <Pencil className="h-4 w-4" />
                                                     <span className="sr-only">Edit Room</span>
                                                 </Button>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button variant="destructive" size="icon" onClick={() => setRoomToDelete(room)}>
-                                                        <Trash2 className="h-4 w-4" />
-                                                        <span className="sr-only">Delete Room</span>
-                                                    </Button>
-                                                </AlertDialogTrigger>
+                                                <Button variant="destructive" size="icon" onClick={() => setRoomToDelete(room)}>
+                                                    <Trash2 className="h-4 w-4" />
+                                                    <span className="sr-only">Delete Room</span>
+                                                </Button>
                                             </TableCell>
                                         </TableRow>
                                     )) : (
