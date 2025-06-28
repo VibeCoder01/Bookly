@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Room, TimeSlot, Booking, BookingFormData, AIResponse } from '@/types';
+import type { Room, TimeSlot, Booking, BookingFormData } from '@/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -21,7 +21,7 @@ import { RoomBookingsDialog } from './RoomBookingsDialog';
 
 interface BookingFormProps {
   rooms: Room[];
-  onBookingAttemptCompleted: (booking: Booking | null, aiResponse?: AIResponse) => void;
+  onBookingAttemptCompleted: (booking: Booking | null) => void;
 }
 
 const formSchema = z.object({
@@ -208,15 +208,13 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
         if (result.error.toLowerCase().includes("slot") || result.error.toLowerCase().includes("unavailable") || result.error.toLowerCase().includes("range")) {
            if(selectedRoomId && selectedDate) fetchIndividualSlots(selectedRoomId, selectedDate);
         }
-        if(result.aiResponse || result.error) {
-           onBookingAttemptCompleted(null, result.aiResponse);
-        }
+        onBookingAttemptCompleted(null);
       } else if (result.booking) {
         toast({
           title: 'Booking Successful!',
           description: `Room ${result.booking.roomName} booked for ${result.booking.date} from ${data.startTime} to ${data.endTime}.`,
         });
-        onBookingAttemptCompleted(result.booking, result.aiResponse);
+        onBookingAttemptCompleted(result.booking);
         form.reset({ 
             userName: form.getValues('userName'), 
             userEmail: form.getValues('userEmail'),
@@ -234,7 +232,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
         title: 'An Unexpected Error Occurred',
         description: 'Please try again later.',
       });
-      onBookingAttemptCompleted(null, undefined);
+      onBookingAttemptCompleted(null);
     } finally {
       setIsSubmittingForm(false);
     }

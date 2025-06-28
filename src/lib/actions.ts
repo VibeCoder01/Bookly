@@ -1,7 +1,7 @@
 
 'use server';
 
-import type { Booking, Room, TimeSlot, AIResponse, AISuggestion, AppConfiguration, RoomFormData } from '@/types';
+import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData } from '@/types';
 import { readConfigurationFromFile, writeConfigurationToFile } from './config-store';
 import { z } from 'zod';
 import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes } from 'date-fns';
@@ -177,60 +177,6 @@ export async function getCurrentConfiguration(): Promise<AppConfiguration> {
 }
 
 // --- Booking Actions ---
-async function callAIFlow(
-  bookingDetails: { roomId: string; roomName: string; date: string; time: string; userName: string; userEmail: string },
-  allRooms: Room[],
-  existingBookings: Booking[],
-  availableSlotsForSuggestion: TimeSlot[],
-  slotDurationMinutes: number
-): Promise<AIResponse> {
-  console.log('[Bookly AI] AI Flow called with:', bookingDetails, allRooms.length, existingBookings.length);
-  const summary = `Successfully processed booking for ${bookingDetails.roomName} on ${bookingDetails.date} for the period ${bookingDetails.time} for ${bookingDetails.userName}.`;
-  
-  const suggestions: AISuggestion[] = [];
-
-  const alternativeSlotInSameRoom = availableSlotsForSuggestion.find(
-    slot => slot.display !== bookingDetails.time
-  );
-
-  if (alternativeSlotInSameRoom) {
-    suggestions.push({
-      roomName: bookingDetails.roomName,
-      roomId: bookingDetails.roomId,
-      date: bookingDetails.date,
-      time: alternativeSlotInSameRoom.display,
-      reason: 'Alternative time in the same room.',
-    });
-  }
-
-  const alternativeRoom = allRooms.find(r => r.id !== bookingDetails.roomId);
-  if (alternativeRoom) {
-    const bookedRangeStart = bookingDetails.time.split(' - ')[0];
-    const isOriginalStartTimeBookedInAlternativeRoom = existingBookings.some(
-        b => {
-            if (b.roomId === alternativeRoom.id && b.date === bookingDetails.date) {
-                const existingBookingTimes = parseBookingTime(b.time, b.date);
-                const requestedSlotTime = parse(`${bookingDetails.date} ${bookedRangeStart}`, 'yyyy-MM-dd HH:mm', new Date());
-                 if(existingBookingTimes && requestedSlotTime) {
-                    return requestedSlotTime >= existingBookingTimes.start && requestedSlotTime < existingBookingTimes.end;
-                 }
-            }
-            return false;
-        }
-    );
-    if (!isOriginalStartTimeBookedInAlternativeRoom) {
-         suggestions.push({
-            roomName: alternativeRoom.name,
-            roomId: alternativeRoom.id,
-            date: bookingDetails.date,
-            time: `${bookedRangeStart} - ${format(addMinutes(parse(bookedRangeStart, 'HH:mm', new Date()), slotDurationMinutes), 'HH:mm')}`,
-            reason: 'Similar start time, different room.',
-        });
-    }
-  }
-  
-  return { summary, suggestions: suggestions.slice(0,2) };
-}
 
 function parseBookingTime(timeStr: string, date: string): { start: Date; end: Date } | null {
   const parts = timeStr.split(' - ');
@@ -329,7 +275,7 @@ const bookingSubmissionSchema = z.object({
 
 export async function submitBooking(
   formData: { roomId: string; date: string; startTime: string; endTime: string; userName: string; userEmail: string }
-): Promise<{ booking?: Booking; aiResponse?: AIResponse; error?: string; fieldErrors?: Record<string, string[]> }> {
+): Promise<{ booking?: Booking; error?: string; fieldErrors?: Record<string, string[]> }> {
   
   const validationResult = bookingSubmissionSchema.safeParse(formData);
   if (!validationResult.success) {
@@ -361,28 +307,12 @@ export async function submitBooking(
     isRangeValid = false;
   }
   
-  const appConfigForAISummary = await readConfigurationFromFile();
-  const allCurrentBookingsForAI = await getPersistedBookings();
-  const { rooms: allRoomsForAI } = await getRooms();
-
   if (!isRangeValid) {
-    const roomForFailure = allRoomsForAI.find(r => r.id === roomId);
-    let aiResponseForFailure: AIResponse | undefined;
-     if (roomForFailure) {
-        try {
-            aiResponseForFailure = await callAIFlow(
-                { roomId, roomName: roomForFailure.name, date, time: `${startTime} - ${endTime}`, userName, userEmail },
-                allRoomsForAI,
-                allCurrentBookingsForAI,
-                currentIndividualSlots || [],
-                appConfigForAISummary.slotDurationMinutes
-            );
-        } catch (aiError) { console.error("[Bookly Error] AI flow error on booking failure:", aiError); }
-    }
-    return { error: 'Sorry, one or more time slots in the selected range are no longer available or the range is invalid. Please refresh and try again.', aiResponse: aiResponseForFailure };
+    return { error: 'Sorry, one or more time slots in the selected range are no longer available or the range is invalid. Please refresh and try again.' };
   }
 
-  const room = allRoomsForAI.find(r => r.id === roomId);
+  const { rooms } = await getRooms();
+  const room = rooms.find(r => r.id === roomId);
   if (!room) {
     return { error: 'Selected room not found.' };
   }
@@ -400,27 +330,8 @@ export async function submitBooking(
   };
 
   await addMockBooking(newBooking); 
-
-  let aiResponse: AIResponse | undefined;
-  const slotsAfterBooking = await getAvailableTimeSlots(roomId, date);
-  const bookingsAfterAdditionForAI = await getPersistedBookings();
-  const { rooms: allRoomsAfterBooking } = await getRooms();
-
-
-  try {
-     aiResponse = await callAIFlow(
-      { ...newBooking }, 
-      allRoomsAfterBooking,
-      bookingsAfterAdditionForAI,
-      slotsAfterBooking.slots || [],
-      appConfigForAISummary.slotDurationMinutes
-    );
-  } catch (aiError) {
-    console.error("[Bookly Error] AI flow error:", aiError);
-    aiResponse = { summary: `Booking successful for ${room.name} from ${startTime} to ${endTime}! Could not generate AI summary at this time.`, suggestions: [] };
-  }
   
-  return { booking: newBooking, aiResponse };
+  return { booking: newBooking };
 }
 
 export async function getBookingsForRoomAndDate(

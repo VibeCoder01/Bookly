@@ -3,16 +3,13 @@
 
 import { Header } from '@/components/bookly/Header';
 import { BookingForm } from '@/components/bookly/BookingForm';
-import { AISuggestionsCard } from '@/components/bookly/AISuggestionsCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import type { Booking, AIResponse, Room } from '@/types';
+import type { Booking, Room } from '@/types';
 import React, { useState, useEffect } from 'react';
 import { getRooms } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function HomePage() {
-  const [latestBookingAttempt, setLatestBookingAttempt] = useState<Booking | null>(null);
-  const [aiData, setAIData] = useState<AIResponse | null>(null);
   const [currentUserName, setCurrentUserName] = useState<string | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
@@ -33,10 +30,8 @@ export default function HomePage() {
     fetchRooms();
   }, []);
 
-  const handleBookingAttemptCompletion = (booking: Booking | null, aiResponse?: AIResponse) => {
-    setAIData(aiResponse || null);
+  const handleBookingAttemptCompletion = (booking: Booking | null) => {
     if (booking) {
-        setLatestBookingAttempt(booking);
         setCurrentUserName(booking.userName); 
     }
   };
@@ -45,8 +40,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-background text-foreground">
       <Header userName={currentUserName} />
       <main className="container mx-auto py-8 px-4">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 items-start">
-          <div className="lg:col-span-3">
+        <div className="max-w-4xl mx-auto">
             <Card className="shadow-xl rounded-xl overflow-hidden">
               <CardHeader className="bg-card">
                 <CardTitle className="font-headline text-2xl text-primary">
@@ -72,13 +66,6 @@ export default function HomePage() {
                 )}
               </CardContent>
             </Card>
-          </div>
-          <div className="lg:col-span-2 sticky top-8">
-             <AISuggestionsCard 
-                currentBooking={latestBookingAttempt} 
-                aiResponse={aiData}
-              />
-          </div>
         </div>
       </main>
     </div>

@@ -20,20 +20,6 @@ export interface Booking {
   time: string; // Combined range, e.g., "09:00 - 11:00"
   userName: string;
   userEmail: string;
-  summary?: string; // AI generated summary
-}
-
-export interface AISuggestion {
-  roomName: string;
-  roomId?: string; // Optional: if AI can suggest specific room ID
-  date: string;
-  time: string;
-  reason?: string;
-}
-
-export interface AIResponse {
-  summary: string;
-  suggestions: AISuggestion[];
 }
 
 export interface BookingFormData {
