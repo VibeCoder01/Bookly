@@ -405,9 +405,12 @@ export async function exportAllSettings(): Promise<{ success: boolean; data?: st
   try {
     const appConfig = await readConfigurationFromFile();
     const rooms = await readRoomsFromFile();
-    const bookings = await getPersistedBookings();
+    const allBookings = await getPersistedBookings();
 
-    const exportedData: ExportedSettings = { appConfig, rooms, bookings };
+    const existingRoomIds = new Set(rooms.map(room => room.id));
+    const validBookings = allBookings.filter(booking => existingRoomIds.has(booking.roomId));
+
+    const exportedData: ExportedSettings = { appConfig, rooms, bookings: validBookings };
     
     return { success: true, data: JSON.stringify(exportedData, null, 2) };
   } catch (error) {
