@@ -25,7 +25,8 @@ interface RoomBookingsDialogProps {
 export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, bookings }: RoomBookingsDialogProps) {
   
   const handlePrint = () => {
-    window.print();
+    onOpenChange(false);
+    setTimeout(() => window.print(), 0);
   };
   
   return (
