@@ -281,6 +281,7 @@ const bookingSubmissionSchema = z.object({
   date: z.string().min(1, 'Date is required.'),
   startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
   endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+  title: z.string().min(3, 'Title must be at least 3 characters.').max(100, 'Title must be 100 characters or less.'),
   userName: z.string().min(2, 'Name must be at least 2 characters.'),
   userEmail: z.string().email('Invalid email address.'),
 }).refine(data => {
@@ -292,7 +293,7 @@ const bookingSubmissionSchema = z.object({
 
 
 export async function submitBooking(
-  formData: { roomId: string; date: string; startTime: string; endTime: string; userName: string; userEmail: string }
+  formData: { roomId: string; date: string; startTime: string; endTime: string; title: string; userName: string; userEmail: string }
 ): Promise<{ booking?: Booking; error?: string; fieldErrors?: Record<string, string[] | undefined> }> {
   
   const validationResult = bookingSubmissionSchema.safeParse(formData);
@@ -300,7 +301,7 @@ export async function submitBooking(
     return { error: "Validation failed. Check your inputs.", fieldErrors: validationResult.error.flatten().fieldErrors };
   }
   
-  const { roomId, date, startTime, endTime, userName, userEmail } = validationResult.data;
+  const { roomId, date, startTime, endTime, title, userName, userEmail } = validationResult.data;
   
   await new Promise(resolve => setTimeout(resolve, 700));
 
@@ -343,6 +344,7 @@ export async function submitBooking(
     roomName: room.name,
     date,
     time: bookingTimeRangeString,
+    title,
     userName,
     userEmail,
   };
@@ -414,6 +416,7 @@ const exportedSettingsSchema = z.object({
     id: z.string(),
     roomId: z.string(),
     roomName: z.string().optional(),
+    title: z.string(),
     date: z.string(),
     time: z.string(),
     userName: z.string(),

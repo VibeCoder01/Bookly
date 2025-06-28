@@ -44,21 +44,22 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[120px]">Time Slot</TableHead>
-                  <TableHead>Booking Details</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Booked By</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {bookings.map((booking) => (
                   <TableRow key={booking.id}>
                     <TableCell className="font-medium">{booking.time}</TableCell>
+                    <TableCell>{booking.title}</TableCell>
                     <TableCell>
-                      <div className="flex flex-col space-y-1 sm:flex-row sm:space-y-0 sm:space-x-4 sm:items-center">
+                      <div className="flex flex-col space-y-1 text-sm">
                         <span className="flex items-center">
                           <UserCircle className="mr-2 h-4 w-4 text-muted-foreground" />
                           {booking.userName}
                         </span>
-                        <span className="flex items-center text-sm text-muted-foreground">
-                          <Mail className="mr-2 h-4 w-4" />
+                        <span className="flex items-center text-xs text-muted-foreground pl-6">
                           {booking.userEmail}
                         </span>
                       </div>

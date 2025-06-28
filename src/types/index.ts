@@ -16,6 +16,7 @@ export interface Booking {
   id: string;
   roomId: string;
   roomName?: string; // For display purposes
+  title: string;
   date: string; // YYYY-MM-DD
   time: string; // Combined range, e.g., "09:00 - 11:00"
   userName: string;
@@ -25,6 +26,7 @@ export interface Booking {
 export interface BookingFormData {
   roomId: string;
   date: Date | undefined;
+  title: string;
   startTime: string; // Individual slot start time HH:MM
   endTime: string;   // Individual slot end time HH:MM for the selected range
   userName: string;

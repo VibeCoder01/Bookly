@@ -331,6 +331,7 @@ export default function AdminPage() {
                                   <TableRow>
                                     <TableHead className="font-semibold">Date</TableHead>
                                     <TableHead className="font-semibold">Time</TableHead>
+                                    <TableHead className="font-semibold">Title</TableHead>
                                     <TableHead className="font-semibold">Booked By</TableHead>
                                     <TableHead className="font-semibold">Email</TableHead>
                                   </TableRow>
@@ -347,6 +348,7 @@ export default function AdminPage() {
                                       <TableRow key={booking.id} className={cn(rowClassName)}>
                                         <TableCell>{format(new Date(booking.date + 'T00:00:00'), 'PPP')}</TableCell>
                                         <TableCell>{booking.time}</TableCell>
+                                        <TableCell>{booking.title}</TableCell>
                                         <TableCell>{booking.userName}</TableCell>
                                         <TableCell>{booking.userEmail}</TableCell>
                                       </TableRow>

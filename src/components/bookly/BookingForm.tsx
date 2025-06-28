@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { CalendarIcon, Clock, Building2, User, Mail, Loader2, AlertTriangle, Eye, ArrowRight } from 'lucide-react';
+import { CalendarIcon, Clock, Building2, User, Mail, Loader2, AlertTriangle, Eye, ArrowRight, Bookmark } from 'lucide-react';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { getAvailableTimeSlots, submitBooking, getBookingsForRoomAndDate } from '@/lib/actions';
 import { RoomBookingsDialog } from './RoomBookingsDialog';
@@ -29,6 +29,7 @@ const formSchema = z.object({
   date: z.date({ required_error: 'Please select a date.' }),
   startTime: z.string().min(1, 'Please select a start time.'),
   endTime: z.string().min(1, 'Please select an end time.'),
+  title: z.string().min(3, 'Title must be at least 3 characters.').max(100, 'Title must be 100 characters or less.'),
   userName: z.string().min(2, 'Name must be at least 2 characters.').max(50),
   userEmail: z.string().email('Please enter a valid email address.'),
 }).refine(data => {
@@ -62,6 +63,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
       date: undefined,
       startTime: '',
       endTime: '',
+      title: '',
       userName: '',
       userEmail: '',
     },
@@ -214,7 +216,8 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
             roomId: '',
             date: undefined,
             startTime: '',
-            endTime: ''
+            endTime: '',
+            title: '',
         });
         setAllAvailableIndividualSlots([]);
       }
@@ -445,26 +448,39 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
         </div>
 
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
-          <div className="space-y-2">
-            <Label htmlFor="userName" className="flex items-center">
-              <User className="mr-2 h-5 w-5 text-primary" /> Your Name
-            </Label>
-            <Input id="userName" placeholder="e.g. John Doe" {...form.register('userName')} />
-            {form.formState.errors.userName && (
-              <p className="text-sm text-destructive">{form.formState.errors.userName.message}</p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="userEmail" className="flex items-center">
-              <Mail className="mr-2 h-5 w-5 text-primary" /> Your Email
-            </Label>
-            <Input id="userEmail" type="email" placeholder="e.g. john.doe@example.com" {...form.register('userEmail')} />
-            {form.formState.errors.userEmail && (
-              <p className="text-sm text-destructive">{form.formState.errors.userEmail.message}</p>
-            )}
-          </div>
+        <div className="space-y-6 pt-6 border-t mt-4">
+            <div className="space-y-2">
+                <Label htmlFor="title" className="flex items-center">
+                    <Bookmark className="mr-2 h-5 w-5 text-primary" /> Booking Title
+                </Label>
+                <Input id="title" placeholder="e.g., Project Kick-off Meeting" {...form.register('title')} />
+                {form.formState.errors.title && (
+                    <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
+                )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                    <Label htmlFor="userName" className="flex items-center">
+                    <User className="mr-2 h-5 w-5 text-primary" /> Your Name
+                    </Label>
+                    <Input id="userName" placeholder="e.g. John Doe" {...form.register('userName')} />
+                    {form.formState.errors.userName && (
+                    <p className="text-sm text-destructive">{form.formState.errors.userName.message}</p>
+                    )}
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="userEmail" className="flex items-center">
+                    <Mail className="mr-2 h-5 w-5 text-primary" /> Your Email
+                    </Label>
+                    <Input id="userEmail" type="email" placeholder="e.g. john.doe@example.com" {...form.register('userEmail')} />
+                    {form.formState.errors.userEmail && (
+                    <p className="text-sm text-destructive">{form.formState.errors.userEmail.message}</p>
+                    )}
+                </div>
+            </div>
         </div>
+
 
         <Button type="submit" className="w-full md:w-auto bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isBookRoomButtonDisabled}>
           {isSubmittingForm ? (
