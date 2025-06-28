@@ -96,8 +96,22 @@ export async function deleteRoom(roomId: string): Promise<{ success: boolean; er
     if (filteredRooms.length === rooms.length) {
         return { success: false, error: 'Room not found.' };
     }
-    await writeRoomsToFile(filteredRooms);
-    return { success: true };
+
+    try {
+        const allBookings = await getPersistedBookings();
+        const updatedBookings = allBookings.filter(booking => booking.roomId !== roomId);
+        
+        // Using Promise.all to run file writes concurrently. If one fails, the catch block will be triggered.
+        await Promise.all([
+            writeRoomsToFile(filteredRooms),
+            writeAllBookings(updatedBookings)
+        ]);
+
+        return { success: true };
+    } catch (error) {
+        console.error(`[Delete Room Error] Failed to delete room and/or bookings for room ID ${roomId}:`, error);
+        return { success: false, error: 'An error occurred while deleting the room data.' };
+    }
 }
 
 
@@ -128,7 +142,7 @@ export async function updateSlotDuration(
   }
 }
 
-const timeStringSchema = z.string().regex(/^([01]d|2[0-3]):([0-5]d)$/, "Invalid time format. Use HH:MM.");
+const timeStringSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format. Use HH:MM.");
 
 export async function updateWorkdayHours(
   startTime: string,
@@ -259,8 +273,8 @@ export async function getAvailableTimeSlots(
 const bookingSubmissionSchema = z.object({
   roomId: z.string().min(1, 'Room selection is required.'),
   date: z.string().min(1, 'Date is required.'),
-  startTime: z.string().regex(/^([01]d|2[0-3]):([0-5]d)$/),
-  endTime: z.string().regex(/^([01]d|2[0-3]):([0-5]d)$/),
+  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
   userName: z.string().min(2, 'Name must be at least 2 characters.'),
   userEmail: z.string().email('Invalid email address.'),
 }).refine(data => {
