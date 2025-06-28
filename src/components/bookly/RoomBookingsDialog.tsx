@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CalendarDays, UserCircle, Mail } from 'lucide-react';
+import { CalendarDays, UserCircle, Mail, Printer } from 'lucide-react';
 
 interface RoomBookingsDialogProps {
   isOpen: boolean;
@@ -25,9 +25,13 @@ interface RoomBookingsDialogProps {
 }
 
 export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, bookings }: RoomBookingsDialogProps) {
+  const handlePrint = () => {
+    window.print();
+  };
+  
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl print-section">
         <DialogHeader>
           <DialogTitle className="font-headline text-2xl text-primary">
             Bookings for {roomName}
@@ -74,7 +78,11 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
           </div>
         )}
 
-        <DialogFooter className="mt-2">
+        <DialogFooter className="mt-2 no-print">
+          <Button type="button" variant="secondary" onClick={handlePrint}>
+            <Printer className="mr-2 h-4 w-4" />
+            Print
+          </Button>
           <DialogClose asChild>
             <Button type="button" variant="outline">
               Close
