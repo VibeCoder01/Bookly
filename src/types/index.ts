@@ -39,11 +39,18 @@ export interface RoomBookingsDialogProps {
   bookings: Booking[];
 }
 
-export interface AdminConfigItem {
-  id:string;
-  description: string;
-  value: string; 
+export interface AIResponse {
+  summary?: string;
+  suggestions?: AISuggestion[];
 }
+
+export interface AISuggestion {
+  roomName: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM - HH:MM
+  reason?: string;
+}
+
 
 // Interface for application configuration stored in app-config.json
 export interface AppConfiguration {
