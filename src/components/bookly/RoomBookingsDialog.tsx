@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CalendarDays, UserCircle } from 'lucide-react';
+import { CalendarDays, UserCircle, Mail } from 'lucide-react';
 
 interface RoomBookingsDialogProps {
   isOpen: boolean;
@@ -27,7 +27,7 @@ interface RoomBookingsDialogProps {
 export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, bookings }: RoomBookingsDialogProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle className="font-headline text-2xl text-primary">
             Bookings for {roomName}
@@ -43,8 +43,9 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[150px]">Time Slot</TableHead>
+                  <TableHead className="w-[120px]">Time Slot</TableHead>
                   <TableHead>Booked By</TableHead>
+                  <TableHead>Email</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -54,6 +55,10 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
                     <TableCell className="flex items-center">
                        <UserCircle className="mr-2 h-4 w-4 text-muted-foreground" />
                        {booking.userName}
+                    </TableCell>
+                    <TableCell className="flex items-center">
+                       <Mail className="mr-2 h-4 w-4 text-muted-foreground" />
+                       {booking.userEmail}
                     </TableCell>
                   </TableRow>
                 ))}
