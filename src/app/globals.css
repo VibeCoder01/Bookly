@@ -101,65 +101,37 @@
   }
 }
 
-@layer utilities {
-  /* The print styles have been moved out of this layer to ensure they have higher specificity. */
-}
-
 @media print {
-  /* Hide everything on the page by default */
   body * {
     visibility: hidden;
   }
-
-  /* Make the print section and everything inside it visible */
   .print-section, .print-section * {
     visibility: visible;
   }
-
-  /* Position the print section at the top of the page */
   .print-section {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    height: auto !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
     border: none !important;
     box-shadow: none !important;
     background: white !important;
-    padding: 1rem !important;
+    color: black !important;
+    padding: 1.5rem !important;
     font-size: 12pt;
   }
-  
-  /* Force black text for better readability on print */
-  .print-section, .print-section [class*="text-"], .print-section * {
-    color: black !important;
+  .print-section [data-radix-scroll-area-viewport] {
+      height: auto !important;
+      overflow: visible !important;
   }
-  
-  /* Slightly lighter color for muted text */
-  .print-section .text-muted-foreground, .print-section .text-muted-foreground * {
-      color: #4A4A4A !important;
+  .print-section .text-muted-foreground {
+      color: #555 !important;
   }
-  
-  /* Hide icons for a cleaner report */
   .print-section svg {
     display: none !important;
   }
-
-  /* Special handling for ShadCN ScrollArea viewport to show all content */
-  .print-section [data-radix-scroll-area-viewport] {
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-  }
-  
-  /* Hide the scrollbar itself */
-  .print-section [data-radix-scroll-area-scrollbar] {
-    display: none !important;
-  }
-  
-  /* Hide any elements specifically marked not for printing */
-  .no-print {
+  .no-print, .no-print * {
     display: none !important;
   }
 }
