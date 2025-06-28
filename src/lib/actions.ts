@@ -1,13 +1,13 @@
 
 'use server';
 
-import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData } from '@/types';
+import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings } from '@/types';
 import { readConfigurationFromFile, writeConfigurationToFile } from './config-store';
 import { z } from 'zod';
 import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes } from 'date-fns';
 import fs from 'fs';
 import path from 'path';
-import { getPersistedBookings, addMockBooking } from './mock-data';
+import { getPersistedBookings, addMockBooking, writeAllBookings } from './mock-data';
 
 // --- Room Data Persistence ---
 const ROOMS_FILE_PATH = path.join(process.cwd(), 'data', 'rooms.json');
@@ -92,8 +92,6 @@ export async function updateRoom(formData: RoomFormData): Promise<{ success: boo
 
 export async function deleteRoom(roomId: string): Promise<{ success: boolean; error?: string }> {
     let rooms = await readRoomsFromFile();
-    // Optional: Add check here to prevent deleting rooms with future bookings.
-    // For now, we allow deletion.
     const filteredRooms = rooms.filter(r => r.id !== roomId);
     if (filteredRooms.length === rooms.length) {
         return { success: false, error: 'Room not found.' };
@@ -130,7 +128,7 @@ export async function updateSlotDuration(
   }
 }
 
-const timeStringSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format. Use HH:MM.");
+const timeStringSchema = z.string().regex(/^([01]d|2[0-3]):([0-5]d)$/, "Invalid time format. Use HH:MM.");
 
 export async function updateWorkdayHours(
   startTime: string,
@@ -261,8 +259,8 @@ export async function getAvailableTimeSlots(
 const bookingSubmissionSchema = z.object({
   roomId: z.string().min(1, 'Room selection is required.'),
   date: z.string().min(1, 'Date is required.'),
-  startTime: timeStringSchema,
-  endTime: timeStringSchema,
+  startTime: z.string().regex(/^([01]d|2[0-3]):([0-5]d)$/),
+  endTime: z.string().regex(/^([01]d|2[0-3]):([0-5]d)$/),
   userName: z.string().min(2, 'Name must be at least 2 characters.'),
   userEmail: z.string().email('Invalid email address.'),
 }).refine(data => {
@@ -377,4 +375,71 @@ export async function getAllBookings(): Promise<{ bookings: Booking[]; error?: s
   });
   console.log(`[Bookly Debug] getAllBookings executed. Returning ${sortedBookings.length} bookings from in-memory (file-synced) store.`);
   return { bookings: sortedBookings };
+}
+
+// --- Data Management Actions ---
+
+const exportedSettingsSchema = z.object({
+  appConfig: z.object({
+    slotDurationMinutes: z.number(),
+    startOfDay: z.string(),
+    endOfDay: z.string(),
+  }),
+  rooms: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    capacity: z.number(),
+  })),
+  bookings: z.array(z.object({
+    id: z.string(),
+    roomId: z.string(),
+    roomName: z.string().optional(),
+    date: z.string(),
+    time: z.string(),
+    userName: z.string(),
+    userEmail: z.string(),
+  })),
+});
+
+export async function exportAllSettings(): Promise<{ success: boolean; data?: string; error?: string; }> {
+  try {
+    const appConfig = await readConfigurationFromFile();
+    const rooms = await readRoomsFromFile();
+    const bookings = await getPersistedBookings();
+
+    const exportedData: ExportedSettings = { appConfig, rooms, bookings };
+    
+    return { success: true, data: JSON.stringify(exportedData, null, 2) };
+  } catch (error) {
+    console.error('[Export Error]', error);
+    return { success: false, error: 'Failed to export settings.' };
+  }
+}
+
+export async function importAllSettings(jsonContent: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const parsedData = JSON.parse(jsonContent);
+    const validation = exportedSettingsSchema.safeParse(parsedData);
+
+    if (!validation.success) {
+      console.error('[Import Validation Error]', validation.error.flatten());
+      return { success: false, error: `Invalid file format: ${validation.error.issues[0].message}` };
+    }
+
+    const { appConfig, rooms, bookings } = validation.data;
+
+    await Promise.all([
+      writeConfigurationToFile(appConfig),
+      writeRoomsToFile(rooms),
+      writeAllBookings(bookings)
+    ]);
+
+    return { success: true };
+  } catch (error) {
+    console.error('[Import Error]', error);
+    if (error instanceof SyntaxError) {
+        return { success: false, error: 'Invalid JSON file. Could not parse content.' };
+    }
+    return { success: false, error: 'An unexpected error occurred during import.' };
+  }
 }

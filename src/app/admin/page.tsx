@@ -5,8 +5,8 @@ import { Header } from '@/components/bookly/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa } from 'lucide-react';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Booking, AdminConfigItem, Room } from '@/types';
 import { 
     getAllBookings, 
@@ -14,7 +14,9 @@ import {
     updateWorkdayHours as serverUpdateWorkdayHours, 
     getCurrentConfiguration,
     getRooms,
-    deleteRoom
+    deleteRoom,
+    exportAllSettings,
+    importAllSettings
 } from '@/lib/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -71,6 +73,12 @@ export default function AdminPage() {
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [roomToDelete, setRoomToDelete] = useState<Room | null>(null);
 
+  // Import/Export state
+  const [fileToImport, setFileToImport] = useState<File | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+
   const fetchAdminConfiguration = useCallback(async () => {
     setIsLoadingConfig(true);
     try {
@@ -105,13 +113,7 @@ export default function AdminPage() {
     }
   }, [toast]);
 
-  useEffect(() => {
-    fetchAdminConfiguration();
-    fetchRooms();
-  }, [fetchAdminConfiguration, fetchRooms]);
-
-
-  const handleShowAllBookings = async () => {
+  const handleShowAllBookings = useCallback(async () => {
     setIsLoadingBookings(true);
     setError(null);
     setShowBookingsTable(true); 
@@ -129,7 +131,13 @@ export default function AdminPage() {
     } finally {
       setIsLoadingBookings(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchAdminConfiguration();
+    fetchRooms();
+  }, [fetchAdminConfiguration, fetchRooms]);
+
 
   const groupedBookings = useMemo(() => {
     if (!allBookings.length) return {};
@@ -244,12 +252,56 @@ export default function AdminPage() {
       const result = await deleteRoom(roomToDelete.id);
       if (result.success) {
           toast({ title: 'Room Deleted', description: `Room "${roomToDelete.name}" has been deleted.` });
-          fetchRooms(); // Refresh the list
+          fetchRooms();
       } else {
           toast({ variant: 'destructive', title: 'Error Deleting Room', description: result.error });
       }
       setRoomToDelete(null);
   }
+
+  const handleExport = async () => {
+    const result = await exportAllSettings();
+    if (result.success && result.data) {
+      const blob = new Blob([result.data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const date = new Date().toISOString().split('T')[0];
+      link.download = `bookly-backup-${date}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: 'Export Successful', description: 'Your settings have been downloaded.' });
+    } else {
+      toast({ variant: 'destructive', title: 'Export Failed', description: result.error });
+    }
+  };
+  
+  const handleConfirmImport = async () => {
+    if (!fileToImport) return;
+    setIsImporting(true);
+  
+    const fileContent = await fileToImport.text();
+    const result = await importAllSettings(fileContent);
+  
+    if (result.success) {
+      toast({ title: 'Import Successful', description: 'All settings have been restored.' });
+      await fetchAdminConfiguration();
+      await fetchRooms();
+      if (showBookingsTable) {
+        await handleShowAllBookings();
+      }
+    } else {
+      toast({ variant: 'destructive', title: 'Import Failed', description: result.error });
+    }
+  
+    setFileToImport(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    setIsImporting(false);
+  };
 
   return (
     <>
@@ -483,6 +535,37 @@ export default function AdminPage() {
                   </Button>
                 </div>
               </div>
+              
+              {/* --- DATA MANAGEMENT --- */}
+              <div className="pt-6 border-t">
+                <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
+                  <Database className="mr-2 h-5 w-5" />
+                  Data Management
+                </h3>
+                <Card className="bg-card">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Import/Export Data</CardTitle>
+                    <CardDescription>Save all application data to a file or restore from a backup.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col sm:flex-row gap-4">
+                    <Button onClick={handleExport}>
+                      <Download className="mr-2 h-4 w-4" />Export All Data
+                    </Button>
+                    <Button onClick={() => fileInputRef.current?.click()} variant="outline" disabled={isImporting}>
+                      {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                      Import All Data
+                    </Button>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={(e) => setFileToImport(e.target.files ? e.target.files[0] : null)}
+                      className="hidden"
+                      accept="application/json"
+                    />
+                  </CardContent>
+                </Card>
+              </div>
+
             </CardContent>
           </Card>
         </main>
@@ -500,12 +583,27 @@ export default function AdminPage() {
             <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    This will permanently delete the room "{roomToDelete?.name}". This action cannot be undone. Bookings associated with this room will remain but may become orphaned.
+                    This will permanently delete the room "{roomToDelete?.name}". This action cannot be undone.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel onClick={() => setRoomToDelete(null)}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteRoom}>Delete</AlertDialogAction>
+                <AlertDialogAction onClick={handleDeleteRoom} className={cn(buttonVariants({ variant: "destructive" }))}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!fileToImport} onOpenChange={(isOpen) => { if (!isOpen) setFileToImport(null) }}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will overwrite all current settings, rooms, and bookings with the data from '{fileToImport?.name}'. This action cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setFileToImport(null)}>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleConfirmImport}>Import</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

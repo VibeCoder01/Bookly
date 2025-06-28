@@ -57,3 +57,9 @@ export interface RoomFormData {
     name: string;
     capacity: number;
 }
+
+export interface ExportedSettings {
+  appConfig: AppConfiguration;
+  rooms: Room[];
+  bookings: Booking[];
+}
