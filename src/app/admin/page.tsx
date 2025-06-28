@@ -7,7 +7,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import Link from 'next/link';
 import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload } from 'lucide-react';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import type { Booking, AdminConfigItem, Room } from '@/types';
+import type { Booking, Room, AppConfiguration } from '@/types';
 import { 
     getAllBookings, 
     updateSlotDuration as serverUpdateSlotDuration, 
@@ -33,12 +33,6 @@ interface GroupedBookings {
   [roomName: string]: Booking[];
 }
 
-const initialConfigItems: AdminConfigItem[] = [
-  { id: 'slotDuration', description: 'Booking Slot Duration', value: '' }, // Will be populated from server
-  { id: 'startOfDay', description: 'Start of Work Day (HH:MM)', value: '' }, // Will be populated
-  { id: 'endOfDay', description: 'End of Work Day (HH:MM)', value: '' },   // Will be populated
-];
-
 const convertMinutesToDurationString = (minutes: number): string => {
   if (minutes === 15) return '15 minutes';
   if (minutes === 30) return '30 minutes';
@@ -53,6 +47,20 @@ const convertDurationValueToMinutes = (value: string): number => {
   return 60; // Default to 60 if somehow invalid
 };
 
+// Type for the configuration state object in the Admin page
+type AdminConfigState = {
+  slotDuration: string;
+  startOfDay: string;
+  endOfDay: string;
+};
+
+// Metadata for rendering configuration items in the UI
+const configMetadata = [
+    { id: 'slotDuration', description: 'Booking Slot Duration', icon: <Clock className="mr-2 h-4 w-4 text-muted-foreground" /> },
+    { id: 'startOfDay', description: 'Start of Work Day (HH:MM)', icon: <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" /> },
+    { id: 'endOfDay', description: 'End of Work Day (HH:MM)', icon: <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" /> },
+];
+
 export default function AdminPage() {
   const { toast } = useToast();
   // Bookings state
@@ -62,7 +70,7 @@ export default function AdminPage() {
   const [showBookingsTable, setShowBookingsTable] = useState(false);
 
   // Configuration state
-  const [configItems, setConfigItems] = useState<AdminConfigItem[]>(initialConfigItems);
+  const [config, setConfig] = useState<AdminConfigState | null>(null);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
 
@@ -83,11 +91,11 @@ export default function AdminPage() {
     setIsLoadingConfig(true);
     try {
       const currentConfig = await getCurrentConfiguration();
-      setConfigItems([
-        { id: 'slotDuration', description: 'Booking Slot Duration', value: convertMinutesToDurationString(currentConfig.slotDurationMinutes) },
-        { id: 'startOfDay', description: 'Start of Work Day (HH:MM)', value: currentConfig.startOfDay },
-        { id: 'endOfDay', description: 'End of Work Day (HH:MM)', value: currentConfig.endOfDay },
-      ]);
+      setConfig({
+        slotDuration: convertMinutesToDurationString(currentConfig.slotDurationMinutes),
+        startOfDay: currentConfig.startOfDay,
+        endOfDay: currentConfig.endOfDay,
+      });
     } catch (err) {
       console.error("Failed to fetch admin configuration:", err);
       toast({
@@ -95,7 +103,7 @@ export default function AdminPage() {
         title: 'Error Fetching Configuration',
         description: 'Could not load current settings. Displaying defaults.',
       });
-      setConfigItems(prev => prev.length ? prev : initialConfigItems.map(item => ({...item, value: item.id === 'slotDuration' ? '1 hour' : item.id === 'startOfDay' ? '09:00' : '17:00'})));
+      setConfig({ slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00' });
     } finally {
       setIsLoadingConfig(false);
     }
@@ -151,89 +159,75 @@ export default function AdminPage() {
     }, {} as GroupedBookings);
   }, [allBookings]);
 
-  const handleConfigChange = (itemId: string, newValue: string) => {
-    setConfigItems(prevItems => 
-      prevItems.map(item => 
-        item.id === itemId ? { ...item, value: newValue } : item
-      )
-    );
+  const handleConfigChange = (itemId: keyof AdminConfigState, newValue: string) => {
+    setConfig(prevConfig => prevConfig ? { ...prevConfig, [itemId]: newValue } : null);
   };
 
   const handleApplyChanges = async () => {
+    if (!config) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Configuration not loaded.' });
+        return;
+    }
+    
     setIsApplyingChanges(true);
     let allSucceeded = true;
 
-    const slotDurationItem = configItems.find(item => item.id === 'slotDuration');
-    if (slotDurationItem) {
-      const durationInMinutes = convertDurationValueToMinutes(slotDurationItem.value);
-      try {
-        const result = await serverUpdateSlotDuration(durationInMinutes);
-        if (result.success) {
-          toast({
-            title: 'Slot Duration Updated',
-            description: `Booking slot duration set to ${slotDurationItem.value}.`,
-            action: <CheckCircle className="text-green-500" />,
-          });
-        } else {
-          allSucceeded = false;
-          toast({
-            variant: 'destructive',
-            title: 'Slot Duration Update Failed',
-            description: result.error || 'Could not apply slot duration change.',
-          });
-        }
-      } catch (err) {
+    // --- Update Slot Duration ---
+    try {
+      const durationInMinutes = convertDurationValueToMinutes(config.slotDuration);
+      const result = await serverUpdateSlotDuration(durationInMinutes);
+      if (result.success) {
+        toast({
+          title: 'Slot Duration Updated',
+          description: `Booking slot duration set to ${config.slotDuration}.`,
+          action: <CheckCircle className="text-green-500" />,
+        });
+      } else {
         allSucceeded = false;
         toast({
           variant: 'destructive',
-          title: 'Error updating slot duration',
-          description: 'Failed to apply changes. Please try again.',
+          title: 'Slot Duration Update Failed',
+          description: result.error || 'Could not apply slot duration change.',
         });
       }
+    } catch (err) {
+      allSucceeded = false;
+      toast({
+        variant: 'destructive',
+        title: 'Error updating slot duration',
+        description: 'Failed to apply changes. Please try again.',
+      });
     }
 
-    const startOfDayItem = configItems.find(item => item.id === 'startOfDay');
-    const endOfDayItem = configItems.find(item => item.id === 'endOfDay');
-
-    if (startOfDayItem && endOfDayItem) {
-      try {
-        const result = await serverUpdateWorkdayHours(startOfDayItem.value, endOfDayItem.value);
-        if (result.success) {
-          toast({
-            title: 'Workday Hours Updated',
-            description: `Workday hours set from ${startOfDayItem.value} to ${endOfDayItem.value}.`,
-            action: <CheckCircle className="text-green-500" />,
-          });
-        } else {
-          allSucceeded = false;
-          toast({
-            variant: 'destructive',
-            title: 'Workday Hours Update Failed',
-            description: result.error || 'Could not apply workday hours change.',
-          });
-        }
-      } catch (err) {
+    // --- Update Workday Hours ---
+    try {
+      const result = await serverUpdateWorkdayHours(config.startOfDay, config.endOfDay);
+      if (result.success) {
+        toast({
+          title: 'Workday Hours Updated',
+          description: `Workday hours set from ${config.startOfDay} to ${config.endOfDay}.`,
+          action: <CheckCircle className="text-green-500" />,
+        });
+      } else {
         allSucceeded = false;
         toast({
           variant: 'destructive',
-          title: 'Error updating workday hours',
-          description: 'Failed to apply changes. Please try again.',
+          title: 'Workday Hours Update Failed',
+          description: result.error || 'Could not apply workday hours change.',
         });
       }
+    } catch (err) {
+      allSucceeded = false;
+      toast({
+        variant: 'destructive',
+        title: 'Error updating workday hours',
+        description: 'Failed to apply changes. Please try again.',
+      });
     }
     
     setIsApplyingChanges(false);
     if(allSucceeded) {
         fetchAdminConfiguration(); 
-    }
-  };
-  
-  const getIconForItem = (itemId: string) => {
-    switch(itemId) {
-      case 'slotDuration': return <Clock className="mr-2 h-4 w-4 text-muted-foreground" />;
-      case 'startOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />;
-      case 'endOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />;
-      default: return null;
     }
   };
 
@@ -470,12 +464,12 @@ export default function AdminPage() {
                   <Settings className="mr-2 h-5 w-5" />
                   Configuration
                 </h3>
-                {isLoadingConfig ? (
+                {isLoadingConfig || !config ? (
                   <div className="flex items-center justify-center p-8 text-muted-foreground">
                       <Loader2 className="mr-2 h-6 w-6 animate-spin" />
                       <p>Loading configuration...</p>
                   </div>
-                ) : configItems.length > 0 ? (
+                ) : (
                   <Card className="bg-card">
                     <CardContent className="p-0">
                       <Table>
@@ -486,17 +480,17 @@ export default function AdminPage() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {configItems.map((item) => (
+                          {configMetadata.map((item) => (
                             <TableRow key={item.id}>
                               <TableCell className="font-medium pl-6 flex items-center">
-                                  {getIconForItem(item.id)}
+                                  {item.icon}
                                   {item.description}
                               </TableCell>
                               <TableCell className="text-right pr-6">
                                 {item.id === 'slotDuration' ? (
                                   <Select
-                                    value={item.value}
-                                    onValueChange={(newValue) => handleConfigChange(item.id, newValue)}
+                                    value={config.slotDuration}
+                                    onValueChange={(newValue) => handleConfigChange('slotDuration', newValue)}
                                     disabled={isLoadingConfig || isApplyingChanges}
                                   >
                                     <SelectTrigger className="w-full sm:w-[180px] ml-auto text-right">
@@ -510,11 +504,11 @@ export default function AdminPage() {
                                   </Select>
                                 ) : (
                                   <Input 
-                                    type={item.id === 'startOfDay' || item.id === 'endOfDay' ? 'text' : 'text'}
-                                    value={item.value}
-                                    onChange={(e) => handleConfigChange(item.id, e.target.value)}
+                                    type="text"
+                                    value={config[item.id as keyof Omit<AdminConfigState, 'slotDuration'>]}
+                                    onChange={(e) => handleConfigChange(item.id as keyof AdminConfigState, e.target.value)}
                                     className="text-right sm:w-[180px] ml-auto"
-                                    placeholder={item.id === 'startOfDay' || item.id === 'endOfDay' ? 'HH:MM' : ''}
+                                    placeholder="HH:MM"
                                     disabled={isLoadingConfig || isApplyingChanges}
                                   />
                                 )}
@@ -525,8 +519,6 @@ export default function AdminPage() {
                       </Table>
                     </CardContent>
                   </Card>
-                ) : (
-                  <p className="text-muted-foreground">No configuration items defined or loaded.</p>
                 )}
                 <div className="mt-6 flex justify-end">
                   <Button onClick={handleApplyChanges} variant="default" disabled={isApplyingChanges || isLoadingConfig}>
@@ -583,7 +575,7 @@ export default function AdminPage() {
             <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    This will permanently delete the room "{roomToDelete?.name}". This action cannot be undone.
+                    This will permanently delete the room "{roomToDelete?.name}" and all of its associated bookings. This action cannot be undone.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -611,5 +603,3 @@ export default function AdminPage() {
     </>
   );
 }
-
-    

@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { CalendarIcon, Clock, Building2, User, Mail, Loader2, AlertTriangle, Eye, ArrowRight } from 'lucide-react';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { getAvailableTimeSlots, submitBooking, getBookingsForRoomAndDate } from '@/lib/actions';
 import { RoomBookingsDialog } from './RoomBookingsDialog';
 
@@ -47,7 +47,6 @@ type FormValues = z.infer<typeof formSchema>;
 export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormProps) {
   const { toast } = useToast();
   const [allAvailableIndividualSlots, setAllAvailableIndividualSlots] = useState<TimeSlot[]>([]);
-  const [availableEndTimesForSelect, setAvailableEndTimesForSelect] = useState<string[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
 
@@ -118,7 +117,6 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
     setAllAvailableIndividualSlots([]); 
     form.resetField('startTime');
     form.resetField('endTime');
-    setAvailableEndTimesForSelect([]);
     try {
       const result = await getAvailableTimeSlots(roomIdToFetch, format(dateToFetch, 'yyyy-MM-dd'));
       if (result.error) {
@@ -138,32 +136,26 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
       fetchIndividualSlots(selectedRoomId, selectedDate);
     } else {
       setAllAvailableIndividualSlots([]);
-      setAvailableEndTimesForSelect([]);
       form.resetField('startTime');
       form.resetField('endTime');
     }
   }, [selectedRoomId, selectedDate, fetchIndividualSlots, form]);
 
 
-  useEffect(() => {
+  const availableEndTimesForSelect = useMemo(() => {
     if (!selectedStartTimeValue || allAvailableIndividualSlots.length === 0) {
-      setAvailableEndTimesForSelect([]);
-      if(form.getValues('endTime')) form.resetField('endTime'); 
-      return;
+      return [];
     }
 
     const startSlot = allAvailableIndividualSlots.find(slot => slot.startTime === selectedStartTimeValue);
     if (!startSlot) {
-      setAvailableEndTimesForSelect([]);
-      if(form.getValues('endTime')) form.resetField('endTime');
-      return;
+      return [];
     }
 
     const validEndTimes: string[] = [];
-    let currentPossibleEndTime = startSlot.endTime;
-    validEndTimes.push(currentPossibleEndTime); 
-
     let lastSlotEndTimeInChain = startSlot.endTime;
+    validEndTimes.push(lastSlotEndTimeInChain); 
+
     const startIndex = allAvailableIndividualSlots.findIndex(slot => slot.startTime === selectedStartTimeValue);
 
     for (let i = startIndex + 1; i < allAvailableIndividualSlots.length; i++) {
@@ -176,13 +168,16 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
       }
     }
     
-    setAvailableEndTimesForSelect(validEndTimes);
-    
-    if (!validEndTimes.includes(form.getValues('endTime'))){
-        form.resetField('endTime');
-    }
-
-  }, [selectedStartTimeValue, allAvailableIndividualSlots, form]);
+    return validEndTimes;
+  }, [selectedStartTimeValue, allAvailableIndividualSlots]);
+  
+  // Effect to reset endTime if it's no longer a valid option
+  useEffect(() => {
+      const currentEndTime = form.getValues('endTime');
+      if (currentEndTime && !availableEndTimesForSelect.includes(currentEndTime)){
+          form.resetField('endTime');
+      }
+  }, [availableEndTimesForSelect, form]);
 
 
   async function onSubmit(data: FormValues) {
@@ -224,7 +219,6 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
             endTime: ''
         });
         setAllAvailableIndividualSlots([]);
-        setAvailableEndTimesForSelect([]);
       }
     } catch (error) {
       toast({

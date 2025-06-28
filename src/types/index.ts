@@ -39,12 +39,6 @@ export interface RoomBookingsDialogProps {
   bookings: Booking[];
 }
 
-export interface AdminConfigItem {
-  id:string;
-  description: string;
-  value: string; 
-}
-
 // Interface for application configuration stored in app-config.json
 export interface AppConfiguration {
   slotDurationMinutes: number;

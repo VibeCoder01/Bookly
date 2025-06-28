@@ -36,11 +36,13 @@ const formSchema = z.object({
   capacity: z.coerce.number().int().positive({ message: 'Capacity must be a positive whole number.' }),
 });
 
+type FormValues = z.infer<typeof formSchema>;
+
 export function RoomFormDialog({ isOpen, onOpenChange, onSuccess, room }: RoomFormDialogProps) {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       id: '',
@@ -67,7 +69,7 @@ export function RoomFormDialog({ isOpen, onOpenChange, onSuccess, room }: RoomFo
     }
   }, [isOpen, room, form]);
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const onSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     const action = room ? updateRoom : addRoom;
     const result = await action(values as RoomFormData);
@@ -86,8 +88,13 @@ export function RoomFormDialog({ isOpen, onOpenChange, onSuccess, room }: RoomFo
         description: result.error || 'An unexpected error occurred.',
       });
       if (result.fieldErrors) {
-        Object.entries(result.fieldErrors).forEach(([field, message]) => {
-          form.setError(field as keyof RoomFormData, { type: 'manual', message: Array.isArray(message) ? message.join(', ') : String(message) });
+        Object.entries(result.fieldErrors).forEach(([field, messages]) => {
+          if (messages) {
+             form.setError(field as keyof FormValues, {
+                type: 'manual',
+                message: messages.join(', '),
+            });
+          }
         });
       }
     }

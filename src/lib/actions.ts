@@ -54,7 +54,7 @@ const roomFormSchema = z.object({
     capacity: z.coerce.number().int().positive('Capacity must be a positive number.'),
 });
 
-export async function addRoom(formData: RoomFormData): Promise<{ success: boolean; error?: string; fieldErrors?: any }> {
+export async function addRoom(formData: RoomFormData): Promise<{ success: boolean; error?: string; fieldErrors?: Record<string, string[] | undefined> }> {
     const validation = roomFormSchema.safeParse(formData);
     if (!validation.success) {
         return { success: false, error: 'Invalid data provided.', fieldErrors: validation.error.flatten().fieldErrors };
@@ -71,7 +71,7 @@ export async function addRoom(formData: RoomFormData): Promise<{ success: boolea
     return { success: true };
 }
 
-export async function updateRoom(formData: RoomFormData): Promise<{ success: boolean; error?: string; fieldErrors?: any }> {
+export async function updateRoom(formData: RoomFormData): Promise<{ success: boolean; error?: string; fieldErrors?: Record<string, string[] | undefined> }> {
     const validation = roomFormSchema.safeParse(formData);
     if (!validation.success) {
         return { success: false, error: 'Invalid data provided.', fieldErrors: validation.error.flatten().fieldErrors };
