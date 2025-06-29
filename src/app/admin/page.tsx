@@ -199,9 +199,9 @@ export default function AdminPage() {
     const formData = new FormData(event.currentTarget);
     const result = await updateAppLogo(formData);
 
-    if (result.success) {
+    if (result.success && result.logoPath) {
         toast({ title: 'Logo Updated', description: 'Your new logo has been uploaded.' });
-        await fetchAdminConfiguration();
+        setCurrentLogo(result.logoPath);
     } else {
         toast({ variant: 'destructive', title: 'Logo Upload Failed', description: result.error });
     }

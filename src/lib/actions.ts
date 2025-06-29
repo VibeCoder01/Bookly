@@ -172,7 +172,7 @@ export async function updateAppConfiguration(
 
 export async function updateAppLogo(
   formData: FormData
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; logoPath?: string }> {
   const file = formData.get('logo') as File | null;
 
   if (!file) {
@@ -183,26 +183,42 @@ export async function updateAppLogo(
       return { success: false, error: 'Cannot upload an empty file.' };
   }
   
-  // Basic validation for image type
   if (!['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'].includes(file.type)) {
       return { success: false, error: 'Invalid file type. Please upload a PNG, JPG, SVG or WEBP.'}
   }
 
   try {
     const fileBuffer = Buffer.from(await file.arrayBuffer());
-    const logoFileName = `app-logo${path.extname(file.name)}`; // e.g. app-logo.png
+    // Add timestamp to filename to prevent browser caching issues
+    const logoFileName = `app-logo-${Date.now()}${path.extname(file.name)}`;
     const logoPath = path.join(process.cwd(), 'public', logoFileName);
+    
+    const config = await readConfigurationFromFile();
+    const oldLogoPath = config.appLogo; // Get old logo path before updating
 
     await fs.promises.writeFile(logoPath, fileBuffer);
 
-    const config = await readConfigurationFromFile();
-    config.appLogo = `/${logoFileName}`; // The public path for the img src
+    const newLogoPublicPath = `/${logoFileName}`;
+    config.appLogo = newLogoPublicPath;
     await writeConfigurationToFile(config);
     
-    // Revalidate paths where the header is used to ensure the new logo appears
+    // Clean up the old logo file if it exists and is one of our managed logos
+    if (oldLogoPath && oldLogoPath.startsWith('/app-logo-')) {
+        const oldLogoFilePath = path.join(process.cwd(), 'public', oldLogoPath.substring(1));
+        try {
+            if (fs.existsSync(oldLogoFilePath)) {
+                await fs.promises.unlink(oldLogoFilePath);
+                console.log(`[Logo Cleanup] Deleted old logo: ${oldLogoPath}`);
+            }
+        } catch (cleanupError) {
+            // Log error but don't fail the whole operation
+            console.error(`[Logo Cleanup] Failed to delete old logo file ${oldLogoPath}:`, cleanupError);
+        }
+    }
+    
     revalidatePath('/', 'layout');
 
-    return { success: true };
+    return { success: true, logoPath: newLogoPublicPath };
   } catch (error) {
     console.error('[Logo Upload Error]', error);
     return { success: false, error: 'Failed to save the new logo.' };
