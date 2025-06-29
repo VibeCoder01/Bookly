@@ -22,14 +22,17 @@ This project was bootstrapped with [Firebase Studio](https://firebase.google.com
 
 
 **Admin Dashboard - Room Management**
+
 ![image](https://github.com/user-attachments/assets/a80794e9-f1f3-4d8b-be81-1f8752e138f9)
 
 
 **Admin Dashboard - Data Management**
+
 ![image](https://github.com/user-attachments/assets/5d27b2d8-97a3-4e8d-bd38-708da55ffd40)
 
 
 **Admin Dashboard - App Configuration**
+
 ![image](https://github.com/user-attachments/assets/8bf8bd61-acb2-48e2-a981-25cb2f5e3c64)
 
 
