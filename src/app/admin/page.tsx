@@ -1,7 +1,6 @@
 
 'use client';
 
-import { Header } from '@/components/bookly/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import Link from 'next/link';
@@ -334,336 +333,333 @@ export default function AdminPage() {
 
   return (
     <>
-      <div className="min-h-screen bg-background text-foreground">
-        <Header />
-        <main className="container mx-auto py-8 px-4">
-          <Card className="shadow-xl rounded-xl">
-            <CardHeader>
-              <CardTitle className="font-headline text-3xl text-primary">Admin Dashboard</CardTitle>
-              <CardDescription>Manage your Bookly application settings, view bookings, and configure parameters.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8">
-              {/* --- BOOKINGS OVERVIEW --- */}
-              <div>
-                <h3 className="text-xl font-semibold mb-3 font-headline text-primary flex items-center">
-                  <ListChecks className="mr-2 h-5 w-5" />
-                  Bookings Overview
-                </h3>
-                <div className="flex space-x-4">
-                  <Button onClick={handleShowAllBookings} disabled={isLoadingBookings} variant="secondary">
-                    {isLoadingBookings && showBookingsTable ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <ListChecks className="mr-2 h-4 w-4" />
-                    )}
-                    {showBookingsTable ? 'Refresh All Bookings' : 'Show All Bookings'}
-                  </Button>
-                  <Link href="/" passHref>
-                    <Button variant="outline">
-                      <Home className="mr-2 h-4 w-4" />
-                      Back to Home
-                    </Button>
-                  </Link>
-                </div>
-                {showBookingsTable && (
-                  <div className="mt-6">
-                    {isLoadingBookings && !allBookings.length ? (
-                      <div className="flex items-center justify-center p-8 text-muted-foreground">
-                        <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                        <p>Loading bookings...</p>
-                      </div>
-                    ) : error ? (
-                      <div className="flex items-center space-x-2 text-destructive-foreground bg-destructive/10 p-3 rounded-md border border-destructive">
-                        <AlertTriangle className="h-5 w-5 text-destructive" />
-                        <span>Error: {error}</span>
-                      </div>
-                    ) : Object.keys(groupedBookings).length === 0 ? (
-                      <p className="text-muted-foreground">No bookings found.</p>
-                    ) : (
-                      <ScrollArea className="h-[600px] w-full rounded-md border p-4 bg-card">
-                        {Object.entries(groupedBookings).map(([roomName, bookingsInRoom]) => {
-                          let lastDateProcessedForRoom: string | null = null;
-                          let useAlternateRowStyle = false;
-                          return (
-                            <div key={roomName} className="mb-8">
-                              <h4 className="text-lg font-headline font-semibold mb-3 text-primary flex items-center">
-                                <Building className="mr-2 h-5 w-5" />
-                                {roomName}
-                              </h4>
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead className="font-semibold">Date</TableHead>
-                                    <TableHead className="font-semibold">Time</TableHead>
-                                    <TableHead className="font-semibold">Title</TableHead>
-                                    <TableHead className="font-semibold">Booked By</TableHead>
-                                    <TableHead className="font-semibold">Email</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {bookingsInRoom.map((booking) => {
-                                    if (lastDateProcessedForRoom !== null && booking.date !== lastDateProcessedForRoom) {
-                                      useAlternateRowStyle = !useAlternateRowStyle;
-                                    }
-                                    lastDateProcessedForRoom = booking.date;
-                                    const rowClassName = useAlternateRowStyle ? 'bg-primary/5' : '';
-
-                                    return (
-                                      <TableRow key={booking.id} className={cn(rowClassName)}>
-                                        <TableCell>{format(new Date(booking.date + 'T00:00:00'), 'PPP')}</TableCell>
-                                        <TableCell>{booking.time}</TableCell>
-                                        <TableCell>{booking.title}</TableCell>
-                                        <TableCell>{booking.userName}</TableCell>
-                                        <TableCell>{booking.userEmail}</TableCell>
-                                      </TableRow>
-                                    );
-                                  })}
-                                </TableBody>
-                              </Table>
-                            </div>
-                          );
-                        })}
-                      </ScrollArea>
-                    )}
-                  </div>
-                )}
-                {!showBookingsTable && (
-                     <p className="mt-4 text-muted-foreground">Click "Show All Bookings" to view the booking list.</p>
-                )}
-              </div>
-
-             {/* --- ROOM MANAGEMENT --- */}
-              <div className="pt-6 border-t">
-                  <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
-                    <Sofa className="mr-2 h-5 w-5" />
-                    Manage Rooms
-                  </h3>
-                  {isLoadingRooms ? (
-                     <div className="flex items-center justify-center p-8 text-muted-foreground">
-                        <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                        <p>Loading rooms...</p>
-                    </div>
+      <main className="container mx-auto py-8 px-4">
+        <Card className="shadow-xl rounded-xl">
+          <CardHeader>
+            <CardTitle className="font-headline text-3xl text-primary">Admin Dashboard</CardTitle>
+            <CardDescription>Manage your Bookly application settings, view bookings, and configure parameters.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-8">
+            {/* --- BOOKINGS OVERVIEW --- */}
+            <div>
+              <h3 className="text-xl font-semibold mb-3 font-headline text-primary flex items-center">
+                <ListChecks className="mr-2 h-5 w-5" />
+                Bookings Overview
+              </h3>
+              <div className="flex space-x-4">
+                <Button onClick={handleShowAllBookings} disabled={isLoadingBookings} variant="secondary">
+                  {isLoadingBookings && showBookingsTable ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : (
-                    <Card className="bg-card">
-                        <CardHeader>
-                             <div className="flex justify-between items-center">
-                                <div>
-                                    <CardTitle className="text-lg">Room List</CardTitle>
-                                    <CardDescription>Add, edit, or delete meeting rooms.</CardDescription>
-                                </div>
-                                <Button onClick={handleAddNewRoom}>
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Add New Room
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead className="text-center w-[100px]">Capacity</TableHead>
-                                        <TableHead className="text-right w-[150px]">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {rooms.length > 0 ? rooms.map(room => (
-                                        <TableRow key={room.id}>
-                                            <TableCell className="font-medium">{room.name}</TableCell>
-                                            <TableCell className="text-center">{room.capacity}</TableCell>
-                                            <TableCell className="text-right space-x-2">
-                                                <Button variant="outline" size="icon" onClick={() => handleEditRoom(room)}>
-                                                    <Pencil className="h-4 w-4" />
-                                                    <span className="sr-only">Edit Room</span>
-                                                </Button>
-                                                <Button variant="destructive" size="icon" onClick={() => setRoomToDelete(room)}>
-                                                    <Trash2 className="h-4 w-4" />
-                                                    <span className="sr-only">Delete Room</span>
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    )) : (
-                                        <TableRow>
-                                            <TableCell colSpan={3} className="text-center text-muted-foreground">No rooms found. Add one to get started.</TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
+                    <ListChecks className="mr-2 h-4 w-4" />
                   )}
+                  {showBookingsTable ? 'Refresh All Bookings' : 'Show All Bookings'}
+                </Button>
+                <Link href="/" passHref>
+                  <Button variant="outline">
+                    <Home className="mr-2 h-4 w-4" />
+                    Back to Home
+                  </Button>
+                </Link>
               </div>
-
-
-              {/* --- CONFIGURATION --- */}
-              <div className="pt-6 border-t">
-                <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
-                  <Settings className="mr-2 h-5 w-5" />
-                  Configuration
-                </h3>
-                {isLoadingConfig ? (
-                  <div className="flex items-center justify-center p-8 text-muted-foreground">
+              {showBookingsTable && (
+                <div className="mt-6">
+                  {isLoadingBookings && !allBookings.length ? (
+                    <div className="flex items-center justify-center p-8 text-muted-foreground">
                       <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-                      <p>Loading configuration...</p>
+                      <p>Loading bookings...</p>
+                    </div>
+                  ) : error ? (
+                    <div className="flex items-center space-x-2 text-destructive-foreground bg-destructive/10 p-3 rounded-md border border-destructive">
+                      <AlertTriangle className="h-5 w-5 text-destructive" />
+                      <span>Error: {error}</span>
+                    </div>
+                  ) : Object.keys(groupedBookings).length === 0 ? (
+                    <p className="text-muted-foreground">No bookings found.</p>
+                  ) : (
+                    <ScrollArea className="h-[600px] w-full rounded-md border p-4 bg-card">
+                      {Object.entries(groupedBookings).map(([roomName, bookingsInRoom]) => {
+                        let lastDateProcessedForRoom: string | null = null;
+                        let useAlternateRowStyle = false;
+                        return (
+                          <div key={roomName} className="mb-8">
+                            <h4 className="text-lg font-headline font-semibold mb-3 text-primary flex items-center">
+                              <Building className="mr-2 h-5 w-5" />
+                              {roomName}
+                            </h4>
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="font-semibold">Date</TableHead>
+                                  <TableHead className="font-semibold">Time</TableHead>
+                                  <TableHead className="font-semibold">Title</TableHead>
+                                  <TableHead className="font-semibold">Booked By</TableHead>
+                                  <TableHead className="font-semibold">Email</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {bookingsInRoom.map((booking) => {
+                                  if (lastDateProcessedForRoom !== null && booking.date !== lastDateProcessedForRoom) {
+                                    useAlternateRowStyle = !useAlternateRowStyle;
+                                  }
+                                  lastDateProcessedForRoom = booking.date;
+                                  const rowClassName = useAlternateRowStyle ? 'bg-primary/5' : '';
+
+                                  return (
+                                    <TableRow key={booking.id} className={cn(rowClassName)}>
+                                      <TableCell>{format(new Date(booking.date + 'T00:00:00'), 'PPP')}</TableCell>
+                                      <TableCell>{booking.time}</TableCell>
+                                      <TableCell>{booking.title}</TableCell>
+                                      <TableCell>{booking.userName}</TableCell>
+                                      <TableCell>{booking.userEmail}</TableCell>
+                                    </TableRow>
+                                  );
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        );
+                      })}
+                    </ScrollArea>
+                  )}
+                </div>
+              )}
+              {!showBookingsTable && (
+                   <p className="mt-4 text-muted-foreground">Click "Show All Bookings" to view the booking list.</p>
+              )}
+            </div>
+
+           {/* --- ROOM MANAGEMENT --- */}
+            <div className="pt-6 border-t">
+                <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
+                  <Sofa className="mr-2 h-5 w-5" />
+                  Manage Rooms
+                </h3>
+                {isLoadingRooms ? (
+                   <div className="flex items-center justify-center p-8 text-muted-foreground">
+                      <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                      <p>Loading rooms...</p>
                   </div>
                 ) : (
                   <Card className="bg-card">
-                    <CardContent className="p-0">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="pl-6 font-semibold">Setting Description</TableHead>
-                            <TableHead className="text-right pr-6 font-semibold">Current Value</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            <TableRow>
-                                <TableCell className="font-medium pl-6 flex items-center">
-                                    {getIconForSetting('appName')} App Name
-                                </TableCell>
-                                <TableCell className="text-right pr-6">
-                                    <Input value={config.appName} onChange={(e) => handleConfigChange('appName', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="e.g., Bookly" disabled={isApplyingChanges} />
-                                </TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell className="font-medium pl-6 flex items-center">
-                                    {getIconForSetting('appSubtitle')} App Subtitle
-                                </TableCell>
-                                <TableCell className="text-right pr-6">
-                                    <Input value={config.appSubtitle} onChange={(e) => handleConfigChange('appSubtitle', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="e.g., Room booking system" disabled={isApplyingChanges} />
-                                </TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell className="font-medium pl-6 flex items-center">
-                                    {getIconForSetting('slotDuration')} Booking Slot Duration
-                                </TableCell>
-                                <TableCell className="text-right pr-6">
-                                    <Select value={config.slotDuration} onValueChange={(v) => handleConfigChange('slotDuration', v)} disabled={isApplyingChanges}>
-                                        <SelectTrigger className="w-full sm:w-[220px] ml-auto text-right">
-                                            <SelectValue placeholder="Select duration" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="15 minutes">15 minutes</SelectItem>
-                                            <SelectItem value="30 minutes">30 minutes</SelectItem>
-                                            <SelectItem value="1 hour">1 hour</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </TableCell>
-                            </TableRow>
-                            <TableRow>
-                                <TableCell className="font-medium pl-6 flex items-center">
-                                    {getIconForSetting('startOfDay')} Start of Work Day (HH:MM)
-                                </TableCell>
-                                <TableCell className="text-right pr-6">
-                                    <Input value={config.startOfDay} onChange={(e) => handleConfigChange('startOfDay', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="HH:MM" disabled={isApplyingChanges} />
-                                </TableCell>
-                            </TableRow>
-                             <TableRow>
-                                <TableCell className="font-medium pl-6 flex items-center">
-                                    {getIconForSetting('endOfDay')} End of Work Day (HH:MM)
-                                </TableCell>
-                                <TableCell className="text-right pr-6">
-                                    <Input value={config.endOfDay} onChange={(e) => handleConfigChange('endOfDay', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="HH:MM" disabled={isApplyingChanges} />
-                                </TableCell>
-                            </TableRow>
-                        </TableBody>
-                      </Table>
-                    </CardContent>
+                      <CardHeader>
+                           <div className="flex justify-between items-center">
+                              <div>
+                                  <CardTitle className="text-lg">Room List</CardTitle>
+                                  <CardDescription>Add, edit, or delete meeting rooms.</CardDescription>
+                              </div>
+                              <Button onClick={handleAddNewRoom}>
+                                  <PlusCircle className="mr-2 h-4 w-4" />
+                                  Add New Room
+                              </Button>
+                          </div>
+                      </CardHeader>
+                      <CardContent>
+                          <Table>
+                              <TableHeader>
+                                  <TableRow>
+                                      <TableHead>Name</TableHead>
+                                      <TableHead className="text-center w-[100px]">Capacity</TableHead>
+                                      <TableHead className="text-right w-[150px]">Actions</TableHead>
+                                  </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                  {rooms.length > 0 ? rooms.map(room => (
+                                      <TableRow key={room.id}>
+                                          <TableCell className="font-medium">{room.name}</TableCell>
+                                          <TableCell className="text-center">{room.capacity}</TableCell>
+                                          <TableCell className="text-right space-x-2">
+                                              <Button variant="outline" size="icon" onClick={() => handleEditRoom(room)}>
+                                                  <Pencil className="h-4 w-4" />
+                                                  <span className="sr-only">Edit Room</span>
+                                              </Button>
+                                              <Button variant="destructive" size="icon" onClick={() => setRoomToDelete(room)}>
+                                                  <Trash2 className="h-4 w-4" />
+                                                  <span className="sr-only">Delete Room</span>
+                                              </Button>
+                                          </TableCell>
+                                      </TableRow>
+                                  )) : (
+                                      <TableRow>
+                                          <TableCell colSpan={3} className="text-center text-muted-foreground">No rooms found. Add one to get started.</TableCell>
+                                      </TableRow>
+                                  )}
+                              </TableBody>
+                          </Table>
+                      </CardContent>
                   </Card>
                 )}
-                <div className="mt-6 flex justify-end">
-                  <Button onClick={handleApplyChanges} variant="default" disabled={isApplyingChanges || isLoadingConfig}>
-                    {isApplyingChanges && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Apply Changes
-                  </Button>
+            </div>
+
+
+            {/* --- CONFIGURATION --- */}
+            <div className="pt-6 border-t">
+              <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
+                <Settings className="mr-2 h-5 w-5" />
+                Configuration
+              </h3>
+              {isLoadingConfig ? (
+                <div className="flex items-center justify-center p-8 text-muted-foreground">
+                    <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+                    <p>Loading configuration...</p>
                 </div>
-              </div>
-              
-              {/* --- DATA MANAGEMENT --- */}
-              <div className="pt-6 border-t">
-                <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
-                  <Database className="mr-2 h-5 w-5" />
-                  Data Management
-                </h3>
+              ) : (
                 <Card className="bg-card">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Import/Export Data</CardTitle>
-                    <CardDescription>Save all application data to a file or restore from a backup.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-col sm:flex-row gap-4">
-                    <Button onClick={handleExport}>
-                      <Download className="mr-2 h-4 w-4" />Export All Data
-                    </Button>
-                    <Button onClick={() => fileInputRef.current?.click()} variant="outline" disabled={isImporting}>
-                      {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                      Import All Data
-                    </Button>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={(e) => setFileToImport(e.target.files ? e.target.files[0] : null)}
-                      className="hidden"
-                      accept="application/json"
-                    />
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="pl-6 font-semibold">Setting Description</TableHead>
+                          <TableHead className="text-right pr-6 font-semibold">Current Value</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                          <TableRow>
+                              <TableCell className="font-medium pl-6 flex items-center">
+                                  {getIconForSetting('appName')} App Name
+                              </TableCell>
+                              <TableCell className="text-right pr-6">
+                                  <Input value={config.appName} onChange={(e) => handleConfigChange('appName', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="e.g., Bookly" disabled={isApplyingChanges} />
+                              </TableCell>
+                          </TableRow>
+                          <TableRow>
+                              <TableCell className="font-medium pl-6 flex items-center">
+                                  {getIconForSetting('appSubtitle')} App Subtitle
+                              </TableCell>
+                              <TableCell className="text-right pr-6">
+                                  <Input value={config.appSubtitle} onChange={(e) => handleConfigChange('appSubtitle', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="e.g., Room booking system" disabled={isApplyingChanges} />
+                              </TableCell>
+                          </TableRow>
+                          <TableRow>
+                              <TableCell className="font-medium pl-6 flex items-center">
+                                  {getIconForSetting('slotDuration')} Booking Slot Duration
+                              </TableCell>
+                              <TableCell className="text-right pr-6">
+                                  <Select value={config.slotDuration} onValueChange={(v) => handleConfigChange('slotDuration', v)} disabled={isApplyingChanges}>
+                                      <SelectTrigger className="w-full sm:w-[220px] ml-auto text-right">
+                                          <SelectValue placeholder="Select duration" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                          <SelectItem value="15 minutes">15 minutes</SelectItem>
+                                          <SelectItem value="30 minutes">30 minutes</SelectItem>
+                                          <SelectItem value="1 hour">1 hour</SelectItem>
+                                      </SelectContent>
+                                  </Select>
+                              </TableCell>
+                          </TableRow>
+                          <TableRow>
+                              <TableCell className="font-medium pl-6 flex items-center">
+                                  {getIconForSetting('startOfDay')} Start of Work Day (HH:MM)
+                              </TableCell>
+                              <TableCell className="text-right pr-6">
+                                  <Input value={config.startOfDay} onChange={(e) => handleConfigChange('startOfDay', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="HH:MM" disabled={isApplyingChanges} />
+                              </TableCell>
+                          </TableRow>
+                           <TableRow>
+                              <TableCell className="font-medium pl-6 flex items-center">
+                                  {getIconForSetting('endOfDay')} End of Work Day (HH:MM)
+                              </TableCell>
+                              <TableCell className="text-right pr-6">
+                                  <Input value={config.endOfDay} onChange={(e) => handleConfigChange('endOfDay', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="HH:MM" disabled={isApplyingChanges} />
+                              </TableCell>
+                          </TableRow>
+                      </TableBody>
+                    </Table>
                   </CardContent>
                 </Card>
+              )}
+              <div className="mt-6 flex justify-end">
+                <Button onClick={handleApplyChanges} variant="default" disabled={isApplyingChanges || isLoadingConfig}>
+                  {isApplyingChanges && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Apply Changes
+                </Button>
               </div>
+            </div>
+            
+            {/* --- DATA MANAGEMENT --- */}
+            <div className="pt-6 border-t">
+              <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
+                <Database className="mr-2 h-5 w-5" />
+                Data Management
+              </h3>
+              <Card className="bg-card">
+                <CardHeader>
+                  <CardTitle className="text-lg">Import/Export Data</CardTitle>
+                  <CardDescription>Save all application data to a file or restore from a backup.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col sm:flex-row gap-4">
+                  <Button onClick={handleExport}>
+                    <Download className="mr-2 h-4 w-4" />Export All Data
+                  </Button>
+                  <Button onClick={() => fileInputRef.current?.click()} variant="outline" disabled={isImporting}>
+                    {isImporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                    Import All Data
+                  </Button>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={(e) => setFileToImport(e.target.files ? e.target.files[0] : null)}
+                    className="hidden"
+                    accept="application/json"
+                  />
+                </CardContent>
+              </Card>
+            </div>
 
-              {/* --- LOGO MANAGEMENT --- */}
-              <div className="pt-6 border-t">
-                <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
-                  <ImageIcon className="mr-2 h-5 w-5" />
-                  Application Logo
-                </h3>
-                <Card className="bg-card">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Upload Logo</CardTitle>
-                    <CardDescription>Replace the default icon with your own logo. Recommended size: 40x40 pixels.</CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-col sm:flex-row items-start gap-6">
-                    <div className="flex-shrink-0">
-                      <p className="text-sm font-medium mb-2">Current Logo</p>
-                      <div className="h-12 w-12 rounded-md border border-dashed flex items-center justify-center bg-muted">
-                        {isLoadingConfig ? (
-                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                        ) : currentLogo ? (
-                          <Image src={currentLogo} alt="Current App Logo" width={40} height={40} className="object-contain" unoptimized />
-                        ) : (
-                          <CalendarCheck className="h-8 w-8 text-muted-foreground" />
-                        )}
-                      </div>
+            {/* --- LOGO MANAGEMENT --- */}
+            <div className="pt-6 border-t">
+              <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
+                <ImageIcon className="mr-2 h-5 w-5" />
+                Application Logo
+              </h3>
+              <Card className="bg-card">
+                <CardHeader>
+                  <CardTitle className="text-lg">Upload Logo</CardTitle>
+                  <CardDescription>Replace the default icon with your own logo. Recommended size: 40x40 pixels.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex flex-col sm:flex-row items-start gap-6">
+                  <div className="flex-shrink-0">
+                    <p className="text-sm font-medium mb-2">Current Logo</p>
+                    <div className="h-12 w-12 rounded-md border border-dashed flex items-center justify-center bg-muted">
+                      {isLoadingConfig ? (
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      ) : currentLogo ? (
+                        <Image src={currentLogo} alt="Current App Logo" width={40} height={40} className="object-contain" unoptimized />
+                      ) : (
+                        <CalendarCheck className="h-8 w-8 text-muted-foreground" />
+                      )}
                     </div>
-                    <form onSubmit={handleLogoUpload} className="flex-grow">
-                      <Label htmlFor="logo-upload" className="mb-2 block">Upload New Logo</Label>
-                      <div className="flex flex-wrap items-center gap-2">
-                          <Input 
-                            id="logo-upload" 
-                            name="logo" 
-                            type="file" 
-                            required 
-                            accept="image/png, image/jpeg, image/svg+xml, image/webp" 
-                            className="flex-grow"
-                            disabled={isUploadingLogo || isLoadingConfig || isRevertingLogo} 
-                          />
-                          <Button type="submit" disabled={isUploadingLogo || isLoadingConfig || isRevertingLogo}>
-                              {isUploadingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                              Save
-                          </Button>
-                          <Button type="button" variant="outline" onClick={handleRevertLogo} disabled={!currentLogo || isUploadingLogo || isLoadingConfig || isRevertingLogo}>
-                              {isRevertingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                              Use Default
-                          </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-2">Maximum file size: 1MB. The logo will be displayed at 40x40px.</p>
-                    </form>
-                  </CardContent>
-                </Card>
-              </div>
+                  </div>
+                  <form onSubmit={handleLogoUpload} className="flex-grow">
+                    <Label htmlFor="logo-upload" className="mb-2 block">Upload New Logo</Label>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Input 
+                          id="logo-upload" 
+                          name="logo" 
+                          type="file" 
+                          required 
+                          accept="image/png, image/jpeg, image/svg+xml, image/webp" 
+                          className="flex-grow"
+                          disabled={isUploadingLogo || isLoadingConfig || isRevertingLogo} 
+                        />
+                        <Button type="submit" disabled={isUploadingLogo || isLoadingConfig || isRevertingLogo}>
+                            {isUploadingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                            Save
+                        </Button>
+                        <Button type="button" variant="outline" onClick={handleRevertLogo} disabled={!currentLogo || isUploadingLogo || isLoadingConfig || isRevertingLogo}>
+                            {isRevertingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                            Use Default
+                        </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">Maximum file size: 1MB. The logo will be displayed at 40x40px.</p>
+                  </form>
+                </CardContent>
+              </Card>
+            </div>
 
-            </CardContent>
-          </Card>
-        </main>
-      </div>
+          </CardContent>
+        </Card>
+      </main>
 
       <RoomFormDialog 
         isOpen={isRoomFormOpen}

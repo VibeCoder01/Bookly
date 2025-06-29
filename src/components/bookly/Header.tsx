@@ -5,18 +5,18 @@ import { CalendarCheck, UserCog, Wifi } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import React, { useState, useEffect } from 'react';
-import { getCurrentConfiguration } from '@/lib/actions';
 import type { AppConfiguration } from '@/types';
 import Image from 'next/image';
+import { useUser } from '@/context/UserContext';
 
 interface HeaderProps {
-  userName?: string | null;
+  config: AppConfiguration;
 }
 
-export function Header({ userName }: HeaderProps) {
+export function Header({ config }: HeaderProps) {
   const [ipAddress, setIpAddress] = useState<string | null>(null);
   const [isLoadingIp, setIsLoadingIp] = useState(true);
-  const [config, setConfig] = useState<{ appName: string; appSubtitle: string; appLogo?: string; } | null>(null);
+  const { userName } = useUser();
 
   useEffect(() => {
     fetch('/api/ip')
@@ -29,18 +29,6 @@ export function Header({ userName }: HeaderProps) {
         setIpAddress('Error fetching IP');
         setIsLoadingIp(false);
       });
-      
-    const fetchConfig = async () => {
-        try {
-            const appConfig = await getCurrentConfiguration();
-            setConfig({ appName: appConfig.appName, appSubtitle: appConfig.appSubtitle, appLogo: appConfig.appLogo });
-        } catch {
-            // Fallback to default values on error
-            setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', appLogo: undefined });
-        }
-    };
-    fetchConfig();
-
   }, []);
 
   return (

@@ -1,7 +1,6 @@
 
 'use client';
 
-import { Header } from '@/components/bookly/Header';
 import { BookingForm } from '@/components/bookly/BookingForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Booking, Room } from '@/types';
@@ -10,17 +9,18 @@ import { getRooms } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
+import { useUser } from '@/context/UserContext';
 
 function BookPageContents() {
   const searchParams = useSearchParams();
   const initialRoomId = searchParams.get('roomId');
 
-  const [currentUserName, setCurrentUserName] = useState<string | null>(null);
+  const { setUserName } = useUser();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
 
   useEffect(() => {
-    const fetchRooms = async () => {
+    const fetchRoomsData = async () => {
       setIsLoadingRooms(true);
       try {
         const result = await getRooms();
@@ -32,49 +32,46 @@ function BookPageContents() {
         setIsLoadingRooms(false);
       }
     };
-    fetchRooms();
+    fetchRoomsData();
   }, []);
 
   const handleBookingAttemptCompletion = (booking: Booking | null) => {
     if (booking) {
-        setCurrentUserName(booking.userName); 
+        setUserName(booking.userName); 
     }
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Header userName={currentUserName} />
-      <main className="container mx-auto py-8 px-4">
-        <div className="max-w-4xl mx-auto">
-            <Card className="shadow-xl rounded-xl overflow-hidden">
-              <CardHeader className="bg-card">
-                <CardTitle className="font-headline text-2xl text-primary">
-                  Book Your Room
-                </CardTitle>
-                <CardDescription>
-                  Select a room, date, and time.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                {isLoadingRooms ? (
-                  <div className="space-y-6">
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-20 w-full" />
-                    <Skeleton className="h-10 w-1/3" />
-                  </div>
-                ) : (
-                   <BookingForm 
-                      rooms={rooms} 
-                      onBookingAttemptCompleted={handleBookingAttemptCompletion} 
-                      initialRoomId={initialRoomId}
-                    />
-                )}
-              </CardContent>
-            </Card>
-        </div>
-      </main>
-    </div>
+    <main className="container mx-auto py-8 px-4">
+      <div className="max-w-4xl mx-auto">
+          <Card className="shadow-xl rounded-xl overflow-hidden">
+            <CardHeader className="bg-card">
+              <CardTitle className="font-headline text-2xl text-primary">
+                Book Your Room
+              </CardTitle>
+              <CardDescription>
+                Select a room, date, and time.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-6">
+              {isLoadingRooms ? (
+                <div className="space-y-6">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-10 w-1/3" />
+                </div>
+              ) : (
+                 <BookingForm 
+                    rooms={rooms} 
+                    onBookingAttemptCompleted={handleBookingAttemptCompletion} 
+                    initialRoomId={initialRoomId}
+                  />
+              )}
+            </CardContent>
+          </Card>
+      </div>
+    </main>
   );
 }
 
