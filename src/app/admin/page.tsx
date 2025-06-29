@@ -33,7 +33,7 @@ import { CalendarCheck } from 'lucide-react';
 
 
 interface GroupedBookings {
-  [roomName: string]: Booking[];
+  [roomId: string]: Booking[];
 }
 
 interface AdminConfigFormState {
@@ -138,8 +138,7 @@ export default function AdminPage() {
       } else {
         setAllBookings(result.bookings);
       }
-    } catch (err) {
-      setError('Failed to fetch bookings. Please try again.');
+    } catch (err)      setError('Failed to fetch bookings. Please try again.');
       setAllBookings([]);
     } finally {
       setIsLoadingBookings(false);
@@ -151,13 +150,12 @@ export default function AdminPage() {
     fetchRooms();
   }, [fetchAdminConfiguration, fetchRooms]);
 
+  const roomMap = useMemo(() => new Map<string, Room>(rooms.map(room => [room.id, room])), [rooms]);
 
-  const groupedBookings = useMemo(() => {
+  const groupedBookings: GroupedBookings = useMemo(() => {
     if (!allBookings.length || !rooms.length) return {};
 
-    const roomMap = new Map<string, Room>(rooms.map(room => [room.id, room]));
-
-    const bookingsByRoomId = allBookings.reduce((acc, booking) => {
+    return allBookings.reduce((acc, booking) => {
       // Only include bookings for rooms that currently exist
       if (roomMap.has(booking.roomId)) {
         if (!acc[booking.roomId]) {
@@ -166,15 +164,8 @@ export default function AdminPage() {
         acc[booking.roomId].push(booking);
       }
       return acc;
-    }, {} as Record<string, Booking[]>);
-
-    // Now, create the final structure with the current room name as the key
-    return Object.entries(bookingsByRoomId).reduce((acc, [roomId, bookingsInRoom]) => {
-      const currentRoomName = roomMap.get(roomId)?.name || 'Unknown Room';
-      acc[currentRoomName] = bookingsInRoom;
-      return acc;
     }, {} as GroupedBookings);
-  }, [allBookings, rooms]);
+  }, [allBookings, rooms, roomMap]);
 
 
   const handleConfigChange = (field: keyof AdminConfigFormState, value: string) => {
@@ -391,11 +382,12 @@ export default function AdminPage() {
                     <p className="text-muted-foreground">No bookings found.</p>
                   ) : (
                     <ScrollArea className="h-[600px] w-full rounded-md border p-4 bg-card">
-                      {Object.entries(groupedBookings).map(([roomName, bookingsInRoom]) => {
+                      {Object.entries(groupedBookings).map(([roomId, bookingsInRoom]) => {
+                        const roomName = roomMap.get(roomId)?.name || 'Unknown Room';
                         let lastDateProcessedForRoom: string | null = null;
                         let useAlternateRowStyle = false;
                         return (
-                          <div key={roomName} className="mb-8">
+                          <div key={roomId} className="mb-8">
                             <h4 className="text-lg font-headline font-semibold mb-3 text-primary flex items-center">
                               <Building className="mr-2 h-5 w-5" />
                               {roomName}
