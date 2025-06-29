@@ -33,7 +33,6 @@ import { UserFormDialog } from '@/components/bookly/UserFormDialog';
 import { PasswordChangeDialog } from '@/components/bookly/PasswordChangeDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
-
 interface AdminDashboardProps {
   initialSession: SessionPayload;
 }
@@ -113,11 +112,24 @@ export function AdminDashboard({ initialSession }: AdminDashboardProps) {
     setIsLoadingConfig(true);
     try {
       const currentConfig = await getCurrentConfiguration();
-      setConfig({
-        slotDuration: convertMinutesToDurationString(currentConfig.slotDurationMinutes),
-        startOfDay: currentConfig.startOfDay,
-        endOfDay: currentConfig.endOfDay,
-      });
+      if (currentConfig) {
+        setConfig({
+          slotDuration: convertMinutesToDurationString(currentConfig.slotDurationMinutes),
+          startOfDay: currentConfig.startOfDay,
+          endOfDay: currentConfig.endOfDay,
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Error Fetching Configuration',
+          description: 'Could not load settings. Using default values.',
+        });
+        setConfig({
+          slotDuration: convertMinutesToDurationString(60),
+          startOfDay: '09:00',
+          endOfDay: '17:00',
+        });
+      }
     } catch (err) {
       console.error("Failed to fetch admin configuration:", err);
       const errorMessage = err instanceof Error ? err.message : 'Could not load current settings. Please check server logs.';
