@@ -1,7 +1,7 @@
 
 'use server';
 
-import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings } from '@/types';
+import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings, RoomWithDailyUsage } from '@/types';
 import { readConfigurationFromFile, writeConfigurationToFile } from './config-store';
 import { z } from 'zod';
 import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes, isWeekend, addDays } from 'date-fns';
@@ -487,7 +487,7 @@ const calculateDurationHours = (timeRange: string): number => {
     return durationMilliseconds / (1000 * 60 * 60);
 };
 
-export async function getRoomsWithDailyUsage(): Promise<(Room & { dailyUsage: number[] })[]> {
+export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
     const [
         { rooms }, 
         allBookings, 
@@ -516,7 +516,7 @@ export async function getRoomsWithDailyUsage(): Promise<(Room & { dailyUsage: nu
     const totalWorkdayHours = (endOfDay.getTime() - startOfDay.getTime()) / (1000 * 60 * 60);
 
     if (totalWorkdayHours <= 0) {
-        return rooms.map(room => ({ ...room, dailyUsage: [0, 0, 0, 0, 0] }));
+        return rooms.map(room => ({ ...room, dailyUsage: nextFiveWorkingDays.map(d => ({ date: d, usage: 0 })) }));
     }
 
     const bookingsByRoom = allBookings.reduce((acc, booking) => {
@@ -537,7 +537,10 @@ export async function getRoomsWithDailyUsage(): Promise<(Room & { dailyUsage: nu
             }, 0);
             
             const usagePercentage = Math.round((totalBookedHoursForDay / totalWorkdayHours) * 100);
-            return Math.min(usagePercentage, 100); // Cap at 100
+            return {
+                date: day,
+                usage: Math.min(usagePercentage, 100)
+            };
         });
 
         return {

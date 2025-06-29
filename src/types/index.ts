@@ -53,6 +53,14 @@ export interface AISuggestion {
   reason?: string;
 }
 
+export interface DailyUsage {
+  date: string; // YYYY-MM-DD
+  usage: number; // percentage
+}
+
+export interface RoomWithDailyUsage extends Room {
+  dailyUsage: DailyUsage[];
+}
 
 // Interface for application configuration stored in app-config.json
 export interface AppConfiguration {

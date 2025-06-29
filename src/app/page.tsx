@@ -3,13 +3,10 @@ import { Header } from '@/components/bookly/Header';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { getRoomsWithDailyUsage } from '@/lib/actions';
-import type { Room } from '@/types';
+import type { RoomWithDailyUsage } from '@/types';
 import { Armchair } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface RoomWithDailyUsage extends Room {
-  dailyUsage: number[];
-}
+import { format } from 'date-fns';
 
 export default async function HomePage() {
   const roomsWithUsage: RoomWithDailyUsage[] = await getRoomsWithDailyUsage();
@@ -45,13 +42,13 @@ export default async function HomePage() {
                           Usage (Next 5 Working Days)
                       </p>
                       <div className="flex w-full justify-center gap-1">
-                        {room.dailyUsage.map((usage, index) => (
+                        {room.dailyUsage.map((dayUsage, index) => (
                           <div
                             key={index}
-                            title={`Day ${index + 1}: ${usage}% used`}
+                            title={`${format(new Date(dayUsage.date + 'T00:00:00'), 'MMM d')}: ${dayUsage.usage}% used`}
                             className={cn(
                               'h-2 w-full flex-1 rounded-sm transition-colors',
-                              getUsageColor(usage)
+                              getUsageColor(dayUsage.usage)
                             )}
                           />
                         ))}
