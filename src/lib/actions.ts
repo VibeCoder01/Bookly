@@ -16,7 +16,7 @@ const readRoomsFromFile = async (): Promise<Room[]> => {
   try {
     if (fs.existsSync(ROOMS_FILE_PATH)) {
       const fileContent = await fs.promises.readFile(ROOMS_FILE_PATH, 'utf-8');
-      if (fileContent) {
+      if (fileContent && fileContent.trim().length > 0) {
         return JSON.parse(fileContent) as Room[];
       }
     }
@@ -472,6 +472,7 @@ export async function importAllSettings(jsonContent: string): Promise<{ success:
 
 // --- Usage Calculation Action ---
 export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
+    // 1. Fetch all data concurrently
     const [
         { rooms }, 
         allBookings, 
@@ -482,6 +483,7 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
         getCurrentConfiguration()
     ]);
 
+    // 2. Pre-calculate the next five working days
     const nextFiveWorkingDays: string[] = [];
     let currentDate = new Date(new Date().setHours(0, 0, 0, 0));
     while (nextFiveWorkingDays.length < 5) {
@@ -491,76 +493,79 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
         currentDate = addDays(currentDate, 1);
     }
     
-    // Generate all possible slots for a day
-    const [startHour, startMinute] = appConfig.startOfDay.split(':').map(Number);
-    const [endHour, endMinute] = appConfig.endOfDay.split(':').map(Number);
-    
-    const allDaySlots: { startTime: string; endTime: string }[] = [];
-    let slotTime = setHours(setMinutes(new Date(), startMinute), startHour);
-    const dayEndTime = setHours(setMinutes(new Date(), endMinute), endHour);
-
-    while (isBefore(slotTime, dayEndTime)) {
-        const slotStart = new Date(slotTime);
-        const slotEnd = addMinutes(slotStart, appConfig.slotDurationMinutes);
-        if (isBefore(dayEndTime, slotEnd) || isEqual(dayEndTime, slotStart)) {
-            break;
-        }
-        allDaySlots.push({
-            startTime: format(slotStart, 'HH:mm'),
-            endTime: format(slotEnd, 'HH:mm'),
-        });
-        slotTime = slotEnd;
-    }
-
-    const bookingsByRoom = allBookings.reduce((acc, booking) => {
-        if (!acc[booking.roomId]) {
-            acc[booking.roomId] = [];
-        }
-        acc[booking.roomId].push(booking);
-        return acc;
-    }, {} as Record<string, Booking[]>);
-
-    const getSlotBookingInfo = (slotStartTime: string, slotEndTime: string, date: string, roomBookingsForDay: Booking[]): { isBooked: boolean; title?: string; userName?: string; } => {
-        const slotStartDateTime = parse(`${date} ${slotStartTime}`, 'yyyy-MM-dd HH:mm', new Date());
-        const slotEndDateTime = parse(`${date} ${slotEndTime}`, 'yyyy-MM-dd HH:mm', new Date());
+    // 3. Generate all possible time slots for a generic day once
+    const generateDaySlots = () => {
+        const [startHour, startMinute] = appConfig.startOfDay.split(':').map(Number);
+        const [endHour, endMinute] = appConfig.endOfDay.split(':').map(Number);
         
-        const overlappingBooking = roomBookingsForDay.find(booking => {
-            const bookingTimes = parseBookingTime(booking.time, booking.date);
-            if (!bookingTimes) return false;
-            // Check for overlap: (StartA < EndB) and (EndA > StartB)
-            return isBefore(slotStartDateTime, bookingTimes.end) && isBefore(bookingTimes.start, slotEndDateTime);
-        });
+        const slots: { startTime: string; endTime: string }[] = [];
+        let slotTime = setHours(setMinutes(new Date(), startMinute), startHour);
+        const dayEndTime = setHours(setMinutes(new Date(), endMinute), endHour);
 
-        if (overlappingBooking) {
-            return {
-                isBooked: true,
-                title: overlappingBooking.title,
-                userName: overlappingBooking.userName
-            };
+        while (isBefore(slotTime, dayEndTime)) {
+            const slotStart = new Date(slotTime);
+            const slotEnd = addMinutes(slotStart, appConfig.slotDurationMinutes);
+            if (isBefore(dayEndTime, slotEnd) || isEqual(dayEndTime, slotStart)) {
+                break;
+            }
+            slots.push({
+                startTime: format(slotStart, 'HH:mm'),
+                endTime: format(slotEnd, 'HH:mm'),
+            });
+            slotTime = slotEnd;
         }
-
-        return { isBooked: false };
+        return slots;
     };
+    const allDaySlots = generateDaySlots();
 
+    // 4. Pre-process bookings into a more efficient structure for lookups
+    const bookingsByRoomThenDay = allBookings.reduce((acc, booking) => {
+        if (!acc[booking.roomId]) {
+            acc[booking.roomId] = {};
+        }
+        if (!acc[booking.roomId][booking.date]) {
+            acc[booking.roomId][booking.date] = [];
+        }
+        acc[booking.roomId][booking.date].push(booking);
+        return acc;
+    }, {} as Record<string, Record<string, Booking[]>>);
+
+    // 5. Main logic to build the final data structure
     const roomsWithUsage = rooms.map(room => {
-        const roomBookings = bookingsByRoom[room.id] || [];
+        const roomBookingsByDay = bookingsByRoomThenDay[room.id] || {};
         
         const dailyUsage = nextFiveWorkingDays.map(day => {
-            const bookingsForDay = roomBookings.filter(b => b.date === day);
+            const bookingsForThisDay = roomBookingsByDay[day] || [];
+            
+            // Create a map of slots for the day, initialized as available
+            const slotStatusMap: Record<string, SlotStatus> = {};
+            for (const slot of allDaySlots) {
+                slotStatusMap[slot.startTime] = { ...slot, isBooked: false };
+            }
 
-            const slotsWithStatus: SlotStatus[] = allDaySlots.map(slot => {
-                const bookingInfo = getSlotBookingInfo(slot.startTime, slot.endTime, day, bookingsForDay);
-                return {
-                    ...slot,
-                    isBooked: bookingInfo.isBooked,
-                    title: bookingInfo.title,
-                    userName: bookingInfo.userName
-                };
-            });
+            // Mark slots as booked based on the day's bookings
+            for (const booking of bookingsForThisDay) {
+                const bookingTimes = parseBookingTime(booking.time, booking.date);
+                if (!bookingTimes) continue;
 
+                let currentSlotTime = bookingTimes.start;
+                // Iterate from the booking's start time until its end time, marking each covered slot.
+                while (isBefore(currentSlotTime, bookingTimes.end)) {
+                    const startTimeStr = format(currentSlotTime, 'HH:mm');
+                    
+                    if (slotStatusMap[startTimeStr]) {
+                        slotStatusMap[startTimeStr].isBooked = true;
+                        slotStatusMap[startTimeStr].title = booking.title;
+                        slotStatusMap[startTimeStr].userName = booking.userName;
+                    }
+                    
+                    currentSlotTime = addMinutes(currentSlotTime, appConfig.slotDurationMinutes);
+                }
+            }
+            
             return {
                 date: day,
-                slots: slotsWithStatus,
+                slots: Object.values(slotStatusMap), // Convert map back to array
             };
         });
 
