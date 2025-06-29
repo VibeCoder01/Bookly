@@ -1,4 +1,3 @@
-
 'use client';
 
 import { CalendarCheck, UserCog, Wifi } from 'lucide-react';
@@ -32,9 +31,12 @@ export function Header({ userName }: HeaderProps) {
       <div className="container mx-auto px-4 flex items-center justify-between">
         <Link href="/" className="flex items-center group">
           <CalendarCheck className="h-10 w-10 text-primary mr-3 group-hover:text-primary/80 transition-colors" />
-          <h1 className="font-headline text-4xl font-semibold text-primary group-hover:text-primary/80 transition-colors">
-            Bookly
-          </h1>
+          <div>
+            <h1 className="font-headline text-4xl font-semibold text-primary group-hover:text-primary/80 transition-colors">
+              Bookly
+            </h1>
+            <p className="text-sm text-muted-foreground">Room booking system</p>
+          </div>
         </Link>
         <div className="flex items-center space-x-4">
           {isLoadingIp ? (

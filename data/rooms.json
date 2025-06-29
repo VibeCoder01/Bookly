@@ -3,5 +3,25 @@
     "id": "room-1751190519216",
     "name": "Beta",
     "capacity": 1
+  },
+  {
+    "id": "room-1751191941997",
+    "name": "Alpha",
+    "capacity": 1
+  },
+  {
+    "id": "room-1751191949953",
+    "name": "Charlie",
+    "capacity": 1
+  },
+  {
+    "id": "room-1751191954224",
+    "name": "Delta",
+    "capacity": 1
+  },
+  {
+    "id": "room-1751192006817",
+    "name": "Echo",
+    "capacity": 1
   }
 ]
