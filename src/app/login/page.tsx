@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -109,7 +110,7 @@ export default function LoginPage() {
 
           {needsPasswordSetup ? (
             <Form {...passwordForm}>
-                <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-6">
+                <form key="password-setup-form" onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-6">
                     <FormField
                         control={passwordForm.control}
                         name="password"
@@ -149,7 +150,7 @@ export default function LoginPage() {
             </Form>
           ) : (
             <Form {...loginForm}>
-                <form onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-6">
+                <form key="login-form" onSubmit={loginForm.handleSubmit(onLoginSubmit)} className="space-y-6">
                 <FormField
                     control={loginForm.control}
                     name="username"
