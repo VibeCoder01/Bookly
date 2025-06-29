@@ -194,16 +194,41 @@ export default function AdminPage() {
   
   const handleLogoUpload = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setIsUploadingLogo(true);
 
-    const formData = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const fileInput = form.elements.namedItem('logo') as HTMLInputElement;
+    const file = fileInput.files?.[0];
+
+    // --- CLIENT-SIDE VALIDATION ---
+    if (!file) {
+      toast({ variant: 'destructive', title: 'No File Selected', description: 'Please choose a logo file to upload.' });
+      return;
+    }
+    
+    const MAX_FILE_SIZE_MB = 1;
+    const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+    
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+        toast({ variant: 'destructive', title: 'File Too Large', description: `Please select a file smaller than ${MAX_FILE_SIZE_MB}MB.` });
+        return;
+    }
+
+    const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'];
+    if (!ALLOWED_TYPES.includes(file.type)) {
+         toast({ variant: 'destructive', title: 'Invalid File Type', description: 'Please upload a PNG, JPG, SVG, or WEBP file.' });
+        return;
+    }
+    // --- END CLIENT-SIDE VALIDATION ---
+
+    setIsUploadingLogo(true);
+    const formData = new FormData(form);
     const result = await updateAppLogo(formData);
 
     if (result.success && result.logoPath) {
         toast({ title: 'Logo Updated', description: 'Your new logo has been uploaded.' });
         setCurrentLogo(result.logoPath);
     } else {
-        toast({ variant: 'destructive', title: 'Logo Upload Failed', description: result.error });
+        toast({ variant: 'destructive', title: 'Logo Upload Failed', description: result.error || 'An unexpected error occurred.' });
     }
 
     setIsUploadingLogo(false);
