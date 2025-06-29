@@ -218,6 +218,9 @@ export default function AdminPage() {
       if (result.success) {
           toast({ title: 'Room Deleted', description: `Room "${roomToDelete.name}" has been deleted.` });
           fetchRooms();
+          if (showBookingsTable) {
+              await handleShowAllBookings();
+          }
       } else {
           toast({ variant: 'destructive', title: 'Error Deleting Room', description: result.error });
       }
