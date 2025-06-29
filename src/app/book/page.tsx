@@ -5,11 +5,16 @@ import { Header } from '@/components/bookly/Header';
 import { BookingForm } from '@/components/bookly/BookingForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { Booking, Room } from '@/types';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { getRooms } from '@/lib/actions';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSearchParams } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 
-export default function BookPage() {
+function BookPageContents() {
+  const searchParams = useSearchParams();
+  const initialRoomId = searchParams.get('roomId');
+
   const [currentUserName, setCurrentUserName] = useState<string | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
@@ -62,6 +67,7 @@ export default function BookPage() {
                    <BookingForm 
                       rooms={rooms} 
                       onBookingAttemptCompleted={handleBookingAttemptCompletion} 
+                      initialRoomId={initialRoomId}
                     />
                 )}
               </CardContent>
@@ -70,4 +76,20 @@ export default function BookPage() {
       </main>
     </div>
   );
+}
+
+
+export default function BookPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-background text-foreground">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Loading...</span>
+        </div>
+      </div>
+    }>
+      <BookPageContents />
+    </Suspense>
+  )
 }

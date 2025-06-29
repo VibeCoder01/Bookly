@@ -23,6 +23,7 @@ import { useRouter } from 'next/navigation';
 interface BookingFormProps {
   rooms: Room[];
   onBookingAttemptCompleted: (booking: Booking | null) => void;
+  initialRoomId?: string | null;
 }
 
 const formSchema = z.object({
@@ -46,7 +47,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormProps) {
+export function BookingForm({ rooms, onBookingAttemptCompleted, initialRoomId }: BookingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [allAvailableIndividualSlots, setAllAvailableIndividualSlots] = useState<TimeSlot[]>([]);
@@ -62,7 +63,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      roomId: '',
+      roomId: initialRoomId || '',
       date: undefined,
       startTime: '',
       endTime: '',
