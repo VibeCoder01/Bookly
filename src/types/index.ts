@@ -88,3 +88,28 @@ export interface ExportedSettings {
   rooms: Room[];
   bookings: Booking[];
 }
+
+// --- Auth & User Management ---
+export interface UserPermissions {
+  canManageRooms: boolean;
+  canManageConfig: boolean;
+  canManageData: boolean;
+}
+
+export interface User {
+  id: string;
+  username: string;
+  passwordHash: string;
+  role: 'master' | 'admin';
+  permissions: UserPermissions;
+}
+
+export type UserFormData = Omit<User, 'passwordHash'> & { password?: string };
+
+export type SessionPayload = {
+    userId: string;
+    username: string;
+    role: 'master' | 'admin';
+    permissions: UserPermissions;
+    expiresAt: Date;
+}
