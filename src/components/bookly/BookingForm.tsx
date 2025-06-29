@@ -477,16 +477,20 @@ export function BookingForm({ rooms, onBookingAttemptCompleted, initialRoomId }:
             </div>
         </div>
 
-
-        <Button type="submit" className="w-full md:w-auto bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isBookRoomButtonDisabled}>
-          {isSubmittingForm ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
-            </>
-          ) : (
-            'Book Room'
-          )}
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-2">
+            <Button type="submit" className="w-full sm:w-auto bg-accent hover:bg-accent/90 text-accent-foreground" disabled={isBookRoomButtonDisabled}>
+              {isSubmittingForm ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
+                </>
+              ) : (
+                'Book Room'
+              )}
+            </Button>
+            <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => router.push('/')} disabled={isSubmittingForm}>
+                Cancel
+            </Button>
+        </div>
       </form>
       {roomDetailsForDialog && (
         <RoomBookingsDialog
