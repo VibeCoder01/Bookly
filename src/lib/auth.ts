@@ -92,82 +92,106 @@ export async function getUserById(userId: string): Promise<User | undefined> {
 }
 
 export async function addUser(userData: Omit<UserFormData, 'id'>): Promise<{ success: boolean; error?: string }> {
-    const users = await readUsersFromFile();
-    
-    if (await getUserByUsername(userData.username)) {
-        return { success: false, error: 'Username already exists.' };
-    }
-    if (!userData.password) {
-        return { success: false, error: 'Password is required for a new user.' };
-    }
-
-    const newUser: User = {
-        id: `user-${Date.now()}`,
-        username: userData.username,
-        passwordHash: await hashPassword(userData.password),
-        role: 'admin', // Only 'admin' role can be created
-        permissions: userData.permissions,
-    };
-
-    users.push(newUser);
-    await writeUsersToFile(users);
-    return { success: true };
-}
-
-export async function updateUser(userId: string, userData: UserFormData): Promise<{ success: boolean; error?: string }> {
-    const users = await readUsersFromFile();
-    const userIndex = users.findIndex(u => u.id === userId);
-
-    if (userIndex === -1) {
-        return { success: false, error: 'User not found.' };
-    }
-    
-    const existingUser = users[userIndex];
-
-    // Check for username conflict if it's being changed
-    if (userData.username.toLowerCase() !== existingUser.username.toLowerCase()) {
+    try {
+        const users = await readUsersFromFile();
+        
         if (await getUserByUsername(userData.username)) {
             return { success: false, error: 'Username already exists.' };
         }
-    }
+        if (!userData.password) {
+            return { success: false, error: 'Password is required for a new user.' };
+        }
 
-    // Update fields
-    users[userIndex].username = userData.username;
-    users[userIndex].permissions = userData.permissions;
-    
-    if (userData.password) {
-        users[userIndex].passwordHash = await hashPassword(userData.password);
-    }
+        const newUser: User = {
+            id: `user-${Date.now()}`,
+            username: userData.username,
+            passwordHash: await hashPassword(userData.password),
+            role: 'admin', // Only 'admin' role can be created
+            permissions: userData.permissions,
+        };
 
-    await writeUsersToFile(users);
-    return { success: true };
+        users.push(newUser);
+        await writeUsersToFile(users);
+        return { success: true };
+    } catch (error) {
+        console.error("[Bookly Auth] Failed to add user:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unknown server error occurred.";
+        return { success: false, error: errorMessage };
+    }
+}
+
+export async function updateUser(userId: string, userData: UserFormData): Promise<{ success: boolean; error?: string }> {
+    try {
+        const users = await readUsersFromFile();
+        const userIndex = users.findIndex(u => u.id === userId);
+
+        if (userIndex === -1) {
+            return { success: false, error: 'User not found.' };
+        }
+        
+        const existingUser = users[userIndex];
+
+        // Check for username conflict if it's being changed
+        if (userData.username.toLowerCase() !== existingUser.username.toLowerCase()) {
+            if (await getUserByUsername(userData.username)) {
+                return { success: false, error: 'Username already exists.' };
+            }
+        }
+
+        // Update fields
+        users[userIndex].username = userData.username;
+        users[userIndex].permissions = userData.permissions;
+        
+        if (userData.password) {
+            users[userIndex].passwordHash = await hashPassword(userData.password);
+        }
+
+        await writeUsersToFile(users);
+        return { success: true };
+    } catch (error) {
+        console.error("[Bookly Auth] Failed to update user:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unknown server error occurred.";
+        return { success: false, error: errorMessage };
+    }
 }
 
 export async function updateUserPassword(userId: string, newPassword: string): Promise<{ success: boolean, error?: string }> {
-    if (!newPassword || newPassword.length < 6) {
-        return { success: false, error: 'Password must be at least 6 characters.' };
+    try {
+        if (!newPassword || newPassword.length < 6) {
+            return { success: false, error: 'Password must be at least 6 characters.' };
+        }
+        const users = await readUsersFromFile();
+        const userIndex = users.findIndex(u => u.id === userId);
+        if (userIndex === -1) {
+            return { success: false, error: 'User not found.' };
+        }
+        users[userIndex].passwordHash = await hashPassword(newPassword);
+        await writeUsersToFile(users);
+        return { success: true };
+    } catch (error) {
+        console.error("[Bookly Auth] Failed to update password:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unknown server error occurred.";
+        return { success: false, error: errorMessage };
     }
-    const users = await readUsersFromFile();
-    const userIndex = users.findIndex(u => u.id === userId);
-    if (userIndex === -1) {
-        return { success: false, error: 'User not found.' };
-    }
-    users[userIndex].passwordHash = await hashPassword(newPassword);
-    await writeUsersToFile(users);
-    return { success: true };
 }
 
 export async function deleteUser(userId: string): Promise<{ success: boolean; error?: string }> {
-    let users = await readUsersFromFile();
-    const userToDelete = users.find(u => u.id === userId);
-    if (!userToDelete) {
-        return { success: false, error: 'User not found.' };
-    }
-    if (userToDelete.role === 'master') {
-        return { success: false, error: 'The Master Admin account cannot be deleted.' };
-    }
+    try {
+        let users = await readUsersFromFile();
+        const userToDelete = users.find(u => u.id === userId);
+        if (!userToDelete) {
+            return { success: false, error: 'User not found.' };
+        }
+        if (userToDelete.role === 'master') {
+            return { success: false, error: 'The Master Admin account cannot be deleted.' };
+        }
 
-    const filteredUsers = users.filter(u => u.id !== userId);
-    await writeUsersToFile(filteredUsers);
-    return { success: true };
+        const filteredUsers = users.filter(u => u.id !== userId);
+        await writeUsersToFile(filteredUsers);
+        return { success: true };
+    } catch (error) {
+        console.error("[Bookly Auth] Failed to delete user:", error);
+        const errorMessage = error instanceof Error ? error.message : "An unknown server error occurred.";
+        return { success: false, error: errorMessage };
+    }
 }
