@@ -189,9 +189,14 @@ export async function updateAppLogo(
 
   try {
     const fileBuffer = Buffer.from(await file.arrayBuffer());
-    // Add timestamp to filename to prevent browser caching issues
     const logoFileName = `app-logo-${Date.now()}${path.extname(file.name)}`;
-    const logoPath = path.join(process.cwd(), 'public', logoFileName);
+    const publicDirectory = path.join(process.cwd(), 'public');
+
+    if (!fs.existsSync(publicDirectory)) {
+        await fs.promises.mkdir(publicDirectory, { recursive: true });
+    }
+    
+    const logoPath = path.join(publicDirectory, logoFileName);
     
     const config = await readConfigurationFromFile();
     const oldLogoPath = config.appLogo; // Get old logo path before updating
@@ -204,7 +209,7 @@ export async function updateAppLogo(
     
     // Clean up the old logo file if it exists and is one of our managed logos
     if (oldLogoPath && oldLogoPath.startsWith('/app-logo-')) {
-        const oldLogoFilePath = path.join(process.cwd(), 'public', oldLogoPath.substring(1));
+        const oldLogoFilePath = path.join(publicDirectory, oldLogoPath.substring(1));
         try {
             if (fs.existsSync(oldLogoFilePath)) {
                 await fs.promises.unlink(oldLogoFilePath);
