@@ -1,5 +1,5 @@
 {
-  "slotDurationMinutes": 60,
+  "slotDurationMinutes": 15,
   "startOfDay": "09:00",
   "endOfDay": "17:00"
 }

@@ -13,8 +13,8 @@ export default async function HomePage() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Header />
-      <main className="flex-grow flex items-center justify-center p-4">
-        <div className="flex flex-wrap justify-center gap-6 max-w-5xl mx-auto">
+      <main className="flex-grow flex items-center justify-center p-6">
+        <div className="flex flex-wrap justify-center gap-6">
           {roomsWithUsage.length > 0 ? (
             roomsWithUsage.map((room) => (
               <Link
