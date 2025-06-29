@@ -12,6 +12,7 @@ import {
     getAllBookings, 
     updateAppConfiguration as serverUpdateAppConfiguration,
     updateAppLogo,
+    revertToDefaultLogo,
     getCurrentConfiguration,
     getRooms,
     deleteRoom,
@@ -72,6 +73,8 @@ export default function AdminPage() {
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isRevertingLogo, setIsRevertingLogo] = useState(false);
+
 
   // Rooms state
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -227,11 +230,26 @@ export default function AdminPage() {
     if (result.success && result.logoPath) {
         toast({ title: 'Logo Updated', description: 'Your new logo has been uploaded.' });
         setCurrentLogo(result.logoPath);
+        if (fileInput) fileInput.value = '';
     } else {
         toast({ variant: 'destructive', title: 'Logo Upload Failed', description: result.error || 'An unexpected error occurred.' });
     }
 
     setIsUploadingLogo(false);
+  };
+
+  const handleRevertLogo = async () => {
+    setIsRevertingLogo(true);
+    const result = await revertToDefaultLogo();
+
+    if (result.success) {
+        toast({ title: 'Logo Reverted', description: 'The application is now using the default logo.' });
+        setCurrentLogo(undefined);
+    } else {
+        toast({ variant: 'destructive', title: 'Revert Failed', description: result.error || 'An unexpected error occurred.' });
+    }
+
+    setIsRevertingLogo(false);
   };
 
   const getIconForSetting = (settingKey: keyof AdminConfigFormState) => {
@@ -617,11 +635,23 @@ export default function AdminPage() {
                     </div>
                     <form onSubmit={handleLogoUpload} className="flex-grow">
                       <Label htmlFor="logo-upload" className="mb-2 block">Upload New Logo</Label>
-                      <div className="flex items-center gap-2">
-                          <Input id="logo-upload" name="logo" type="file" required accept="image/png, image/jpeg, image/svg+xml, image/webp" disabled={isUploadingLogo || isLoadingConfig} />
-                          <Button type="submit" disabled={isUploadingLogo || isLoadingConfig}>
+                      <div className="flex flex-wrap items-center gap-2">
+                          <Input 
+                            id="logo-upload" 
+                            name="logo" 
+                            type="file" 
+                            required 
+                            accept="image/png, image/jpeg, image/svg+xml, image/webp" 
+                            className="flex-grow"
+                            disabled={isUploadingLogo || isLoadingConfig || isRevertingLogo} 
+                          />
+                          <Button type="submit" disabled={isUploadingLogo || isLoadingConfig || isRevertingLogo}>
                               {isUploadingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                               Save
+                          </Button>
+                          <Button type="button" variant="outline" onClick={handleRevertLogo} disabled={!currentLogo || isUploadingLogo || isLoadingConfig || isRevertingLogo}>
+                              {isRevertingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                              Use Default
                           </Button>
                       </div>
                       <p className="text-xs text-muted-foreground mt-2">Maximum file size: 1MB. The logo will be displayed at 40x40px.</p>
@@ -675,5 +705,3 @@ export default function AdminPage() {
     </>
   );
 }
-
-    

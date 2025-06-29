@@ -175,12 +175,8 @@ export async function updateAppLogo(
 ): Promise<{ success: boolean; error?: string; logoPath?: string }> {
   const file = formData.get('logo') as File | null;
 
-  if (!file) {
-    return { success: false, error: 'No file uploaded.' };
-  }
-  
-  if (file.size === 0) {
-      return { success: false, error: 'Cannot upload an empty file.' };
+  if (!file || file.size === 0) {
+    return { success: false, error: 'No file was selected or the file is empty.' };
   }
   
   if (!['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'].includes(file.type)) {
@@ -227,6 +223,46 @@ export async function updateAppLogo(
   } catch (error) {
     console.error('[Logo Upload Error]', error);
     return { success: false, error: 'Failed to save the new logo.' };
+  }
+}
+
+export async function revertToDefaultLogo(): Promise<{ success: boolean; error?: string }> {
+  try {
+    const config = await readConfigurationFromFile();
+    const oldLogoPath = config.appLogo;
+
+    if (!oldLogoPath) {
+      // No custom logo to remove, just return success.
+      return { success: true };
+    }
+
+    // Update config in memory first
+    config.appLogo = undefined;
+    
+    // Write new config to file
+    await writeConfigurationToFile(config);
+
+    // After successfully updating the config, try to delete the old file
+    if (oldLogoPath.startsWith('/app-logo-')) {
+        const publicDirectory = path.join(process.cwd(), 'public');
+        const oldLogoFilePath = path.join(publicDirectory, oldLogoPath.substring(1));
+        try {
+            if (fs.existsSync(oldLogoFilePath)) {
+                await fs.promises.unlink(oldLogoFilePath);
+                console.log(`[Logo Cleanup] Deleted old logo: ${oldLogoPath}`);
+            }
+        } catch (cleanupError) {
+            // This is not a critical failure, the main goal was to update the config.
+            // Log it for maintenance purposes.
+            console.error(`[Logo Cleanup] Non-critical error: Failed to delete old logo file ${oldLogoPath}:`, cleanupError);
+        }
+    }
+
+    revalidatePath('/', 'layout'); // Revalidate all pages using the layout
+    return { success: true };
+  } catch (error) {
+    console.error('[Revert Logo Error]', error);
+    return { success: false, error: 'Failed to revert to the default logo.' };
   }
 }
 
@@ -621,5 +657,3 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
 
     return roomsWithUsage;
 }
-
-    

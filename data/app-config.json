@@ -1,6 +1,7 @@
 {
   "appName": "Cancer Services",
   "appSubtitle": "Room booking system",
+  "appLogo": "/app-logo-1751212815836.png",
   "slotDurationMinutes": 30,
   "startOfDay": "09:00",
   "endOfDay": "17:00"
