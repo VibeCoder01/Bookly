@@ -4,7 +4,6 @@
     "id": "booking-2",
     "roomId": "room-2",
     "roomName": "Meeting Room Bravo",
-    "title": "Client Call",
     "date": "2025-06-20",
     "time": "14:00 - 15:00",
     "userName": "Bob The Builder",
@@ -14,7 +13,6 @@
     "id": "booking-1751140247290-ytka3",
     "roomId": "room-2",
     "roomName": "Meeting Room Bravo",
-    "title": "1-on-1",
     "date": "2025-07-01",
     "time": "11:00 - 13:00",
     "userName": "Shaun",
@@ -24,9 +22,38 @@
     "id": "booking-1751146201154-kjd5p",
     "roomId": "room-2",
     "roomName": "Meeting Room Bravo",
-    "title": "Team Huddle",
     "date": "2025-07-01",
     "time": "13:00 - 15:00",
+    "userName": "Shaun",
+    "userEmail": "sdunmall@gmail.com"
+  },
+  {
+    "id": "booking-1751183224535-78vgt",
+    "roomId": "room-2",
+    "roomName": "Meeting Room Bravo",
+    "date": "2025-07-01",
+    "time": "16:00 - 17:00",
+    "title": "Fff",
+    "userName": "Yyy",
+    "userEmail": "jjj@fff.vom"
+  },
+  {
+    "id": "booking-1751183462687-h5lwb",
+    "roomId": "room-2",
+    "roomName": "Meeting Room Bravo",
+    "date": "2025-07-01",
+    "time": "10:00 - 11:00",
+    "title": "Jhhh",
+    "userName": "Yyy",
+    "userEmail": "jjj@fff.vom"
+  },
+  {
+    "id": "booking-1751188858620-aruc9",
+    "roomId": "room-2",
+    "roomName": "Meeting Room Bravo",
+    "date": "2025-07-01",
+    "time": "09:00 - 10:00",
+    "title": "Blah meeting",
     "userName": "Shaun",
     "userEmail": "sdunmall@gmail.com"
   }
