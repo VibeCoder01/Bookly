@@ -113,6 +113,9 @@ export function AdminDashboard({ initialSession }: AdminDashboardProps) {
     setIsLoadingConfig(true);
     try {
       const currentConfig = await getCurrentConfiguration();
+      if (!currentConfig) {
+        throw new Error("Configuration data could not be loaded from the server.");
+      }
       setConfig({
         slotDuration: convertMinutesToDurationString(currentConfig.slotDurationMinutes),
         startOfDay: currentConfig.startOfDay,
@@ -120,10 +123,11 @@ export function AdminDashboard({ initialSession }: AdminDashboardProps) {
       });
     } catch (err) {
       console.error("Failed to fetch admin configuration:", err);
+      const errorMessage = err instanceof Error ? err.message : 'Could not load current settings. Displaying defaults.';
       toast({
         variant: 'destructive',
         title: 'Error Fetching Configuration',
-        description: 'Could not load current settings. Displaying defaults.',
+        description: errorMessage,
       });
       setConfig({ slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00' });
     } finally {
