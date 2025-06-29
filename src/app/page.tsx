@@ -30,7 +30,7 @@ export default async function HomePage() {
                       <span className="mt-2 text-base text-center font-bold">{room.name}</span>
                   </div>
 
-                  <div className="w-full py-2 px-3 bg-black/10 border-t border-accent-foreground/20">
+                  <div className="w-full pt-2 pb-3 px-3 bg-black/10">
                       <p className="text-xs text-center font-medium text-accent-foreground/80 mb-1">
                           Usage (Next 5 Working Days)
                       </p>
@@ -39,7 +39,7 @@ export default async function HomePage() {
                           <div
                             key={index}
                             title={`${format(new Date(dayUsage.date + 'T00:00:00'), 'MMM d')}: ${dayUsage.usage}% used`}
-                            className="h-4 w-full flex-1 rounded-sm bg-muted/40 overflow-hidden relative"
+                            className="h-8 w-full flex-1 rounded-sm bg-muted/40 overflow-hidden relative"
                           >
                             <div
                               className="absolute bottom-0 left-0 right-0 bg-white/70"
