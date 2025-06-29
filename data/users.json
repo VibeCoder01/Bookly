@@ -1,8 +1,9 @@
+
 [
   {
     "id": "user-master-001",
     "username": "admin",
-    "passwordHash": "$2a$10$j8C3x2R.t/g7dKj5eLz4Iu6oXoZ5uNlBqf3/GqP.I.c9LqS5.O1jC",
+    "passwordHash": "",
     "role": "master",
     "permissions": {
       "canManageRooms": true,
