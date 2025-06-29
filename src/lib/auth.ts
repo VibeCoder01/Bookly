@@ -19,29 +19,63 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 }
 
 // --- User Data Persistence ---
-export async function readUsersFromFile(): Promise<User[]> {
-  try {
-    const fileContent = await fs.readFile(USERS_FILE_PATH, 'utf-8');
-    return JSON.parse(fileContent) as User[];
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
-      // File doesn't exist, which is a critical error for users.
-      // For this app, we assume a master admin must exist.
-      console.error(`[Bookly Auth] CRITICAL: users.json not found at ${USERS_FILE_PATH}.`);
-      return [];
+const ensureDataDirectoryExists = async () => {
+    const dataDir = path.dirname(USERS_FILE_PATH);
+    try {
+        await fs.access(dataDir);
+    } catch {
+        await fs.mkdir(dataDir, { recursive: true });
     }
-    console.error(`[Bookly Auth] Error reading or parsing ${USERS_FILE_PATH}:`, error);
-    return [];
-  }
+};
+
+async function createDefaultMasterAdmin(): Promise<User> {
+    const hashedPassword = await hashPassword('4rachn1d');
+    const masterAdmin: User = {
+        id: 'user-master-001',
+        username: 'admin',
+        passwordHash: hashedPassword,
+        role: 'master',
+        permissions: {
+            canManageRooms: true,
+            canManageConfig: true,
+            canManageData: true,
+        },
+    };
+    return masterAdmin;
+}
+
+export async function readUsersFromFile(): Promise<User[]> {
+    await ensureDataDirectoryExists();
+    try {
+        const fileContent = await fs.readFile(USERS_FILE_PATH, 'utf-8');
+        const users = JSON.parse(fileContent) as User[];
+        // Handle case where file exists but is empty
+        if (users.length === 0) {
+             throw new Error("User file is empty, will re-initialize.");
+        }
+        return users;
+    } catch (error: any) {
+        // If file doesn't exist or is empty/corrupt, create it with the default admin
+        if (error.code === 'ENOENT' || error instanceof SyntaxError || error.message.includes("User file is empty")) {
+            console.log(`[Bookly Auth] users.json not found or is invalid. Creating with default master admin.`);
+            const masterAdmin = await createDefaultMasterAdmin();
+            const users = [masterAdmin];
+            await writeUsersToFile(users);
+            return users;
+        }
+        console.error(`[Bookly Auth] Error reading or parsing ${USERS_FILE_PATH}:`, error);
+        return [];
+    }
 }
 
 async function writeUsersToFile(users: User[]): Promise<void> {
-  try {
-    await fs.writeFile(USERS_FILE_PATH, JSON.stringify(users, null, 2));
-  } catch (error) {
-    console.error(`[Bookly Auth] Error writing to ${USERS_FILE_PATH}:`, error);
-    throw new Error('Failed to save user data.');
-  }
+    await ensureDataDirectoryExists();
+    try {
+        await fs.writeFile(USERS_FILE_PATH, JSON.stringify(users, null, 2));
+    } catch (error) {
+        console.error(`[Bookly Auth] Error writing to ${USERS_FILE_PATH}:`, error);
+        throw new Error('Failed to save user data.');
+    }
 }
 
 // --- User CRUD Operations ---
