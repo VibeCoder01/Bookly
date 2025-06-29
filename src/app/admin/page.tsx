@@ -16,11 +16,10 @@ import {
     deleteRoom,
     exportAllSettings,
     importAllSettings,
-    deleteSession,
     getUsersForAdmin,
     deleteUserByAdmin
 } from '@/lib/actions';
-import { getSession } from '@/lib/session';
+import { getSession, deleteSession } from '@/lib/session';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';

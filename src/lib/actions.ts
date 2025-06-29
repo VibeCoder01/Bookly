@@ -18,7 +18,7 @@ import {
   updateUserPassword,
   getUserById,
 } from './auth';
-import { createSession, getSession, deleteSession as deleteSessionCookie } from './session';
+import { createSession, getSession } from './session';
 import { redirect } from 'next/navigation';
 
 
@@ -675,12 +675,6 @@ export async function changePasswordByAdmin(userId: string, newPassword: string)
 
     return await updateUserPassword(userId, newPassword);
 }
-
-export async function deleteSession() {
-  await deleteSessionCookie();
-  redirect('/login');
-}
-
 
 export async function getUsersForAdmin(): Promise<{ users?: User[]; error?: string }> {
     const session = await getSession();
