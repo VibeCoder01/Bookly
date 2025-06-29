@@ -97,25 +97,34 @@ export function UserFormDialog({ isOpen, onOpenChange, onSuccess, user }: UserFo
 
   const onSubmit = async (values: UserFormValues) => {
     setIsSubmitting(true);
-    
-    const action = isEditing ? updateUserByAdmin : addUserByAdmin;
-    const result = await action(values as UserFormData);
+    try {
+        const action = isEditing ? updateUserByAdmin : addUserByAdmin;
+        const result = await action(values as UserFormData);
 
-    if (result.success) {
-      toast({
-        title: `Admin User ${isEditing ? 'Updated' : 'Added'}`,
-        description: `The user "${values.username}" has been successfully ${isEditing ? 'updated' : 'added'}.`,
-      });
-      onSuccess();
-      onOpenChange(false);
-    } else {
-      toast({
-        variant: 'destructive',
-        title: `Error ${isEditing ? 'Updating' : 'Adding'} User`,
-        description: result.error || 'An unexpected error occurred.',
-      });
+        if (result?.success) {
+          toast({
+            title: `Admin User ${isEditing ? 'Updated' : 'Added'}`,
+            description: `The user "${values.username}" has been successfully ${isEditing ? 'updated' : 'added'}.`,
+          });
+          onSuccess();
+          onOpenChange(false);
+        } else {
+          toast({
+            variant: 'destructive',
+            title: `Error ${isEditing ? 'Updating' : 'Adding'} User`,
+            description: result?.error || 'An unexpected error occurred.',
+          });
+        }
+    } catch (error) {
+        console.error("User form submission error:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Operation Failed',
+            description: 'An unexpected server error occurred. Please try again.',
+        });
+    } finally {
+        setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   return (
