@@ -36,11 +36,11 @@ export default async function HomePage() {
                     </p>
                     <div className="space-y-1">
                       {room.dailyUsage.map((day) => (
-                        <div key={day.date} className="flex gap-px" title={`Bookings for ${format(new Date(day.date + 'T00:00:00'), 'MMM d')}`}>
+                        <div key={day.date} className="flex gap-px">
                           {day.slots.map((slot) => (
                             <div
                               key={slot.startTime}
-                              title={`${slot.startTime} - ${slot.endTime}${slot.isBooked ? ' (Booked)' : ' (Available)'}`}
+                              title={`${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime}${slot.isBooked ? ' (Booked)' : ' (Available)'}`}
                               className={cn(
                                 'h-2 flex-1 rounded-sm',
                                 slot.isBooked ? 'bg-white/90' : 'bg-white/30'
