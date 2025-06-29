@@ -56,7 +56,7 @@ export default function LoginPage() {
 
       if (result?.success) {
         router.push('/admin');
-        return; // Early exit to prevent setting state on unmounted component
+        return;
       } else if (result?.needsPasswordSetup) {
         toast({ title: 'Initial Setup Required', description: 'Please set a password for the master admin.'});
         setNeedsPasswordSetup(true);
@@ -64,6 +64,8 @@ export default function LoginPage() {
         loginForm.reset({ username: data.username, password: '' });
       } else if (result?.error) {
         setGlobalError(result.error);
+      } else {
+        setGlobalError("An unknown login error occurred. The server returned an unexpected response.");
       }
     } catch (error) {
       console.error("Login submission failed:", error);
@@ -82,9 +84,11 @@ export default function LoginPage() {
 
       if (result?.success) {
         router.push('/admin');
-        return; // Early exit
+        return;
       } else if (result?.error) {
           setGlobalError(result.error);
+      } else {
+        setGlobalError("An unknown password setup error occurred.");
       }
     } catch (error) {
        console.error("Password setup failed:", error);

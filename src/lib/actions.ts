@@ -635,14 +635,18 @@ export async function setInitialMasterPassword(password: string): Promise<{ succ
     }
     
     const result = await updateUserPassword(masterAdmin.id, password);
-    if (result.success) {
-        const updatedAdmin = await getUserById(masterAdmin.id);
-        if (updatedAdmin) {
-            await createSession(updatedAdmin);
-            return { success: true };
-        }
+    if (!result.success) {
+        return { error: result.error || 'Failed to set initial password.' };
     }
-    return { error: result.error || 'Failed to set initial password.' };
+
+    const updatedAdmin = await getUserById(masterAdmin.id);
+    if (!updatedAdmin) {
+        // This case indicates a critical internal error.
+        return { error: 'A critical error occurred after updating the password. Please try again.' };
+    }
+    
+    await createSession(updatedAdmin);
+    return { success: true };
 }
 
 
