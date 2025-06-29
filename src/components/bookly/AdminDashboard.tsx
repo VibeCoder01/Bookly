@@ -172,7 +172,11 @@ export function AdminDashboard({ initialSession }: AdminDashboardProps) {
         if (result.users) {
             setUsers(result.users);
         } else if (result.error) {
-             toast({ variant: 'destructive', title: 'Error Fetching Users', description: result.error });
+            // This error is intentionally not shown as a toast to the user.
+            // The UI is already guarded by permissions, and this avoids showing
+            // a potentially transient error on first login. The error is logged
+            // for debugging purposes.
+            console.error(`[Admin] Non-fatal error fetching users: ${result.error}`);
         }
     } catch (err) {
         toast({ variant: 'destructive', title: 'Error', description: 'Could not load the list of admin users.' });
