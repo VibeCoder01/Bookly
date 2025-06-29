@@ -29,9 +29,19 @@ export const readConfigurationFromFile = async (): Promise<AppConfiguration> => 
   try {
     if (fs.existsSync(CONFIG_FILE_PATH)) {
       const fileContent = await fs.promises.readFile(CONFIG_FILE_PATH, 'utf-8');
-      const config = JSON.parse(fileContent) as AppConfiguration;
-      // Basic validation or merging with defaults if some keys are missing
-      return { ...DEFAULT_CONFIG, ...config };
+      const loadedConfig = JSON.parse(fileContent) as AppConfiguration;
+      
+      const config = { ...DEFAULT_CONFIG, ...loadedConfig };
+      
+      // Ensure specific fields have fallbacks if they are blank or null from the file
+      if (!config.appName?.trim()) {
+        config.appName = DEFAULT_CONFIG.appName;
+      }
+      if (!config.appSubtitle?.trim()) {
+        config.appSubtitle = DEFAULT_CONFIG.appSubtitle;
+      }
+
+      return config;
     }
   } catch (error) {
     console.error(`[Bookly Config] Error reading or parsing ${CONFIG_FILE_PATH}:`, error);

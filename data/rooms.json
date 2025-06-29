@@ -1,27 +1,12 @@
 [
   {
     "id": "room-1751190519216",
-    "name": "Beta - Room",
+    "name": "Alpha Room",
     "capacity": 15
   },
   {
-    "id": "room-1751191941997",
-    "name": "Alpha - Pod",
+    "id": "room-1751214385447",
+    "name": "Beta - Pod",
     "capacity": 1
-  },
-  {
-    "id": "room-1751191949953",
-    "name": "Charlie - Duo Pod",
-    "capacity": 2
-  },
-  {
-    "id": "room-1751191954224",
-    "name": "Delta - Large Room",
-    "capacity": 50
-  },
-  {
-    "id": "room-1751192006817",
-    "name": "Echo - Autitorium",
-    "capacity": 1000
   }
 ]

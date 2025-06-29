@@ -38,25 +38,5 @@
     "title": "ddd",
     "userName": "Shaun",
     "userEmail": "sdunmall@gmail.com"
-  },
-  {
-    "id": "booking-1751194930079-hi959",
-    "roomId": "room-1751191941997",
-    "roomName": "Alpha - Pod",
-    "date": "2025-07-02",
-    "time": "10:30 - 14:00",
-    "title": "ddd",
-    "userName": "Shaun",
-    "userEmail": "sdunmall@gmail.com"
-  },
-  {
-    "id": "booking-1751195156992-9ceom",
-    "roomId": "room-1751191949953",
-    "roomName": "Charlie - Duo Pod",
-    "date": "2025-07-03",
-    "time": "11:00 - 16:00",
-    "title": "Vibe Coding meeting",
-    "userName": "VibeCoder01",
-    "userEmail": "sdunmall@gmail.com"
   }
 ]

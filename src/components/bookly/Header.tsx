@@ -35,16 +35,16 @@ export function Header({ config }: HeaderProps) {
     <header className="py-6 border-b border-border">
       <div className="container mx-auto px-4 flex items-center justify-between">
         <Link href="/" className="flex items-center group">
-          {config?.appLogo ? (
-            <Image src={config.appLogo} alt={`${config.appName || 'Bookly'} Logo`} width={40} height={40} className="mr-3" unoptimized />
+          {config.appLogo ? (
+            <Image src={config.appLogo} alt={`${config.appName} Logo`} width={40} height={40} className="mr-3" unoptimized />
           ) : (
             <CalendarCheck className="h-10 w-10 text-primary mr-3 group-hover:text-primary/80 transition-colors" />
           )}
           <div>
             <h1 className="font-headline text-4xl font-semibold text-primary group-hover:text-primary/80 transition-colors">
-              {config?.appName || 'Bookly'}
+              {config.appName}
             </h1>
-            <p className="text-sm text-muted-foreground">{config?.appSubtitle || 'Room booking system'}</p>
+            <p className="text-sm text-muted-foreground">{config.appSubtitle}</p>
           </div>
         </Link>
         <div className="flex items-center space-x-4">
