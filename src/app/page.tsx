@@ -15,10 +15,10 @@ export default async function HomePage() {
   const roomsWithUsage: RoomWithDailyUsage[] = await getRoomsWithDailyUsage();
 
   const getUsageColor = (usage: number) => {
-    if (usage === 0) return 'bg-muted';
-    if (usage <= 50) return 'bg-primary/40';
-    if (usage <= 90) return 'bg-primary';
-    return 'bg-accent';
+    if (usage === 0) return 'bg-white/20';
+    if (usage <= 50) return 'bg-white/40';
+    if (usage <= 90) return 'bg-white/70';
+    return 'bg-white/90';
   };
 
   return (
@@ -30,19 +30,18 @@ export default async function HomePage() {
             roomsWithUsage.map((room) => (
               <Link key={room.id} href={`/book?roomId=${room.id}`} passHref>
                 <Button
-                  variant="outline"
-                  className="h-36 w-56 rounded-xl shadow-lg p-0 flex flex-col justify-between items-stretch bg-card hover:bg-muted/80 transition-all duration-200 ease-in-out transform hover:-translate-y-1"
+                  className="h-36 w-56 rounded-xl shadow-lg p-0 flex flex-col justify-between items-stretch bg-accent text-accent-foreground hover:bg-accent/90 transition-all duration-200 ease-in-out transform hover:-translate-y-1"
                 >
                   <div className="flex flex-col items-center p-4 flex-grow justify-center">
-                      <div className="flex items-center gap-x-2 text-card-foreground">
-                          <Armchair size={32} className="text-primary" />
+                      <div className="flex items-center gap-x-2">
+                          <Armchair size={32} />
                           <span className="text-xl font-semibold">x {room.capacity}</span>
                       </div>
-                      <span className="mt-2 text-base text-center font-bold text-primary">{room.name}</span>
+                      <span className="mt-2 text-base text-center font-bold">{room.name}</span>
                   </div>
 
-                  <div className="w-full py-2 px-3 bg-muted/50 border-t">
-                      <p className="text-xs text-center font-medium text-muted-foreground mb-1">
+                  <div className="w-full py-2 px-3 bg-black/10 border-t border-accent-foreground/20">
+                      <p className="text-xs text-center font-medium text-accent-foreground/80 mb-1">
                           Usage (Next 5 Working Days)
                       </p>
                       <div className="flex w-full justify-center gap-1">
