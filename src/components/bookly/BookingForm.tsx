@@ -18,6 +18,7 @@ import { CalendarIcon, Clock, Building2, User, Mail, Loader2, AlertTriangle, Eye
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { getAvailableTimeSlots, submitBooking, getBookingsForRoomAndDate } from '@/lib/actions';
 import { RoomBookingsDialog } from './RoomBookingsDialog';
+import { useRouter } from 'next/navigation';
 
 interface BookingFormProps {
   rooms: Room[];
@@ -46,6 +47,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormProps) {
+  const router = useRouter();
   const { toast } = useToast();
   const [allAvailableIndividualSlots, setAllAvailableIndividualSlots] = useState<TimeSlot[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
@@ -211,16 +213,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
           description: `Room ${result.booking.roomName} booked for ${result.booking.date} from ${data.startTime} to ${data.endTime}.`,
         });
         onBookingAttemptCompleted(result.booking);
-        form.reset({ 
-            userName: form.getValues('userName'), 
-            userEmail: form.getValues('userEmail'),
-            roomId: '',
-            date: undefined,
-            startTime: '',
-            endTime: '',
-            title: '',
-        });
-        setAllAvailableIndividualSlots([]);
+        router.push('/');
       }
     } catch (error) {
       toast({
@@ -506,3 +499,5 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
     </>
   );
 }
+
+    
