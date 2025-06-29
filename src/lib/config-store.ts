@@ -15,32 +15,46 @@ const DEFAULT_CONFIG: AppConfiguration = {
 };
 
 // Ensure the data directory exists
-const ensureDataDirectoryExists = () => {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
+const ensureDataDirectoryExists = async () => {
+    try {
+        await fs.promises.access(DATA_DIR);
+    } catch {
+        await fs.promises.mkdir(DATA_DIR, { recursive: true });
+    }
 };
 
 export const readConfigurationFromFile = async (): Promise<AppConfiguration> => {
-  ensureDataDirectoryExists();
+  await ensureDataDirectoryExists();
   try {
-    if (fs.existsSync(CONFIG_FILE_PATH)) {
-      const fileContent = await fs.promises.readFile(CONFIG_FILE_PATH, 'utf-8');
-      const config = JSON.parse(fileContent) as AppConfiguration;
-      // Basic validation or merging with defaults if some keys are missing
-      return { ...DEFAULT_CONFIG, ...config };
-    }
+    // Attempt to read and parse the configuration file.
+    const fileContent = await fs.promises.readFile(CONFIG_FILE_PATH, 'utf-8');
+    const config = JSON.parse(fileContent) as AppConfiguration;
+    // Merge with defaults to ensure all required keys are present.
+    return { ...DEFAULT_CONFIG, ...config };
   } catch (error) {
-    console.error(`[Bookly Config] Error reading or parsing ${CONFIG_FILE_PATH}:`, error);
+    // If reading or parsing fails for any reason (e.g., file not found, corrupt JSON),
+    // log the issue and fall back to the default configuration.
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.warn(`[Bookly Config] Could not read or parse config file. Reason: ${errorMessage}. Re-initializing with defaults.`);
+    
+    try {
+      // Attempt to write the default configuration to fix the issue for subsequent loads.
+      await fs.promises.writeFile(CONFIG_FILE_PATH, JSON.stringify(DEFAULT_CONFIG, null, 2));
+      console.log(`[Bookly Config] Default configuration has been written to ${CONFIG_FILE_PATH}.`);
+    } catch (writeError) {
+      // If writing the default config fails, log a more severe error.
+      const writeErrorMessage = writeError instanceof Error ? writeError.message : String(writeError);
+      console.error(`[Bookly Config] FATAL: Could not write default config file. Reason: ${writeErrorMessage}`);
+    }
+    
+    // Return a copy of the default configuration for the current request.
+    return { ...DEFAULT_CONFIG };
   }
-  // If file doesn't exist, is empty, or parsing failed, save and return default config
-  console.log(`[Bookly Config] ${CONFIG_FILE_PATH} not found or invalid. Initializing with default config and creating file.`);
-  await fs.promises.writeFile(CONFIG_FILE_PATH, JSON.stringify(DEFAULT_CONFIG, null, 2));
-  return { ...DEFAULT_CONFIG }; // Return a copy
 };
 
+
 export const writeConfigurationToFile = async (config: AppConfiguration): Promise<void> => {
-  ensureDataDirectoryExists();
+  await ensureDataDirectoryExists();
   try {
     await fs.promises.writeFile(CONFIG_FILE_PATH, JSON.stringify(config, null, 2));
     console.log(`[Bookly Config] Configuration saved to ${CONFIG_FILE_PATH}`);
