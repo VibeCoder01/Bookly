@@ -52,12 +52,10 @@ export default function LoginPage() {
     setGlobalError(null);
 
     try {
-      const result = await login(data);
+      const result = await login(data); // This action will redirect on success
 
-      if (result?.success) {
-        router.push('/admin');
-        return;
-      } else if (result?.needsPasswordSetup) {
+      // If execution continues, it means login failed or needs setup
+      if (result?.needsPasswordSetup) {
         toast({ title: 'Initial Setup Required', description: 'Please set a password for the master admin.'});
         setNeedsPasswordSetup(true);
         setGlobalError(null);
@@ -65,13 +63,14 @@ export default function LoginPage() {
       } else if (result?.error) {
         setGlobalError(result.error);
       } else {
-        setGlobalError("An unknown login error occurred. The server returned an unexpected response.");
+        // This case should not be reachable if the action always redirects or returns an error.
+        setGlobalError("An unknown login error occurred.");
       }
+      setIsSubmitting(false); // Stop spinner only if no redirect happened
     } catch (error) {
       console.error("Login submission failed:", error);
       setGlobalError("An unexpected error occurred during login. Please try again.");
-    } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Stop spinner on unexpected error
     }
   };
 
@@ -80,21 +79,19 @@ export default function LoginPage() {
     setGlobalError(null);
 
     try {
-      const result = await setInitialMasterPassword(data.password);
+      const result = await setInitialMasterPassword(data.password); // This action will redirect on success
 
-      if (result?.success) {
-        router.push('/admin');
-        return;
-      } else if (result?.error) {
+      // If we're here, it means the action failed and returned an error.
+      if (result?.error) {
           setGlobalError(result.error);
       } else {
         setGlobalError("An unknown password setup error occurred.");
       }
+      setIsSubmitting(false); // Stop spinner only if no redirect happened
     } catch (error) {
        console.error("Password setup failed:", error);
        setGlobalError("An unexpected error occurred during password setup. Please try again.");
-    } finally {
-        setIsSubmitting(false);
+       setIsSubmitting(false); // Stop spinner on unexpected error
     }
   };
 
