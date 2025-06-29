@@ -37,16 +37,21 @@ export default async function HomePage() {
                     <div className="space-y-1">
                       {room.dailyUsage.map((day) => (
                         <div key={day.date} className="flex gap-px">
-                          {day.slots.map((slot) => (
-                            <div
-                              key={slot.startTime}
-                              title={`${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime}${slot.isBooked ? ' (Booked)' : ' (Available)'}`}
-                              className={cn(
-                                'h-2 flex-1 rounded-sm',
-                                slot.isBooked ? 'bg-white/90' : 'bg-white/30'
-                              )}
-                            />
-                          ))}
+                          {day.slots.map((slot) => {
+                             const tooltipText = slot.isBooked
+                                ? `${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime}\nBooked: "${slot.title}" by ${slot.userName}`
+                                : `${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime} (Available)`;
+                            return (
+                                <div
+                                key={slot.startTime}
+                                title={tooltipText}
+                                className={cn(
+                                    'h-2 flex-1 rounded-sm',
+                                    slot.isBooked ? 'bg-white/90' : 'bg-white/30'
+                                )}
+                                />
+                            );
+                          })}
                         </div>
                       ))}
                     </div>

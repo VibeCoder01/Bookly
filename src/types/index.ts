@@ -57,6 +57,8 @@ export interface SlotStatus {
   startTime: string;
   endTime: string;
   isBooked: boolean;
+  title?: string;
+  userName?: string;
 }
 
 export interface DailyUsage {

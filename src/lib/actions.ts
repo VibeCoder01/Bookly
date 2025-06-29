@@ -520,16 +520,26 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
         return acc;
     }, {} as Record<string, Booking[]>);
 
-    const isSlotBooked = (slotStartTime: string, slotEndTime: string, date: string, roomBookingsForDay: Booking[]): boolean => {
+    const getSlotBookingInfo = (slotStartTime: string, slotEndTime: string, date: string, roomBookingsForDay: Booking[]): { isBooked: boolean; title?: string; userName?: string; } => {
         const slotStartDateTime = parse(`${date} ${slotStartTime}`, 'yyyy-MM-dd HH:mm', new Date());
         const slotEndDateTime = parse(`${date} ${slotEndTime}`, 'yyyy-MM-dd HH:mm', new Date());
         
-        return roomBookingsForDay.some(booking => {
+        const overlappingBooking = roomBookingsForDay.find(booking => {
             const bookingTimes = parseBookingTime(booking.time, booking.date);
             if (!bookingTimes) return false;
             // Check for overlap: (StartA < EndB) and (EndA > StartB)
             return isBefore(slotStartDateTime, bookingTimes.end) && isBefore(bookingTimes.start, slotEndDateTime);
         });
+
+        if (overlappingBooking) {
+            return {
+                isBooked: true,
+                title: overlappingBooking.title,
+                userName: overlappingBooking.userName
+            };
+        }
+
+        return { isBooked: false };
     };
 
     const roomsWithUsage = rooms.map(room => {
@@ -538,10 +548,15 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
         const dailyUsage = nextFiveWorkingDays.map(day => {
             const bookingsForDay = roomBookings.filter(b => b.date === day);
 
-            const slotsWithStatus: SlotStatus[] = allDaySlots.map(slot => ({
-                ...slot,
-                isBooked: isSlotBooked(slot.startTime, slot.endTime, day, bookingsForDay)
-            }));
+            const slotsWithStatus: SlotStatus[] = allDaySlots.map(slot => {
+                const bookingInfo = getSlotBookingInfo(slot.startTime, slot.endTime, day, bookingsForDay);
+                return {
+                    ...slot,
+                    isBooked: bookingInfo.isBooked,
+                    title: bookingInfo.title,
+                    userName: bookingInfo.userName
+                };
+            });
 
             return {
                 date: day,
