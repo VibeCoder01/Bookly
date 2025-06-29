@@ -14,6 +14,9 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  if (!password || !hash) {
+      return false;
+  }
   const isMatch = await bcrypt.compare(password, hash);
   return isMatch;
 }
@@ -29,11 +32,10 @@ const ensureDataDirectoryExists = async () => {
 };
 
 async function createDefaultMasterAdmin(): Promise<User> {
-    const hashedPassword = await hashPassword('4rachn1d');
     const masterAdmin: User = {
         id: 'user-master-001',
         username: 'admin',
-        passwordHash: hashedPassword,
+        passwordHash: '', // No password hash on initial creation to trigger setup flow
         role: 'master',
         permissions: {
             canManageRooms: true,
@@ -137,6 +139,20 @@ export async function updateUser(userId: string, userData: UserFormData): Promis
         users[userIndex].passwordHash = await hashPassword(userData.password);
     }
 
+    await writeUsersToFile(users);
+    return { success: true };
+}
+
+export async function updateUserPassword(userId: string, newPassword: string): Promise<{ success: boolean, error?: string }> {
+    if (!newPassword || newPassword.length < 6) {
+        return { success: false, error: 'Password must be at least 6 characters.' };
+    }
+    const users = await readUsersFromFile();
+    const userIndex = users.findIndex(u => u.id === userId);
+    if (userIndex === -1) {
+        return { success: false, error: 'User not found.' };
+    }
+    users[userIndex].passwordHash = await hashPassword(newPassword);
     await writeUsersToFile(users);
     return { success: true };
 }

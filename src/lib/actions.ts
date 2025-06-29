@@ -14,9 +14,12 @@ import {
   getUserByUsername,
   readUsersFromFile,
   updateUser,
-  verifyPassword
+  verifyPassword,
+  updateUserPassword,
+  getUserById,
 } from './auth';
-import { createSession, getSession } from './session';
+import { createSession, getSession, deleteSession as deleteSessionCookie } from './session';
+import { redirect } from 'next/navigation';
 
 
 // --- Room Data Persistence ---
@@ -586,20 +589,26 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
 // --- Authentication and User Management Actions ---
 
 const loginFormSchema = z.object({
-  username: z.string(),
-  password: z.string(),
+  username: z.string().min(1, { message: 'Username is required.' }),
+  password: z.string().optional(), // Password can be empty for initial master setup
 });
 
-export async function login(formData: z.infer<typeof loginFormSchema>): Promise<{ success: boolean; error?: string }> {
+
+export async function login(formData: z.infer<typeof loginFormSchema>): Promise<{ success: boolean; error?: string; needsPasswordSetup?: boolean }> {
   const validation = loginFormSchema.safeParse(formData);
   if (!validation.success) {
     return { success: false, error: 'Invalid form data.' };
   }
-  const { username, password } = validation.data;
+  const { username, password = '' } = validation.data;
 
   const user = await getUserByUsername(username);
   if (!user) {
     return { success: false, error: 'Invalid username or password.' };
+  }
+
+  // Handle initial password setup for master admin
+  if (user.role === 'master' && user.passwordHash === '') {
+      return { success: false, needsPasswordSetup: true };
   }
 
   const passwordMatch = await verifyPassword(password, user.passwordHash);
@@ -608,9 +617,70 @@ export async function login(formData: z.infer<typeof loginFormSchema>): Promise<
   }
 
   await createSession(user);
-
   return { success: true };
 }
+
+const setInitialPasswordSchema = z.object({
+    password: z.string().min(6, { message: 'Password must be at least 6 characters.' })
+});
+
+export async function setInitialMasterPassword(password: string): Promise<{ success: boolean, error?: string }> {
+    const validation = setInitialPasswordSchema.safeParse({ password });
+    if (!validation.success) {
+        return { success: false, error: validation.error.issues[0].message };
+    }
+
+    const masterAdmin = await getUserByUsername('admin');
+    if (!masterAdmin || masterAdmin.role !== 'master' || masterAdmin.passwordHash !== '') {
+        return { success: false, error: 'Initial setup is not required or has already been completed.' };
+    }
+    
+    const result = await updateUserPassword(masterAdmin.id, password);
+    if (result.success) {
+        const updatedAdmin = await getUserById(masterAdmin.id);
+        if (updatedAdmin) {
+            await createSession(updatedAdmin);
+            return { success: true };
+        }
+    }
+    return { success: false, error: result.error || 'Failed to set initial password.' };
+}
+
+
+const changePasswordSchema = z.object({
+    userId: z.string(),
+    password: z.string().min(6, { message: 'Password must be at least 6 characters.' })
+});
+
+export async function changePasswordByAdmin(userId: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+    const validation = changePasswordSchema.safeParse({ userId, password: newPassword });
+    if (!validation.success) {
+        return { success: false, error: validation.error.issues[0].message };
+    }
+
+    const session = await getSession();
+    if (!session) {
+        return { success: false, error: 'Unauthorized.' };
+    }
+
+    const targetUser = await getUserById(userId);
+    if (!targetUser) {
+        return { success: false, error: 'Target user not found.' };
+    }
+
+    // Master can change anyone's password. Admins can only change their own.
+    if (session.role !== 'master' && session.userId !== userId) {
+        return { success: false, error: "You don't have permission to change this user's password." };
+    }
+
+    return await updateUserPassword(userId, newPassword);
+}
+
+export async function deleteSession() {
+  await deleteSessionCookie();
+  redirect('/login');
+}
+
 
 export async function getUsersForAdmin(): Promise<{ users?: User[]; error?: string }> {
     const session = await getSession();

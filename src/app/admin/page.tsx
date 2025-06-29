@@ -4,7 +4,7 @@ import { Header } from '@/components/bookly/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Users, ShieldCheck, LogOut } from 'lucide-react';
+import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Users, ShieldCheck, LogOut, KeyRound } from 'lucide-react';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Booking, Room, AppConfiguration, User, SessionPayload } from '@/types';
 import { 
@@ -30,6 +30,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { RoomFormDialog } from '@/components/bookly/RoomFormDialog';
 import { UserFormDialog } from '@/components/bookly/UserFormDialog';
+import { PasswordChangeDialog } from '@/components/bookly/PasswordChangeDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface GroupedBookings {
@@ -86,6 +87,7 @@ export default function AdminPage() {
   const [isUserFormOpen, setIsUserFormOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [userToChangePassword, setUserToChangePassword] = useState<User | null>(null);
 
   // Import/Export state
   const [fileToImport, setFileToImport] = useState<File | null>(null);
@@ -307,6 +309,7 @@ export default function AdminPage() {
       toast({ title: 'Import Successful', description: 'All settings have been restored.' });
       if(hasPermission('canManageConfig')) await fetchAdminConfiguration();
       if(hasPermission('canManageRooms')) await fetchRooms();
+      if(session?.role === 'master') await fetchUsers();
       if (showBookingsTable) {
         await handleShowAllBookings();
       }
@@ -413,7 +416,7 @@ export default function AdminPage() {
                         </CardHeader>
                         <CardContent>
                             <Table>
-                                <TableHeader><TableRow><TableHead>Username</TableHead><TableHead>Role</TableHead><TableHead>Permissions</TableHead><TableHead className="text-right w-[150px]">Actions</TableHead></TableRow></TableHeader>
+                                <TableHeader><TableRow><TableHead>Username</TableHead><TableHead>Role</TableHead><TableHead>Permissions</TableHead><TableHead className="text-right w-[200px]">Actions</TableHead></TableRow></TableHeader>
                                 <TableBody>
                                     {users.length > 0 ? users.map(user => (
                                         <TableRow key={user.id}>
@@ -427,6 +430,7 @@ export default function AdminPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-right space-x-2">
+                                                <Button variant="outline" size="icon" onClick={() => setUserToChangePassword(user)}><KeyRound className="h-4 w-4" /><span className="sr-only">Change Password</span></Button>
                                                 <Button variant="outline" size="icon" onClick={() => handleEditUser(user)} disabled={user.role === 'master'}><Pencil className="h-4 w-4" /><span className="sr-only">Edit User</span></Button>
                                                 <Button variant="destructive" size="icon" onClick={() => setUserToDelete(user)} disabled={user.role === 'master'}><Trash2 className="h-4 w-4" /><span className="sr-only">Delete User</span></Button>
                                             </TableCell>
@@ -528,6 +532,8 @@ export default function AdminPage() {
 
       <RoomFormDialog isOpen={isRoomFormOpen} onOpenChange={setIsRoomFormOpen} onSuccess={fetchRooms} room={selectedRoom}/>
       <UserFormDialog isOpen={isUserFormOpen} onOpenChange={setIsUserFormOpen} onSuccess={fetchUsers} user={selectedUser} />
+      <PasswordChangeDialog user={userToChangePassword} isOpen={!!userToChangePassword} onOpenChange={(isOpen) => !isOpen && setUserToChangePassword(null)} />
+
 
        <AlertDialog open={!!roomToDelete} onOpenChange={(isOpen) => !isOpen && setRoomToDelete(null)}>
         <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the room "{roomToDelete?.name}". This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel onClick={() => setRoomToDelete(null)}>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteRoom} className={cn(buttonVariants({ variant: "destructive" }))}>Delete</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
