@@ -136,10 +136,15 @@ export default function LoginPage() {
                         </FormItem>
                         )}
                     />
-                    <Button type="submit" className="w-full" disabled={isSubmitting}>
-                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
-                        Set Password and Log In
-                    </Button>
+                    <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+                        <Button type="button" variant="outline" onClick={() => router.push('/')} disabled={isSubmitting}>
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                            Set Password and Log In
+                        </Button>
+                    </div>
                 </form>
             </Form>
           ) : (
@@ -171,10 +176,15 @@ export default function LoginPage() {
                     </FormItem>
                     )}
                 />
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-                    Sign In
-                </Button>
+                 <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+                    <Button type="button" variant="outline" onClick={() => router.push('/')} disabled={isSubmitting}>
+                        Cancel
+                    </Button>
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
+                        Sign In
+                    </Button>
+                </div>
                 </form>
             </Form>
           )}
