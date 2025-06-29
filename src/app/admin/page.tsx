@@ -5,13 +5,12 @@ import { Header } from '@/components/bookly/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload } from 'lucide-react';
+import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text } from 'lucide-react';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Booking, Room, AppConfiguration } from '@/types';
 import { 
     getAllBookings, 
-    updateSlotDuration as serverUpdateSlotDuration, 
-    updateWorkdayHours as serverUpdateWorkdayHours, 
+    updateAppConfiguration as serverUpdateAppConfiguration,
     getCurrentConfiguration,
     getRooms,
     deleteRoom,
@@ -34,6 +33,8 @@ interface GroupedBookings {
 }
 
 interface AdminConfigFormState {
+  appName: string;
+  appSubtitle: string;
   slotDuration: string;
   startOfDay: string;
   endOfDay: string;
@@ -62,7 +63,7 @@ export default function AdminPage() {
   const [showBookingsTable, setShowBookingsTable] = useState(false);
 
   // Configuration state
-  const [config, setConfig] = useState<AdminConfigFormState>({ slotDuration: '', startOfDay: '', endOfDay: ''});
+  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: ''});
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
 
@@ -84,6 +85,8 @@ export default function AdminPage() {
     try {
       const currentConfig = await getCurrentConfiguration();
       setConfig({
+        appName: currentConfig.appName,
+        appSubtitle: currentConfig.appSubtitle,
         slotDuration: convertMinutesToDurationString(currentConfig.slotDurationMinutes),
         startOfDay: currentConfig.startOfDay,
         endOfDay: currentConfig.endOfDay,
@@ -95,7 +98,7 @@ export default function AdminPage() {
         title: 'Error Fetching Configuration',
         description: 'Could not load current settings. Displaying defaults.',
       });
-      setConfig({ slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00' });
+      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00' });
     } finally {
       setIsLoadingConfig(false);
     }
@@ -158,43 +161,30 @@ export default function AdminPage() {
   const handleApplyChanges = async () => {
     setIsApplyingChanges(true);
 
-    const tasks = [];
+    const configToSave: AppConfiguration = {
+      appName: config.appName,
+      appSubtitle: config.appSubtitle,
+      slotDurationMinutes: convertDurationValueToMinutes(config.slotDuration),
+      startOfDay: config.startOfDay,
+      endOfDay: config.endOfDay,
+    };
 
-    // Task for slot duration
-    tasks.push(async () => {
-        const durationInMinutes = convertDurationValueToMinutes(config.slotDuration);
-        const result = await serverUpdateSlotDuration(durationInMinutes);
-        if (result.success) {
-            toast({ title: 'Slot Duration Updated', description: `Set to ${config.slotDuration}.` });
-        } else {
-            toast({ variant: 'destructive', title: 'Update Failed', description: result.error });
-            throw new Error('Slot duration update failed');
-        }
-    });
+    const result = await serverUpdateAppConfiguration(configToSave);
 
-    // Task for workday hours
-    tasks.push(async () => {
-        const result = await serverUpdateWorkdayHours(config.startOfDay, config.endOfDay);
-        if (result.success) {
-            toast({ title: 'Workday Hours Updated', description: `Set to ${config.startOfDay} - ${config.endOfDay}.` });
-        } else {
-            toast({ variant: 'destructive', title: 'Update Failed', description: result.error });
-            throw new Error('Workday hours update failed');
-        }
-    });
-
-    try {
-        await Promise.all(tasks.map(task => task()));
-        await fetchAdminConfiguration(); // Refresh config from server on full success
-    } catch (error) {
-        console.error("One or more configuration updates failed:", error);
-    } finally {
-        setIsApplyingChanges(false);
+    if (result.success) {
+      toast({ title: 'Configuration Updated', description: 'Your application settings have been saved.' });
+      await fetchAdminConfiguration(); // Refresh config from server
+    } else {
+      toast({ variant: 'destructive', title: 'Update Failed', description: result.error || 'An unexpected error occurred.' });
     }
+
+    setIsApplyingChanges(false);
   };
   
   const getIconForSetting = (settingKey: keyof AdminConfigFormState) => {
     switch(settingKey) {
+      case 'appName': return <Text className="mr-2 h-4 w-4 text-muted-foreground" />;
+      case 'appSubtitle': return <Text className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'slotDuration': return <Clock className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'startOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'endOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />;
@@ -458,11 +448,27 @@ export default function AdminPage() {
                         <TableBody>
                             <TableRow>
                                 <TableCell className="font-medium pl-6 flex items-center">
+                                    {getIconForSetting('appName')} App Name
+                                </TableCell>
+                                <TableCell className="text-right pr-6">
+                                    <Input value={config.appName} onChange={(e) => handleConfigChange('appName', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="e.g., Bookly" disabled={isApplyingChanges} />
+                                </TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell className="font-medium pl-6 flex items-center">
+                                    {getIconForSetting('appSubtitle')} App Subtitle
+                                </TableCell>
+                                <TableCell className="text-right pr-6">
+                                    <Input value={config.appSubtitle} onChange={(e) => handleConfigChange('appSubtitle', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="e.g., Room booking system" disabled={isApplyingChanges} />
+                                </TableCell>
+                            </TableRow>
+                            <TableRow>
+                                <TableCell className="font-medium pl-6 flex items-center">
                                     {getIconForSetting('slotDuration')} Booking Slot Duration
                                 </TableCell>
                                 <TableCell className="text-right pr-6">
                                     <Select value={config.slotDuration} onValueChange={(v) => handleConfigChange('slotDuration', v)} disabled={isApplyingChanges}>
-                                        <SelectTrigger className="w-full sm:w-[180px] ml-auto text-right">
+                                        <SelectTrigger className="w-full sm:w-[220px] ml-auto text-right">
                                             <SelectValue placeholder="Select duration" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -478,7 +484,7 @@ export default function AdminPage() {
                                     {getIconForSetting('startOfDay')} Start of Work Day (HH:MM)
                                 </TableCell>
                                 <TableCell className="text-right pr-6">
-                                    <Input value={config.startOfDay} onChange={(e) => handleConfigChange('startOfDay', e.target.value)} className="text-right sm:w-[180px] ml-auto" placeholder="HH:MM" disabled={isApplyingChanges} />
+                                    <Input value={config.startOfDay} onChange={(e) => handleConfigChange('startOfDay', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="HH:MM" disabled={isApplyingChanges} />
                                 </TableCell>
                             </TableRow>
                              <TableRow>
@@ -486,7 +492,7 @@ export default function AdminPage() {
                                     {getIconForSetting('endOfDay')} End of Work Day (HH:MM)
                                 </TableCell>
                                 <TableCell className="text-right pr-6">
-                                    <Input value={config.endOfDay} onChange={(e) => handleConfigChange('endOfDay', e.target.value)} className="text-right sm:w-[180px] ml-auto" placeholder="HH:MM" disabled={isApplyingChanges} />
+                                    <Input value={config.endOfDay} onChange={(e) => handleConfigChange('endOfDay', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="HH:MM" disabled={isApplyingChanges} />
                                 </TableCell>
                             </TableRow>
                         </TableBody>

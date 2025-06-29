@@ -1,9 +1,12 @@
+
 'use client';
 
 import { CalendarCheck, UserCog, Wifi } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import React, { useState, useEffect } from 'react';
+import { getCurrentConfiguration } from '@/lib/actions';
+import type { AppConfiguration } from '@/types';
 
 interface HeaderProps {
   userName?: string | null;
@@ -12,6 +15,7 @@ interface HeaderProps {
 export function Header({ userName }: HeaderProps) {
   const [ipAddress, setIpAddress] = useState<string | null>(null);
   const [isLoadingIp, setIsLoadingIp] = useState(true);
+  const [config, setConfig] = useState<{ appName: string; appSubtitle: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/ip')
@@ -24,6 +28,18 @@ export function Header({ userName }: HeaderProps) {
         setIpAddress('Error fetching IP');
         setIsLoadingIp(false);
       });
+      
+    const fetchConfig = async () => {
+        try {
+            const appConfig = await getCurrentConfiguration();
+            setConfig({ appName: appConfig.appName, appSubtitle: appConfig.appSubtitle });
+        } catch {
+            // Fallback to default values on error
+            setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system' });
+        }
+    };
+    fetchConfig();
+
   }, []);
 
   return (
@@ -33,9 +49,9 @@ export function Header({ userName }: HeaderProps) {
           <CalendarCheck className="h-10 w-10 text-primary mr-3 group-hover:text-primary/80 transition-colors" />
           <div>
             <h1 className="font-headline text-4xl font-semibold text-primary group-hover:text-primary/80 transition-colors">
-              Bookly
+              {config?.appName || 'Bookly'}
             </h1>
-            <p className="text-sm text-muted-foreground">Room booking system</p>
+            <p className="text-sm text-muted-foreground">{config?.appSubtitle || 'Room booking system'}</p>
           </div>
         </Link>
         <div className="flex items-center space-x-4">

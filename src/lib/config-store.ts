@@ -9,6 +9,8 @@ const DATA_DIR = path.join(process.cwd(), 'data');
 const CONFIG_FILE_PATH = path.join(DATA_DIR, 'app-config.json');
 
 const DEFAULT_CONFIG: AppConfiguration = {
+  appName: 'Bookly',
+  appSubtitle: 'Room booking system',
   slotDurationMinutes: 60, // Default: 60 minutes
   startOfDay: '09:00',     // Default: 09:00 (HH:MM)
   endOfDay: '17:00',       // Default: 17:00 (HH:MM)

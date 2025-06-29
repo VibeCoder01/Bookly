@@ -124,69 +124,47 @@ export async function deleteRoom(roomId: string): Promise<{ success: boolean; er
 // --- Configuration Actions ---
 const MIN_SLOT_DURATION = 15;
 const MAX_SLOT_DURATION = 120;
-
-export async function updateSlotDuration(
-  newDurationMinutes: number
-): Promise<{ success: boolean; error?: string }> {
-  await new Promise(resolve => setTimeout(resolve, 200));
-  if (newDurationMinutes < MIN_SLOT_DURATION || newDurationMinutes > MAX_SLOT_DURATION) {
-    return { success: false, error: `Duration must be between ${MIN_SLOT_DURATION} and ${MAX_SLOT_DURATION} minutes.` };
-  }
-  if (newDurationMinutes % 15 !== 0) {
-    return { success: false, error: 'Duration must be in multiples of 15 minutes.' };
-  }
-  
-  try {
-    const config = await readConfigurationFromFile();
-    config.slotDurationMinutes = newDurationMinutes;
-    await writeConfigurationToFile(config);
-    console.log(`[Bookly Config] System slot duration updated to: ${newDurationMinutes} minutes and persisted.`);
-    return { success: true };
-  } catch (error) {
-    console.error("[Bookly Config] Error persisting slot duration:", error);
-    return { success: false, error: "Failed to save slot duration." };
-  }
-}
-
 const timeStringSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format. Use HH:MM.");
 
-export async function updateWorkdayHours(
-  startTime: string,
-  endTime: string
-): Promise<{ success: boolean; error?: string }> {
-  await new Promise(resolve => setTimeout(resolve, 200));
+const appConfigurationSchema = z.object({
+  appName: z.string().min(1, "App Name cannot be empty."),
+  appSubtitle: z.string().min(1, "App Subtitle cannot be empty."),
+  slotDurationMinutes: z.number()
+    .min(MIN_SLOT_DURATION, `Duration must be at least ${MIN_SLOT_DURATION} minutes.`)
+    .max(MAX_SLOT_DURATION, `Duration must be at most ${MAX_SLOT_DURATION} minutes.`)
+    .refine(val => val % 15 === 0, 'Duration must be in multiples of 15 minutes.'),
+  startOfDay: timeStringSchema,
+  endOfDay: timeStringSchema,
+}).refine(data => {
+    const tempDate = new Date();
+    const [startH, startM] = data.startOfDay.split(':').map(Number);
+    const [endH, endM] = data.endOfDay.split(':').map(Number);
+    const startDateObj = setMinutes(setHours(tempDate, startH), startM);
+    const endDateObj = setMinutes(setHours(tempDate, endH), endM);
+    return isBefore(startDateObj, endDateObj);
+}, {
+    message: 'End of day must be after start of day.',
+    path: ['endOfDay'],
+});
 
-  const startTimeValidation = timeStringSchema.safeParse(startTime);
-  if (!startTimeValidation.success) {
-    return { success: false, error: `Invalid Start Time: ${startTimeValidation.error.issues[0].message}` };
-  }
-  const endTimeValidation = timeStringSchema.safeParse(endTime);
-  if (!endTimeValidation.success) {
-    return { success: false, error: `Invalid End Time: ${endTimeValidation.error.issues[0].message}` };
-  }
+export async function updateAppConfiguration(
+  newConfig: AppConfiguration
+): Promise<{ success: boolean; error?: string; fieldErrors?: Record<string, string[] | undefined> }> {
+    await new Promise(resolve => setTimeout(resolve, 200));
 
-  const tempDate = new Date();
-  const [startH, startM] = startTime.split(':').map(Number);
-  const [endH, endM] = endTime.split(':').map(Number);
+    const validation = appConfigurationSchema.safeParse(newConfig);
+    if (!validation.success) {
+        return { success: false, error: 'Invalid configuration data.', fieldErrors: validation.error.flatten().fieldErrors };
+    }
 
-  const startDateObj = setMinutes(setHours(tempDate, startH), startM);
-  const endDateObj = setMinutes(setHours(tempDate, endH), endM);
-
-  if (isEqual(startDateObj, endDateObj) || isBefore(endDateObj, startDateObj)) {
-    return { success: false, error: 'End of day must be after start of day.' };
-  }
-
-  try {
-    const config = await readConfigurationFromFile();
-    config.startOfDay = startTime;
-    config.endOfDay = endTime;
-    await writeConfigurationToFile(config);
-    console.log(`[Bookly Config] System workday hours updated to: ${startTime} - ${endTime} and persisted.`);
-    return { success: true };
-  } catch (error) {
-    console.error("[Bookly Config] Error persisting workday hours:", error);
-    return { success: false, error: "Failed to save workday hours." };
-  }
+    try {
+        await writeConfigurationToFile(validation.data);
+        console.log(`[Bookly Config] System configuration updated and persisted.`);
+        return { success: true };
+    } catch (error) {
+        console.error("[Bookly Config] Error persisting configuration:", error);
+        return { success: false, error: "Failed to save configuration." };
+    }
 }
 
 export async function getCurrentConfiguration(): Promise<AppConfiguration> {
@@ -403,6 +381,8 @@ export async function getAllBookings(): Promise<{ bookings: Booking[]; error?: s
 
 const exportedSettingsSchema = z.object({
   appConfig: z.object({
+    appName: z.string(),
+    appSubtitle: z.string(),
     slotDurationMinutes: z.number(),
     startOfDay: z.string(),
     endOfDay: z.string(),

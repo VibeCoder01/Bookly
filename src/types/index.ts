@@ -72,6 +72,8 @@ export interface RoomWithDailyUsage extends Room {
 
 // Interface for application configuration stored in app-config.json
 export interface AppConfiguration {
+  appName: string;
+  appSubtitle: string;
   slotDurationMinutes: number;
   startOfDay: string; // HH:MM format
   endOfDay: string;   // HH:MM format
