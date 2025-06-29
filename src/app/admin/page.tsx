@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Header } from '@/components/bookly/Header';
@@ -101,11 +102,12 @@ export default function AdminPage() {
     });
   }, []);
 
-  const hasPermission = useCallback((permission: keyof SessionPayload['permissions'] | 'canManageUsers') => {
+  const hasPermission = useCallback((permission: keyof SessionPayload['permissions']) => {
     if (session?.role === 'master') return true;
-    if (permission === 'canManageUsers') return false; // Only master can manage users
-    return session?.permissions?.[permission as keyof SessionPayload['permissions']] ?? false;
+    return session?.permissions?.[permission] ?? false;
   }, [session]);
+
+  const canManageUsers = useMemo(() => session?.role === 'master', [session]);
 
   const fetchAdminConfiguration = useCallback(async () => {
     if (!hasPermission('canManageConfig')) {
@@ -150,7 +152,7 @@ export default function AdminPage() {
   }, [toast, hasPermission]);
 
    const fetchUsers = useCallback(async () => {
-    if (!hasPermission('canManageUsers')) {
+    if (!canManageUsers) {
         setIsLoadingUsers(false);
         return;
     }
@@ -159,7 +161,7 @@ export default function AdminPage() {
         const result = await getUsersForAdmin();
         if (result.users) {
             setUsers(result.users);
-        } else {
+        } else if (result.error) {
              toast({ variant: 'destructive', title: 'Error Fetching Users', description: result.error });
         }
     } catch (err) {
@@ -167,7 +169,7 @@ export default function AdminPage() {
     } finally {
         setIsLoadingUsers(false);
     }
-  }, [toast, hasPermission]);
+  }, [toast, canManageUsers]);
 
   const handleShowAllBookings = useCallback(async () => {
     setIsLoadingBookings(true);
@@ -401,7 +403,7 @@ export default function AdminPage() {
               </div>
 
             {/* --- USER MANAGEMENT --- */}
-            {hasPermission('canManageUsers') && (
+            {canManageUsers && (
                 <div className="pt-6 border-t">
                     <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center"><Users className="mr-2 h-5 w-5" />Manage Admin Users</h3>
                     {isLoadingUsers ? (
