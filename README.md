@@ -18,16 +18,20 @@ This project was bootstrapped with [Firebase Studio](https://firebase.google.com
 ## Screenshots
 
 **Home Page - Room Availability**
-![Bookly Screenshot](./public/bookly-screenshot.png)
+![image](https://github.com/user-attachments/assets/637e4b09-d528-4e83-bbda-add17e2637e1)
+
 
 **Admin Dashboard - Room Management**
-![Bookly Admin Room Management Screenshot](./public/bookly-admin-rooms.png)
+![image](https://github.com/user-attachments/assets/a80794e9-f1f3-4d8b-be81-1f8752e138f9)
+
 
 **Admin Dashboard - Data Management**
-![Bookly Admin Data Management Screenshot](./public/bookly-admin-data.png)
+![image](https://github.com/user-attachments/assets/5d27b2d8-97a3-4e8d-bd38-708da55ffd40)
+
 
 **Admin Dashboard - App Configuration**
-![Bookly Admin Configuration Screenshot](./public/bookly-admin-config.png)
+![image](https://github.com/user-attachments/assets/8bf8bd61-acb2-48e2-a981-25cb2f5e3c64)
+
 
 ## Tech Stack
 
