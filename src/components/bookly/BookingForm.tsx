@@ -50,6 +50,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
   const [allAvailableIndividualSlots, setAllAvailableIndividualSlots] = useState<TimeSlot[]>([]);
   const [isLoadingSlots, setIsLoadingSlots] = useState(false);
   const [isSubmittingForm, setIsSubmittingForm] = useState(false);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const [isBookingsDialogOpen, setIsBookingsDialogOpen] = useState(false);
   const [bookingsForSelectedRoomDate, setBookingsForSelectedRoomDate] = useState<Booking[]>([]);
@@ -306,7 +307,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
               name="date"
               control={form.control}
               render={({ field }) => (
-                <Popover>
+                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       id="date"
@@ -325,6 +326,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted }: BookingFormPro
                       selected={field.value}
                       onSelect={(date) => {
                           field.onChange(date);
+                          setIsDatePickerOpen(false);
                       }}
                       disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) }
                       initialFocus
