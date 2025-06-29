@@ -4,7 +4,7 @@
 import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings } from '@/types';
 import { readConfigurationFromFile, writeConfigurationToFile } from './config-store';
 import { z } from 'zod';
-import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes } from 'date-fns';
+import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes, isWeekend, addDays } from 'date-fns';
 import fs from 'fs';
 import path from 'path';
 import { getPersistedBookings, addMockBooking, writeAllBookings } from './mock-data';
@@ -468,4 +468,81 @@ export async function importAllSettings(jsonContent: string): Promise<{ success:
     }
     return { success: false, error: 'An unexpected error occurred during import.' };
   }
+}
+
+// --- Usage Calculation Action ---
+
+// A helper function to calculate the duration of a time range string in hours
+const calculateDurationHours = (timeRange: string): number => {
+    const [startTimeStr, endTimeStr] = timeRange.split(' - ');
+    if (!startTimeStr || !endTimeStr) return 0;
+
+    const tempDate = new Date();
+    const startTime = parse(startTimeStr, 'HH:mm', tempDate);
+    const endTime = parse(endTimeStr, 'HH:mm', tempDate);
+
+    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) return 0;
+    
+    const durationMilliseconds = endTime.getTime() - startTime.getTime();
+    return durationMilliseconds / (1000 * 60 * 60);
+};
+
+export async function getRoomsWithUsage(): Promise<(Room & { usagePercentage: number })[]> {
+    const [
+        { rooms }, 
+        allBookings, 
+        appConfig
+    ] = await Promise.all([
+        getRooms(),
+        getPersistedBookings(),
+        getCurrentConfiguration()
+    ]);
+
+    const nextFiveWorkingDays: string[] = [];
+    let currentDate = new Date();
+    while (nextFiveWorkingDays.length < 5) {
+        if (!isWeekend(currentDate)) {
+            nextFiveWorkingDays.push(format(currentDate, 'yyyy-MM-dd'));
+        }
+        currentDate = addDays(currentDate, 1);
+    }
+    
+    const [startH, startM] = appConfig.startOfDay.split(':').map(Number);
+    const [endH, endM] = appConfig.endOfDay.split(':').map(Number);
+    const tempDate = new Date();
+    const startOfDay = setMinutes(setHours(tempDate, startH), startM);
+    const endOfDay = setMinutes(setHours(tempDate, endH), endM);
+
+    const totalWorkdayHours = (endOfDay.getTime() - startOfDay.getTime()) / (1000 * 60 * 60);
+    const totalAvailableHoursNext5Days = totalWorkdayHours > 0 ? totalWorkdayHours * 5 : 0;
+
+    if (totalAvailableHoursNext5Days <= 0) {
+        return rooms.map(room => ({ ...room, usagePercentage: 0 }));
+    }
+
+    const bookingsByRoom = allBookings.reduce((acc, booking) => {
+        if (!acc[booking.roomId]) {
+            acc[booking.roomId] = [];
+        }
+        acc[booking.roomId].push(booking);
+        return acc;
+    }, {} as Record<string, Booking[]>);
+
+    const roomsWithUsage = rooms.map(room => {
+        const roomBookings = bookingsByRoom[room.id] || [];
+        const relevantBookings = roomBookings.filter(booking => nextFiveWorkingDays.includes(booking.date));
+        
+        const totalBookedHours = relevantBookings.reduce((sum, booking) => {
+            return sum + calculateDurationHours(booking.time);
+        }, 0);
+
+        const usagePercentage = Math.round((totalBookedHours / totalAvailableHoursNext5Days) * 100);
+
+        return {
+            ...room,
+            usagePercentage: Math.min(usagePercentage, 100) // Cap at 100%
+        };
+    });
+
+    return roomsWithUsage;
 }
