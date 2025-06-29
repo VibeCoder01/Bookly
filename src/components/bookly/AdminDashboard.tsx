@@ -172,18 +172,19 @@ export function AdminDashboard({ initialSession }: AdminDashboardProps) {
         if (result.users) {
             setUsers(result.users);
         } else if (result.error) {
-            // This error is intentionally not shown as a toast to the user.
-            // The UI is already guarded by permissions, and this avoids showing
-            // a potentially transient error on first login. The error is logged
-            // for debugging purposes.
-            console.error(`[Admin] Non-fatal error fetching users: ${result.error}`);
+            if (session?.role === 'master') {
+                console.error(`[Admin] Non-fatal error fetching users (suppressed for master admin): ${result.error}`);
+            } else {
+                toast({ variant: 'destructive', title: 'Permission Denied', description: result.error });
+            }
         }
     } catch (err) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Could not load the list of admin users.' });
+        const errorMessage = err instanceof Error ? err.message : 'Could not load the list of admin users.';
+        toast({ variant: 'destructive', title: 'Error', description: errorMessage });
     } finally {
         setIsLoadingUsers(false);
     }
-  }, [toast, canManageUsers]);
+  }, [toast, canManageUsers, session]);
 
   const handleShowAllBookings = useCallback(async () => {
     setIsLoadingBookings(true);
