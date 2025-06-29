@@ -102,10 +102,11 @@ export default function AdminPage() {
     });
   }, []);
 
-  const hasPermission = (permission: keyof SessionPayload['permissions']) => {
+  const hasPermission = useCallback((permission: keyof SessionPayload['permissions'] | 'canManageUsers') => {
     if (session?.role === 'master') return true;
-    return session?.permissions?.[permission] ?? false;
-  };
+    if (permission === 'canManageUsers') return false; // Only master can manage users
+    return session?.permissions?.[permission as keyof SessionPayload['permissions']] ?? false;
+  }, [session]);
 
   const fetchAdminConfiguration = useCallback(async () => {
     if (!hasPermission('canManageConfig')) {
@@ -131,7 +132,7 @@ export default function AdminPage() {
     } finally {
       setIsLoadingConfig(false);
     }
-  }, [toast, session]);
+  }, [toast, hasPermission]);
 
   const fetchRooms = useCallback(async () => {
     if (!hasPermission('canManageRooms')) {
@@ -147,10 +148,10 @@ export default function AdminPage() {
     } finally {
         setIsLoadingRooms(false);
     }
-  }, [toast, session]);
+  }, [toast, hasPermission]);
 
    const fetchUsers = useCallback(async () => {
-    if (session?.role !== 'master') {
+    if (!hasPermission('canManageUsers')) {
         setIsLoadingUsers(false);
         return;
     }
@@ -167,7 +168,7 @@ export default function AdminPage() {
     } finally {
         setIsLoadingUsers(false);
     }
-  }, [toast, session]);
+  }, [toast, hasPermission]);
 
   const handleShowAllBookings = useCallback(async () => {
     setIsLoadingBookings(true);
@@ -401,7 +402,7 @@ export default function AdminPage() {
               </div>
 
             {/* --- USER MANAGEMENT --- */}
-            {session?.role === 'master' && (
+            {hasPermission('canManageUsers') && (
                 <div className="pt-6 border-t">
                     <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center"><Users className="mr-2 h-5 w-5" />Manage Admin Users</h3>
                     {isLoadingUsers ? (

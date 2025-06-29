@@ -1,0 +1,13 @@
+[
+  {
+    "id": "user-master-001",
+    "username": "admin",
+    "passwordHash": "",
+    "role": "master",
+    "permissions": {
+      "canManageRooms": true,
+      "canManageConfig": true,
+      "canManageData": true
+    }
+  }
+]
