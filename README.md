@@ -15,6 +15,10 @@ This project was bootstrapped with [Firebase Studio](https://firebase.google.com
 - **Data Persistence:** Uses a simple flat-file system (JSON) for storing all application data, making it easy to inspect and manage.
 - **Import/Export:** Easily back up and restore all application data (rooms, bookings, settings) with a single click.
 
+## Screenshot
+
+![Bookly Screenshot](./public/bookly-screenshot.png)
+
 ## Tech Stack
 
 - **Framework:** [Next.js](https://nextjs.org/) (using the App Router)

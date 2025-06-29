@@ -48,5 +48,15 @@
     "title": "ddd",
     "userName": "Shaun",
     "userEmail": "sdunmall@gmail.com"
+  },
+  {
+    "id": "booking-1751195156992-9ceom",
+    "roomId": "room-1751191949953",
+    "roomName": "Charlie - Duo Pod",
+    "date": "2025-07-03",
+    "time": "11:00 - 16:00",
+    "title": "Vibe Coding meeting",
+    "userName": "VibeCoder01",
+    "userEmail": "sdunmall@gmail.com"
   }
 ]
