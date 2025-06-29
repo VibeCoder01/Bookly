@@ -334,6 +334,27 @@ export default function AdminPage() {
     );
   }
 
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <Header />
+        <main className="container mx-auto py-8 px-4">
+          <Card className="shadow-xl rounded-xl">
+            <CardHeader>
+              <CardTitle className="font-headline text-3xl text-primary">Admin Dashboard</CardTitle>
+              <CardDescription>Session not found or expired. Please log in.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href="/login" className={cn(buttonVariants({ variant: 'default' }))}>
+                Go to Login
+              </Link>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="min-h-screen bg-background text-foreground">
@@ -344,7 +365,7 @@ export default function AdminPage() {
                 <div className="flex justify-between items-start">
                     <div>
                         <CardTitle className="font-headline text-3xl text-primary">Admin Dashboard</CardTitle>
-                        <CardDescription>Welcome, <span className="font-semibold text-primary">{session?.username}</span>! Role: <span className="font-semibold text-primary capitalize">{session?.role}</span></CardDescription>
+                        <CardDescription>Welcome, <span className="font-semibold text-primary">{session.username}</span>! Role: <span className="font-semibold text-primary capitalize">{session.role}</span></CardDescription>
                     </div>
                      <div className="flex items-center gap-x-2">
                         <Link href="/" passHref>
