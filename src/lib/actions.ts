@@ -700,7 +700,9 @@ export async function addUserByAdmin(formData: UserFormData): Promise<{ success:
         return { success: false, error: 'New users require a password of at least 6 characters.' };
     }
 
-    return addUser(formData);
+    // Explicitly destructure to match the `addUser` signature, which expects `Omit<UserFormData, 'id'>`
+    const { id, ...userData } = formData;
+    return addUser(userData);
 }
 
 export async function updateUserByAdmin(formData: UserFormData): Promise<{ success: boolean; error?: string }> {
