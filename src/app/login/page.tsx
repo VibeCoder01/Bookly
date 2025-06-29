@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { login, setInitialMasterPassword } from '@/lib/actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -32,7 +32,6 @@ type SetPasswordFormValues = z.infer<typeof setPasswordSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
@@ -52,20 +51,19 @@ export default function LoginPage() {
     setIsSubmitting(true);
     setGlobalError(null);
 
+    // The login action now redirects on success, or returns an object on failure/special cases.
     const result = await login(data);
 
-    if (result.success) {
-      toast({ title: 'Login Successful', description: 'Welcome back!' });
-      const redirectedFrom = searchParams.get('redirectedFrom') || '/admin';
-      router.push(redirectedFrom);
-      router.refresh();
-    } else if (result.needsPasswordSetup) {
+    if (result?.needsPasswordSetup) {
+      toast({ title: 'Initial Setup Required', description: 'Please set a password for the master admin.'});
       setNeedsPasswordSetup(true);
       setGlobalError(null);
       loginForm.reset({ username: data.username, password: '' }); 
-    } else {
-      setGlobalError(result.error || 'An unexpected error occurred.');
+    } else if (result?.error) {
+      setGlobalError(result.error);
     }
+    
+    // If we reach here, it means the login failed and we didn't redirect.
     setIsSubmitting(false);
   };
 
@@ -73,14 +71,14 @@ export default function LoginPage() {
     setIsSubmitting(true);
     setGlobalError(null);
 
+    // This action also redirects on success or returns an error object.
     const result = await setInitialMasterPassword(data.password);
-    if(result.success) {
-        toast({ title: 'Password Set Successfully', description: 'Welcome, Master Admin!' });
-        router.push('/admin');
-        router.refresh();
-    } else {
-        setGlobalError(result.error || 'An unexpected error occurred.');
+
+    if (result?.error) {
+        setGlobalError(result.error);
     }
+
+    // If successful, the server action will redirect, so we only need to handle the error case.
     setIsSubmitting(false);
   };
 

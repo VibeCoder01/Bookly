@@ -1,3 +1,4 @@
+
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { decrypt } from '@/lib/session';
@@ -15,9 +16,7 @@ export async function middleware(request: NextRequest) {
 
     // If no session or session is invalid, redirect to login page
     if (!session?.userId) {
-      const loginUrl = new URL(LOGIN_PATH, request.nextUrl.origin);
-      loginUrl.searchParams.set('redirectedFrom', pathname);
-      return NextResponse.redirect(loginUrl);
+      return NextResponse.redirect(new URL(LOGIN_PATH, request.nextUrl.origin));
     }
   }
 

@@ -594,45 +594,45 @@ const loginFormSchema = z.object({
 });
 
 
-export async function login(formData: z.infer<typeof loginFormSchema>): Promise<{ success: boolean; error?: string; needsPasswordSetup?: boolean }> {
+export async function login(formData: z.infer<typeof loginFormSchema>): Promise<{ error?: string; needsPasswordSetup?: boolean }> {
   const validation = loginFormSchema.safeParse(formData);
   if (!validation.success) {
-    return { success: false, error: 'Invalid form data.' };
+    return { error: 'Invalid form data.' };
   }
   const { username, password = '' } = validation.data;
 
   const user = await getUserByUsername(username);
   if (!user) {
-    return { success: false, error: 'Invalid username or password.' };
+    return { error: 'Invalid username or password.' };
   }
 
   // Handle initial password setup for master admin
   if (user.role === 'master' && user.passwordHash === '') {
-      return { success: false, needsPasswordSetup: true };
+      return { needsPasswordSetup: true };
   }
 
   const passwordMatch = await verifyPassword(password, user.passwordHash);
   if (!passwordMatch) {
-    return { success: false, error: 'Invalid username or password.' };
+    return { error: 'Invalid username or password.' };
   }
 
   await createSession(user);
-  return { success: true };
+  redirect('/admin');
 }
 
 const setInitialPasswordSchema = z.object({
     password: z.string().min(6, { message: 'Password must be at least 6 characters.' })
 });
 
-export async function setInitialMasterPassword(password: string): Promise<{ success: boolean, error?: string }> {
+export async function setInitialMasterPassword(password: string): Promise<{ error?: string }> {
     const validation = setInitialPasswordSchema.safeParse({ password });
     if (!validation.success) {
-        return { success: false, error: validation.error.issues[0].message };
+        return { error: validation.error.issues[0].message };
     }
 
     const masterAdmin = await getUserByUsername('admin');
     if (!masterAdmin || masterAdmin.role !== 'master' || masterAdmin.passwordHash !== '') {
-        return { success: false, error: 'Initial setup is not required or has already been completed.' };
+        return { error: 'Initial setup is not required or has already been completed.' };
     }
     
     const result = await updateUserPassword(masterAdmin.id, password);
@@ -640,10 +640,10 @@ export async function setInitialMasterPassword(password: string): Promise<{ succ
         const updatedAdmin = await getUserById(masterAdmin.id);
         if (updatedAdmin) {
             await createSession(updatedAdmin);
-            return { success: true };
+            redirect('/admin');
         }
     }
-    return { success: false, error: result.error || 'Failed to set initial password.' };
+    return { error: result.error || 'Failed to set initial password.' };
 }
 
 
