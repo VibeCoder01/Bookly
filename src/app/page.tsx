@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { getRooms } from '@/lib/actions';
 import type { Room } from '@/types';
-import { Sofa } from 'lucide-react';
+import { Armchair } from 'lucide-react';
 
 export default async function HomePage() {
   const { rooms } = await getRooms();
@@ -18,7 +18,10 @@ export default async function HomePage() {
             rooms.map((room: Room) => (
               <Link key={room.id} href={`/book?roomId=${room.id}`} passHref>
                 <Button size="lg" className="h-24 w-52 text-lg bg-accent hover:bg-accent/90 text-accent-foreground flex flex-col items-center justify-center gap-2 rounded-xl shadow-lg">
-                  <Sofa size={32} />
+                  <div className="flex items-center gap-x-2">
+                    <Armchair size={32} />
+                    <span>x {room.capacity}</span>
+                  </div>
                   <span>{room.name}</span>
                 </Button>
               </Link>
