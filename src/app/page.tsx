@@ -31,20 +31,22 @@ export default async function HomePage() {
                 </div>
 
                 <div className="w-full pt-2 pb-3 px-3 bg-black/10">
-                    <p className="text-xs text-center font-medium text-accent-foreground/80 mb-1">
+                    <p className="text-xs text-center font-medium text-accent-foreground/80 mb-2">
                         Usage (Next 5 Working Days)
                     </p>
-                    <div className="flex w-full justify-center items-end gap-1">
-                      {room.dailyUsage.map((dayUsage, index) => (
-                        <div
-                          key={index}
-                          title={`${format(new Date(dayUsage.date + 'T00:00:00'), 'MMM d')}: ${dayUsage.usage}% used`}
-                          className="h-8 w-full flex-1 rounded-sm bg-muted/40 overflow-hidden relative"
-                        >
-                          <div
-                            className="absolute bottom-0 left-0 right-0 bg-white/70"
-                            style={{ height: `${dayUsage.usage}%` }}
-                          />
+                    <div className="space-y-1">
+                      {room.dailyUsage.map((day) => (
+                        <div key={day.date} className="flex gap-px" title={`Bookings for ${format(new Date(day.date + 'T00:00:00'), 'MMM d')}`}>
+                          {day.slots.map((slot) => (
+                            <div
+                              key={slot.startTime}
+                              title={`${slot.startTime} - ${slot.endTime}${slot.isBooked ? ' (Booked)' : ' (Available)'}`}
+                              className={cn(
+                                'h-2 flex-1 rounded-sm',
+                                slot.isBooked ? 'bg-white/90' : 'bg-white/30'
+                              )}
+                            />
+                          ))}
                         </div>
                       ))}
                     </div>

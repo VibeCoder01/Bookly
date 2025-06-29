@@ -53,9 +53,15 @@ export interface AISuggestion {
   reason?: string;
 }
 
+export interface SlotStatus {
+  startTime: string;
+  endTime: string;
+  isBooked: boolean;
+}
+
 export interface DailyUsage {
   date: string; // YYYY-MM-DD
-  usage: number; // percentage
+  slots: SlotStatus[];
 }
 
 export interface RoomWithDailyUsage extends Room {

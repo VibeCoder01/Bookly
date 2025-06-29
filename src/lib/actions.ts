@@ -1,7 +1,7 @@
 
 'use server';
 
-import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings, RoomWithDailyUsage } from '@/types';
+import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings, RoomWithDailyUsage, SlotStatus } from '@/types';
 import { readConfigurationFromFile, writeConfigurationToFile } from './config-store';
 import { z } from 'zod';
 import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes, isWeekend, addDays } from 'date-fns';
@@ -471,22 +471,6 @@ export async function importAllSettings(jsonContent: string): Promise<{ success:
 }
 
 // --- Usage Calculation Action ---
-
-// A helper function to calculate the duration of a time range string in hours
-const calculateDurationHours = (timeRange: string): number => {
-    const [startTimeStr, endTimeStr] = timeRange.split(' - ');
-    if (!startTimeStr || !endTimeStr) return 0;
-
-    const tempDate = new Date();
-    const startTime = parse(startTimeStr, 'HH:mm', tempDate);
-    const endTime = parse(endTimeStr, 'HH:mm', tempDate);
-
-    if (isNaN(startTime.getTime()) || isNaN(endTime.getTime())) return 0;
-    
-    const durationMilliseconds = endTime.getTime() - startTime.getTime();
-    return durationMilliseconds / (1000 * 60 * 60);
-};
-
 export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
     const [
         { rooms }, 
@@ -507,16 +491,25 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
         currentDate = addDays(currentDate, 1);
     }
     
-    const [startH, startM] = appConfig.startOfDay.split(':').map(Number);
-    const [endH, endM] = appConfig.endOfDay.split(':').map(Number);
-    const tempDate = new Date();
-    const startOfDay = setMinutes(setHours(tempDate, startH), startM);
-    const endOfDay = setMinutes(setHours(tempDate, endH), endM);
+    // Generate all possible slots for a day
+    const [startHour, startMinute] = appConfig.startOfDay.split(':').map(Number);
+    const [endHour, endMinute] = appConfig.endOfDay.split(':').map(Number);
+    
+    const allDaySlots: { startTime: string; endTime: string }[] = [];
+    let slotTime = setHours(setMinutes(new Date(), startMinute), startHour);
+    const dayEndTime = setHours(setMinutes(new Date(), endMinute), endHour);
 
-    const totalWorkdayHours = (endOfDay.getTime() - startOfDay.getTime()) / (1000 * 60 * 60);
-
-    if (totalWorkdayHours <= 0) {
-        return rooms.map(room => ({ ...room, dailyUsage: nextFiveWorkingDays.map(d => ({ date: d, usage: 0 })) }));
+    while (isBefore(slotTime, dayEndTime)) {
+        const slotStart = new Date(slotTime);
+        const slotEnd = addMinutes(slotStart, appConfig.slotDurationMinutes);
+        if (isBefore(dayEndTime, slotEnd) || isEqual(dayEndTime, slotStart)) {
+            break;
+        }
+        allDaySlots.push({
+            startTime: format(slotStart, 'HH:mm'),
+            endTime: format(slotEnd, 'HH:mm'),
+        });
+        slotTime = slotEnd;
     }
 
     const bookingsByRoom = allBookings.reduce((acc, booking) => {
@@ -527,19 +520,32 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
         return acc;
     }, {} as Record<string, Booking[]>);
 
+    const isSlotBooked = (slotStartTime: string, slotEndTime: string, date: string, roomBookingsForDay: Booking[]): boolean => {
+        const slotStartDateTime = parse(`${date} ${slotStartTime}`, 'yyyy-MM-dd HH:mm', new Date());
+        const slotEndDateTime = parse(`${date} ${slotEndTime}`, 'yyyy-MM-dd HH:mm', new Date());
+        
+        return roomBookingsForDay.some(booking => {
+            const bookingTimes = parseBookingTime(booking.time, booking.date);
+            if (!bookingTimes) return false;
+            // Check for overlap: (StartA < EndB) and (EndA > StartB)
+            return isBefore(slotStartDateTime, bookingTimes.end) && isBefore(bookingTimes.start, slotEndDateTime);
+        });
+    };
+
     const roomsWithUsage = rooms.map(room => {
         const roomBookings = bookingsByRoom[room.id] || [];
         
         const dailyUsage = nextFiveWorkingDays.map(day => {
-            const bookingsForDay = roomBookings.filter(booking => booking.date === day);
-            const totalBookedHoursForDay = bookingsForDay.reduce((sum, booking) => {
-                return sum + calculateDurationHours(booking.time);
-            }, 0);
-            
-            const usagePercentage = Math.round((totalBookedHoursForDay / totalWorkdayHours) * 100);
+            const bookingsForDay = roomBookings.filter(b => b.date === day);
+
+            const slotsWithStatus: SlotStatus[] = allDaySlots.map(slot => ({
+                ...slot,
+                isBooked: isSlotBooked(slot.startTime, slot.endTime, day, bookingsForDay)
+            }));
+
             return {
                 date: day,
-                usage: Math.min(usagePercentage, 100)
+                slots: slotsWithStatus,
             };
         });
 
