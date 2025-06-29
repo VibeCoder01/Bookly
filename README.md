@@ -15,9 +15,13 @@ This project was bootstrapped with [Firebase Studio](https://firebase.google.com
 - **Data Persistence:** Uses a simple flat-file system (JSON) for storing all application data, making it easy to inspect and manage.
 - **Import/Export:** Easily back up and restore all application data (rooms, bookings, settings) with a single click.
 
-## Screenshot
+## Screenshots
 
+**Home Page - Room Availability**
 ![Bookly Screenshot](./public/bookly-screenshot.png)
+
+**Admin Dashboard - Room Management**
+![Bookly Admin Room Management Screenshot](./public/bookly-admin-rooms.png)
 
 ## Tech Stack
 
