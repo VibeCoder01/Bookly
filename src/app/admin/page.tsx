@@ -153,16 +153,29 @@ export default function AdminPage() {
 
 
   const groupedBookings = useMemo(() => {
-    if (!allBookings.length) return {};
-    return allBookings.reduce((acc, booking) => {
-      const roomName = booking.roomName || 'Unknown Room';
-      if (!acc[roomName]) {
-        acc[roomName] = [];
+    if (!allBookings.length || !rooms.length) return {};
+
+    const roomMap = new Map<string, Room>(rooms.map(room => [room.id, room]));
+
+    const bookingsByRoomId = allBookings.reduce((acc, booking) => {
+      // Only include bookings for rooms that currently exist
+      if (roomMap.has(booking.roomId)) {
+        if (!acc[booking.roomId]) {
+          acc[booking.roomId] = [];
+        }
+        acc[booking.roomId].push(booking);
       }
-      acc[roomName].push(booking);
+      return acc;
+    }, {} as Record<string, Booking[]>);
+
+    // Now, create the final structure with the current room name as the key
+    return Object.entries(bookingsByRoomId).reduce((acc, [roomId, bookingsInRoom]) => {
+      const currentRoomName = roomMap.get(roomId)?.name || 'Unknown Room';
+      acc[currentRoomName] = bookingsInRoom;
       return acc;
     }, {} as GroupedBookings);
-  }, [allBookings]);
+  }, [allBookings, rooms]);
+
 
   const handleConfigChange = (field: keyof AdminConfigFormState, value: string) => {
     setConfig(prevConfig => ({ ...prevConfig, [field]: value }));
