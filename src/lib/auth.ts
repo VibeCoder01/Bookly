@@ -1,3 +1,4 @@
+
 'use server';
 
 import type { User, UserFormData } from '@/types';
@@ -47,28 +48,32 @@ async function createDefaultMasterAdmin(): Promise<User> {
 }
 
 export async function readUsersFromFile(): Promise<User[]> {
-    await ensureDataDirectoryExists();
     try {
+        await ensureDataDirectoryExists();
         const fileContent = await fs.readFile(USERS_FILE_PATH, 'utf-8');
         const users = JSON.parse(fileContent) as User[];
-        // Handle case where file exists but is empty
-        if (users.length === 0) {
-             throw new Error("User file is empty, will re-initialize.");
+        if (!Array.isArray(users) || users.length === 0) {
+            throw new Error("User file is empty or invalid, will re-initialize.");
         }
         return users;
     } catch (error: any) {
-        // If file doesn't exist or is empty/corrupt, create it with the default admin
-        if (error.code === 'ENOENT' || error instanceof SyntaxError || error.message.includes("User file is empty")) {
-            console.log(`[Bookly Auth] users.json not found or is invalid. Creating with default master admin.`);
-            const masterAdmin = await createDefaultMasterAdmin();
-            const users = [masterAdmin];
-            await writeUsersToFile(users);
-            return users;
+        if (error.code === 'ENOENT' || error instanceof SyntaxError || error.message.includes("re-initialize")) {
+            try {
+                console.log(`[Bookly Auth] Initializing users.json with default master admin.`);
+                const masterAdmin = await createDefaultMasterAdmin();
+                const users = [masterAdmin];
+                await writeUsersToFile(users);
+                return users;
+            } catch (initError) {
+                console.error(`[Bookly Auth] FATAL: Failed to initialize users.json.`, initError);
+                throw new Error("Could not create or write to the user data file. Please check server file system permissions.");
+            }
         }
-        console.error(`[Bookly Auth] Error reading or parsing ${USERS_FILE_PATH}:`, error);
-        return [];
+        console.error(`[Bookly Auth] Unhandled error reading user data:`, error);
+        throw new Error("An unexpected server error occurred while reading user data.");
     }
 }
+
 
 async function writeUsersToFile(users: User[]): Promise<void> {
     await ensureDataDirectoryExists();
