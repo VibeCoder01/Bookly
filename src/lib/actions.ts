@@ -126,6 +126,8 @@ export async function deleteRoom(roomId: string): Promise<{ success: boolean; er
 const MIN_SLOT_DURATION = 15;
 const MAX_SLOT_DURATION = 120;
 const timeStringSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format. Use HH:MM.");
+const DEFAULT_APP_NAME = 'Bookly';
+const DEFAULT_APP_SUBTITLE = 'Room booking system';
 
 const appConfigurationSchema = z.object({
   appName: z.string().min(1, "App Name cannot be empty."),
@@ -154,7 +156,15 @@ export async function updateAppConfiguration(
 ): Promise<{ success: boolean; error?: string; fieldErrors?: Record<string, string[] | undefined> }> {
     await new Promise(resolve => setTimeout(resolve, 200));
 
-    const validation = appConfigurationSchema.safeParse(newConfig);
+    const processedConfig = { ...newConfig };
+    if (!processedConfig.appName?.trim()) {
+      processedConfig.appName = DEFAULT_APP_NAME;
+    }
+    if (!processedConfig.appSubtitle?.trim()) {
+      processedConfig.appSubtitle = DEFAULT_APP_SUBTITLE;
+    }
+
+    const validation = appConfigurationSchema.safeParse(processedConfig);
     if (!validation.success) {
         return { success: false, error: 'Invalid configuration data.', fieldErrors: validation.error.flatten().fieldErrors };
     }
