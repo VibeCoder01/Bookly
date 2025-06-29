@@ -138,7 +138,8 @@ export default function AdminPage() {
       } else {
         setAllBookings(result.bookings);
       }
-    } catch (err)      setError('Failed to fetch bookings. Please try again.');
+    } catch (err) {
+      setError('Failed to fetch bookings. Please try again.');
       setAllBookings([]);
     } finally {
       setIsLoadingBookings(false);
