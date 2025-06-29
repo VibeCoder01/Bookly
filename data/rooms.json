@@ -8,5 +8,15 @@
     "id": "room-1751214385447",
     "name": "Beta - Pod",
     "capacity": 1
+  },
+  {
+    "id": "room-1751214846839",
+    "name": "Charlie - Duo Pod",
+    "capacity": 2
+  },
+  {
+    "id": "room-1751214872327",
+    "name": "Delta - Auditorium",
+    "capacity": 300
   }
 ]
