@@ -14,37 +14,6 @@ const ensureDataDirectoryExists = () => {
   }
 };
 
-const formatDateToYYYYMMDD = (date: Date): string => {
-  return date.toISOString().split('T')[0];
-};
-
-const today = new Date();
-const tomorrowDate = new Date(today);
-tomorrowDate.setDate(today.getDate() + 1);
-
-const initialBookingsData: Booking[] = [
-  {
-    id: 'booking-1',
-    roomId: 'room-1',
-    roomName: 'Conference Room Alpha',
-    title: 'Weekly Standup',
-    date: formatDateToYYYYMMDD(tomorrowDate),
-    time: '10:00 - 11:00',
-    userName: 'Alice Wonderland',
-    userEmail: 'alice@example.com',
-  },
-  {
-    id: 'booking-2',
-    roomId: 'room-2',
-    roomName: 'Meeting Room Bravo',
-    title: 'Product Demo',
-    date: formatDateToYYYYMMDD(tomorrowDate),
-    time: '14:00 - 15:00',
-    userName: 'Bob The Builder',
-    userEmail: 'bob@example.com',
-  },
-];
-
 const saveBookings = async (bookings: Booking[]): Promise<void> => {
   ensureDataDirectoryExists();
   try {
@@ -60,19 +29,29 @@ const loadBookings = async (): Promise<Booking[]> => {
   try {
     if (fs.existsSync(BOOKINGS_FILE_PATH)) {
       const fileContent = await fs.promises.readFile(BOOKINGS_FILE_PATH, 'utf-8');
+      // If the file is empty or just whitespace, treat it as an empty array.
+      if (!fileContent.trim()) {
+        return [];
+      }
       const bookings = JSON.parse(fileContent) as Booking[];
       if (Array.isArray(bookings)) {
         console.log(`[Bookly Data] Loaded ${bookings.length} bookings from ${BOOKINGS_FILE_PATH}`);
         return bookings;
       }
-      console.warn(`[Bookly Data] Invalid content in ${BOOKINGS_FILE_PATH}. Using initial data.`);
+      // If content is not an array, it's corrupt.
+      console.warn(`[Bookly Data] Corrupt content in ${BOOKINGS_FILE_PATH}. Expected an array.`);
+      return []; // Return empty instead of falling back.
     }
   } catch (error) {
     console.error(`[Bookly Data] Error reading or parsing ${BOOKINGS_FILE_PATH}:`, error);
+    // On error, return empty array to prevent data loss or re-population with stale data.
+    return [];
   }
-  await saveBookings(initialBookingsData);
-  return [...initialBookingsData];
+  // If file does not exist, create it with an empty array.
+  await saveBookings([]);
+  return [];
 };
+
 
 export async function getPersistedBookings(): Promise<Booking[]> {
   return await loadBookings();
