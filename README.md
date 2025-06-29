@@ -78,6 +78,10 @@ npm run dev
 
 Open [http://localhost:9002](http://localhost:9002) in your browser to view the application.
 
+## Logging In as the Initial Admin
+
+The admin dashboard is located at [`/admin`](http://localhost:9002/admin). On your first visit you'll be redirected to the login page. Bookly ships with a built-in **master admin** account named `admin`. The initial `data/users.json` file contains this account with no password. Enter the username `admin` and leave the password field blank to trigger the setup flow and create a secure password. Use these credentials for future logins. If you need to reset the setup, delete `data/users.json` and restart the server.
+
 ## Project Structure
 
 - `src/app/`: Contains the main pages and layouts for the application (e.g., `page.tsx` for the home page and `admin/page.tsx` for the admin dashboard).
