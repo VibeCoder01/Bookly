@@ -2,17 +2,24 @@
 import { Header } from '@/components/bookly/Header';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { getRoomsWithUsage } from '@/lib/actions';
+import { getRoomsWithDailyUsage } from '@/lib/actions';
 import type { Room } from '@/types';
 import { Armchair } from 'lucide-react';
-import { Progress } from "@/components/ui/progress";
+import { cn } from '@/lib/utils';
 
-interface RoomWithUsage extends Room {
-  usagePercentage: number;
+interface RoomWithDailyUsage extends Room {
+  dailyUsage: number[];
 }
 
 export default async function HomePage() {
-  const roomsWithUsage = await getRoomsWithUsage();
+  const roomsWithUsage: RoomWithDailyUsage[] = await getRoomsWithDailyUsage();
+
+  const getUsageColor = (usage: number) => {
+    if (usage === 0) return 'bg-muted/30';
+    if (usage <= 50) return 'bg-primary/40';
+    if (usage <= 90) return 'bg-primary';
+    return 'bg-accent';
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -20,7 +27,7 @@ export default async function HomePage() {
       <main className="flex-grow flex items-center justify-center p-4">
         <div className="flex flex-wrap justify-center gap-6 max-w-5xl mx-auto">
           {roomsWithUsage.length > 0 ? (
-            roomsWithUsage.map((room: RoomWithUsage) => (
+            roomsWithUsage.map((room) => (
               <Link key={room.id} href={`/book?roomId=${room.id}`} passHref>
                 <Button
                   variant="outline"
@@ -36,9 +43,20 @@ export default async function HomePage() {
 
                   <div className="w-full py-2 px-3 bg-muted/50 border-t">
                       <p className="text-xs text-center font-medium text-muted-foreground mb-1">
-                          Usage (Next 5 Days)
+                          Usage (Next 5 Working Days)
                       </p>
-                      <Progress value={room.usagePercentage} className="h-2" />
+                      <div className="flex w-full justify-center gap-1">
+                        {room.dailyUsage.map((usage, index) => (
+                          <div
+                            key={index}
+                            title={`Day ${index + 1}: ${usage}% used`}
+                            className={cn(
+                              'h-2 w-full flex-1 rounded-sm transition-colors',
+                              getUsageColor(usage)
+                            )}
+                          />
+                        ))}
+                      </div>
                   </div>
                 </Button>
               </Link>

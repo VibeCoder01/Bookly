@@ -487,7 +487,7 @@ const calculateDurationHours = (timeRange: string): number => {
     return durationMilliseconds / (1000 * 60 * 60);
 };
 
-export async function getRoomsWithUsage(): Promise<(Room & { usagePercentage: number })[]> {
+export async function getRoomsWithDailyUsage(): Promise<(Room & { dailyUsage: number[] })[]> {
     const [
         { rooms }, 
         allBookings, 
@@ -514,10 +514,9 @@ export async function getRoomsWithUsage(): Promise<(Room & { usagePercentage: nu
     const endOfDay = setMinutes(setHours(tempDate, endH), endM);
 
     const totalWorkdayHours = (endOfDay.getTime() - startOfDay.getTime()) / (1000 * 60 * 60);
-    const totalAvailableHoursNext5Days = totalWorkdayHours > 0 ? totalWorkdayHours * 5 : 0;
 
-    if (totalAvailableHoursNext5Days <= 0) {
-        return rooms.map(room => ({ ...room, usagePercentage: 0 }));
+    if (totalWorkdayHours <= 0) {
+        return rooms.map(room => ({ ...room, dailyUsage: [0, 0, 0, 0, 0] }));
     }
 
     const bookingsByRoom = allBookings.reduce((acc, booking) => {
@@ -530,17 +529,20 @@ export async function getRoomsWithUsage(): Promise<(Room & { usagePercentage: nu
 
     const roomsWithUsage = rooms.map(room => {
         const roomBookings = bookingsByRoom[room.id] || [];
-        const relevantBookings = roomBookings.filter(booking => nextFiveWorkingDays.includes(booking.date));
         
-        const totalBookedHours = relevantBookings.reduce((sum, booking) => {
-            return sum + calculateDurationHours(booking.time);
-        }, 0);
-
-        const usagePercentage = Math.round((totalBookedHours / totalAvailableHoursNext5Days) * 100);
+        const dailyUsage = nextFiveWorkingDays.map(day => {
+            const bookingsForDay = roomBookings.filter(booking => booking.date === day);
+            const totalBookedHoursForDay = bookingsForDay.reduce((sum, booking) => {
+                return sum + calculateDurationHours(booking.time);
+            }, 0);
+            
+            const usagePercentage = Math.round((totalBookedHoursForDay / totalWorkdayHours) * 100);
+            return Math.min(usagePercentage, 100); // Cap at 100
+        });
 
         return {
             ...room,
-            usagePercentage: Math.min(usagePercentage, 100) // Cap at 100%
+            dailyUsage
         };
     });
 
