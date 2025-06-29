@@ -8,6 +8,7 @@ import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes, isW
 import fs from 'fs';
 import path from 'path';
 import { getPersistedBookings, addMockBooking, writeAllBookings } from './mock-data';
+import { revalidatePath } from 'next/cache';
 
 // --- Room Data Persistence ---
 const ROOMS_FILE_PATH = path.join(process.cwd(), 'data', 'rooms.json');
@@ -129,6 +130,7 @@ const timeStringSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invali
 const appConfigurationSchema = z.object({
   appName: z.string().min(1, "App Name cannot be empty."),
   appSubtitle: z.string().min(1, "App Subtitle cannot be empty."),
+  appLogo: z.string().optional(),
   slotDurationMinutes: z.number()
     .min(MIN_SLOT_DURATION, `Duration must be at least ${MIN_SLOT_DURATION} minutes.`)
     .max(MAX_SLOT_DURATION, `Duration must be at most ${MAX_SLOT_DURATION} minutes.`)
@@ -160,11 +162,51 @@ export async function updateAppConfiguration(
     try {
         await writeConfigurationToFile(validation.data);
         console.log(`[Bookly Config] System configuration updated and persisted.`);
+        revalidatePath('/', 'layout');
         return { success: true };
     } catch (error) {
         console.error("[Bookly Config] Error persisting configuration:", error);
         return { success: false, error: "Failed to save configuration." };
     }
+}
+
+export async function updateAppLogo(
+  formData: FormData
+): Promise<{ success: boolean; error?: string }> {
+  const file = formData.get('logo') as File | null;
+
+  if (!file) {
+    return { success: false, error: 'No file uploaded.' };
+  }
+  
+  if (file.size === 0) {
+      return { success: false, error: 'Cannot upload an empty file.' };
+  }
+  
+  // Basic validation for image type
+  if (!['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'].includes(file.type)) {
+      return { success: false, error: 'Invalid file type. Please upload a PNG, JPG, SVG or WEBP.'}
+  }
+
+  try {
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    const logoFileName = `app-logo${path.extname(file.name)}`; // e.g. app-logo.png
+    const logoPath = path.join(process.cwd(), 'public', logoFileName);
+
+    await fs.promises.writeFile(logoPath, fileBuffer);
+
+    const config = await readConfigurationFromFile();
+    config.appLogo = `/${logoFileName}`; // The public path for the img src
+    await writeConfigurationToFile(config);
+    
+    // Revalidate paths where the header is used to ensure the new logo appears
+    revalidatePath('/', 'layout');
+
+    return { success: true };
+  } catch (error) {
+    console.error('[Logo Upload Error]', error);
+    return { success: false, error: 'Failed to save the new logo.' };
+  }
 }
 
 export async function getCurrentConfiguration(): Promise<AppConfiguration> {
@@ -383,6 +425,7 @@ const exportedSettingsSchema = z.object({
   appConfig: z.object({
     appName: z.string(),
     appSubtitle: z.string(),
+    appLogo: z.string().optional(),
     slotDurationMinutes: z.number(),
     startOfDay: z.string(),
     endOfDay: z.string(),

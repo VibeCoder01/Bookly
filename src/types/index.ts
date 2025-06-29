@@ -74,6 +74,7 @@ export interface RoomWithDailyUsage extends Room {
 export interface AppConfiguration {
   appName: string;
   appSubtitle: string;
+  appLogo?: string;
   slotDurationMinutes: number;
   startOfDay: string; // HH:MM format
   endOfDay: string;   // HH:MM format

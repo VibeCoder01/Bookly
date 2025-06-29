@@ -5,12 +5,13 @@ import { Header } from '@/components/bookly/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text } from 'lucide-react';
+import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text, ImageIcon } from 'lucide-react';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Booking, Room, AppConfiguration } from '@/types';
 import { 
     getAllBookings, 
     updateAppConfiguration as serverUpdateAppConfiguration,
+    updateAppLogo,
     getCurrentConfiguration,
     getRooms,
     deleteRoom,
@@ -20,12 +21,15 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { RoomFormDialog } from '@/components/bookly/RoomFormDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import Image from 'next/image';
+import { CalendarCheck } from 'lucide-react';
 
 
 interface GroupedBookings {
@@ -64,8 +68,10 @@ export default function AdminPage() {
 
   // Configuration state
   const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: ''});
+  const [currentLogo, setCurrentLogo] = useState<string | undefined>(undefined);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   // Rooms state
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -91,6 +97,7 @@ export default function AdminPage() {
         startOfDay: currentConfig.startOfDay,
         endOfDay: currentConfig.endOfDay,
       });
+      setCurrentLogo(currentConfig.appLogo);
     } catch (err) {
       console.error("Failed to fetch admin configuration:", err);
       toast({
@@ -99,6 +106,7 @@ export default function AdminPage() {
         description: 'Could not load current settings. Displaying defaults.',
       });
       setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00' });
+      setCurrentLogo(undefined);
     } finally {
       setIsLoadingConfig(false);
     }
@@ -161,7 +169,10 @@ export default function AdminPage() {
   const handleApplyChanges = async () => {
     setIsApplyingChanges(true);
 
+    const currentConfigFromServer = await getCurrentConfiguration();
+
     const configToSave: AppConfiguration = {
+      ...currentConfigFromServer,
       appName: config.appName,
       appSubtitle: config.appSubtitle,
       slotDurationMinutes: convertDurationValueToMinutes(config.slotDuration),
@@ -181,6 +192,23 @@ export default function AdminPage() {
     setIsApplyingChanges(false);
   };
   
+  const handleLogoUpload = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsUploadingLogo(true);
+
+    const formData = new FormData(event.currentTarget);
+    const result = await updateAppLogo(formData);
+
+    if (result.success) {
+        toast({ title: 'Logo Updated', description: 'Your new logo has been uploaded.' });
+        await fetchAdminConfiguration();
+    } else {
+        toast({ variant: 'destructive', title: 'Logo Upload Failed', description: result.error });
+    }
+
+    setIsUploadingLogo(false);
+  };
+
   const getIconForSetting = (settingKey: keyof AdminConfigFormState) => {
     switch(settingKey) {
       case 'appName': return <Text className="mr-2 h-4 w-4 text-muted-foreground" />;
@@ -534,6 +562,45 @@ export default function AdminPage() {
                       className="hidden"
                       accept="application/json"
                     />
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* --- LOGO MANAGEMENT --- */}
+              <div className="pt-6 border-t">
+                <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
+                  <ImageIcon className="mr-2 h-5 w-5" />
+                  Application Logo
+                </h3>
+                <Card className="bg-card">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Upload Logo</CardTitle>
+                    <CardDescription>Replace the default icon with your own logo. Recommended size: 40x40 pixels.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col sm:flex-row items-start gap-6">
+                    <div className="flex-shrink-0">
+                      <p className="text-sm font-medium mb-2">Current Logo</p>
+                      <div className="h-12 w-12 rounded-md border border-dashed flex items-center justify-center bg-muted">
+                        {isLoadingConfig ? (
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        ) : currentLogo ? (
+                          <Image src={currentLogo} alt="Current App Logo" width={40} height={40} className="object-contain" unoptimized />
+                        ) : (
+                          <CalendarCheck className="h-8 w-8 text-muted-foreground" />
+                        )}
+                      </div>
+                    </div>
+                    <form onSubmit={handleLogoUpload} className="flex-grow">
+                      <Label htmlFor="logo-upload" className="mb-2 block">Upload New Logo</Label>
+                      <div className="flex items-center gap-2">
+                          <Input id="logo-upload" name="logo" type="file" required accept="image/png, image/jpeg, image/svg+xml, image/webp" disabled={isUploadingLogo || isLoadingConfig} />
+                          <Button type="submit" disabled={isUploadingLogo || isLoadingConfig}>
+                              {isUploadingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                              Save
+                          </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">Maximum file size: 1MB. The logo will be displayed at 40x40px.</p>
+                    </form>
                   </CardContent>
                 </Card>
               </div>

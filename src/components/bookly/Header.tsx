@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import React, { useState, useEffect } from 'react';
 import { getCurrentConfiguration } from '@/lib/actions';
 import type { AppConfiguration } from '@/types';
+import Image from 'next/image';
 
 interface HeaderProps {
   userName?: string | null;
@@ -15,7 +16,7 @@ interface HeaderProps {
 export function Header({ userName }: HeaderProps) {
   const [ipAddress, setIpAddress] = useState<string | null>(null);
   const [isLoadingIp, setIsLoadingIp] = useState(true);
-  const [config, setConfig] = useState<{ appName: string; appSubtitle: string } | null>(null);
+  const [config, setConfig] = useState<{ appName: string; appSubtitle: string; appLogo?: string; } | null>(null);
 
   useEffect(() => {
     fetch('/api/ip')
@@ -32,10 +33,10 @@ export function Header({ userName }: HeaderProps) {
     const fetchConfig = async () => {
         try {
             const appConfig = await getCurrentConfiguration();
-            setConfig({ appName: appConfig.appName, appSubtitle: appConfig.appSubtitle });
+            setConfig({ appName: appConfig.appName, appSubtitle: appConfig.appSubtitle, appLogo: appConfig.appLogo });
         } catch {
             // Fallback to default values on error
-            setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system' });
+            setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', appLogo: undefined });
         }
     };
     fetchConfig();
@@ -46,7 +47,11 @@ export function Header({ userName }: HeaderProps) {
     <header className="py-6 border-b border-border">
       <div className="container mx-auto px-4 flex items-center justify-between">
         <Link href="/" className="flex items-center group">
-          <CalendarCheck className="h-10 w-10 text-primary mr-3 group-hover:text-primary/80 transition-colors" />
+          {config?.appLogo ? (
+            <Image src={config.appLogo} alt={`${config.appName || 'Bookly'} Logo`} width={40} height={40} className="mr-3" unoptimized />
+          ) : (
+            <CalendarCheck className="h-10 w-10 text-primary mr-3 group-hover:text-primary/80 transition-colors" />
+          )}
           <div>
             <h1 className="font-headline text-4xl font-semibold text-primary group-hover:text-primary/80 transition-colors">
               {config?.appName || 'Bookly'}
