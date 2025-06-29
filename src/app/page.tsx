@@ -15,7 +15,7 @@ export default async function HomePage() {
   const roomsWithUsage: RoomWithDailyUsage[] = await getRoomsWithDailyUsage();
 
   const getUsageColor = (usage: number) => {
-    if (usage === 0) return 'bg-muted/30';
+    if (usage === 0) return 'bg-muted';
     if (usage <= 50) return 'bg-primary/40';
     if (usage <= 90) return 'bg-primary';
     return 'bg-accent';
