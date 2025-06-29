@@ -499,7 +499,7 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
     ]);
 
     const nextFiveWorkingDays: string[] = [];
-    let currentDate = new Date();
+    let currentDate = new Date(new Date().setHours(0, 0, 0, 0));
     while (nextFiveWorkingDays.length < 5) {
         if (!isWeekend(currentDate)) {
             nextFiveWorkingDays.push(format(currentDate, 'yyyy-MM-dd'));

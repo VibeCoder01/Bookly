@@ -11,13 +11,6 @@ import { format } from 'date-fns';
 export default async function HomePage() {
   const roomsWithUsage: RoomWithDailyUsage[] = await getRoomsWithDailyUsage();
 
-  const getUsageColor = (usage: number) => {
-    if (usage === 0) return 'bg-white/20';
-    if (usage <= 50) return 'bg-white/40';
-    if (usage <= 90) return 'bg-white/70';
-    return 'bg-white/90';
-  };
-
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Header />
@@ -41,16 +34,18 @@ export default async function HomePage() {
                       <p className="text-xs text-center font-medium text-accent-foreground/80 mb-1">
                           Usage (Next 5 Working Days)
                       </p>
-                      <div className="flex w-full justify-center gap-1">
+                      <div className="flex w-full justify-center items-end gap-1">
                         {room.dailyUsage.map((dayUsage, index) => (
                           <div
                             key={index}
                             title={`${format(new Date(dayUsage.date + 'T00:00:00'), 'MMM d')}: ${dayUsage.usage}% used`}
-                            className={cn(
-                              'h-2 w-full flex-1 rounded-sm transition-colors',
-                              getUsageColor(dayUsage.usage)
-                            )}
-                          />
+                            className="h-4 w-full flex-1 rounded-sm bg-muted/40 overflow-hidden relative"
+                          >
+                            <div
+                              className="absolute bottom-0 left-0 right-0 bg-white/70"
+                              style={{ height: `${dayUsage.usage}%` }}
+                            />
+                          </div>
                         ))}
                       </div>
                   </div>
