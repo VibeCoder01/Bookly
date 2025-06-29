@@ -23,6 +23,9 @@ This project was bootstrapped with [Firebase Studio](https://firebase.google.com
 **Admin Dashboard - Room Management**
 ![Bookly Admin Room Management Screenshot](./public/bookly-admin-rooms.png)
 
+**Admin Dashboard - Data Management**
+![Bookly Admin Data Management Screenshot](./public/bookly-admin-data.png)
+
 ## Tech Stack
 
 - **Framework:** [Next.js](https://nextjs.org/) (using the App Router)
