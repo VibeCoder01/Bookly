@@ -51,35 +51,41 @@ export default function LoginPage() {
     setIsSubmitting(true);
     setGlobalError(null);
 
-    // The login action now redirects on success, or returns an object on failure/special cases.
-    const result = await login(data);
+    try {
+      const result = await login(data);
 
-    if (result?.needsPasswordSetup) {
-      toast({ title: 'Initial Setup Required', description: 'Please set a password for the master admin.'});
-      setNeedsPasswordSetup(true);
-      setGlobalError(null);
-      loginForm.reset({ username: data.username, password: '' }); 
-    } else if (result?.error) {
-      setGlobalError(result.error);
+      if (result?.needsPasswordSetup) {
+        toast({ title: 'Initial Setup Required', description: 'Please set a password for the master admin.'});
+        setNeedsPasswordSetup(true);
+        setGlobalError(null);
+        loginForm.reset({ username: data.username, password: '' });
+      } else if (result?.error) {
+        setGlobalError(result.error);
+      }
+    } catch (error) {
+      console.error("Login submission failed:", error);
+      setGlobalError("An unexpected error occurred during login. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    // If we reach here, it means the login failed and we didn't redirect.
-    setIsSubmitting(false);
   };
 
   const onPasswordSubmit = async (data: SetPasswordFormValues) => {
     setIsSubmitting(true);
     setGlobalError(null);
 
-    // This action also redirects on success or returns an error object.
-    const result = await setInitialMasterPassword(data.password);
+    try {
+      const result = await setInitialMasterPassword(data.password);
 
-    if (result?.error) {
-        setGlobalError(result.error);
+      if (result?.error) {
+          setGlobalError(result.error);
+      }
+    } catch (error) {
+       console.error("Password setup failed:", error);
+       setGlobalError("An unexpected error occurred during password setup. Please try again.");
+    } finally {
+        setIsSubmitting(false);
     }
-
-    // If successful, the server action will redirect, so we only need to handle the error case.
-    setIsSubmitting(false);
   };
 
   return (
