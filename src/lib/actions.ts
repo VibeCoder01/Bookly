@@ -1,13 +1,23 @@
 
 'use server';
 
-import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings, RoomWithDailyUsage, SlotStatus } from '@/types';
+import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings, RoomWithDailyUsage, SlotStatus, User, UserFormData } from '@/types';
 import { readConfigurationFromFile, writeConfigurationToFile } from './config-store';
 import { z } from 'zod';
 import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes, isWeekend, addDays } from 'date-fns';
 import fs from 'fs';
 import path from 'path';
 import { getPersistedBookings, addMockBooking, writeAllBookings } from './mock-data';
+import {
+  addUser,
+  deleteUser,
+  getUserByUsername,
+  readUsersFromFile,
+  updateUser,
+  verifyPassword
+} from './auth';
+import { createSession, getSession } from './session';
+
 
 // --- Room Data Persistence ---
 const ROOMS_FILE_PATH = path.join(process.cwd(), 'data', 'rooms.json');
@@ -571,4 +581,79 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
     });
 
     return roomsWithUsage;
+}
+
+// --- Authentication and User Management Actions ---
+
+const loginFormSchema = z.object({
+  username: z.string(),
+  password: z.string(),
+});
+
+export async function login(formData: z.infer<typeof loginFormSchema>): Promise<{ success: boolean; error?: string }> {
+  const validation = loginFormSchema.safeParse(formData);
+  if (!validation.success) {
+    return { success: false, error: 'Invalid form data.' };
+  }
+  const { username, password } = validation.data;
+
+  const user = await getUserByUsername(username);
+  if (!user) {
+    return { success: false, error: 'Invalid username or password.' };
+  }
+
+  const passwordMatch = await verifyPassword(password, user.passwordHash);
+  if (!passwordMatch) {
+    return { success: false, error: 'Invalid username or password.' };
+  }
+
+  await createSession(user);
+
+  return { success: true };
+}
+
+export async function getUsersForAdmin(): Promise<{ users?: User[]; error?: string }> {
+    const session = await getSession();
+    if (session?.role !== 'master') {
+        return { error: "You don't have permission to view users." };
+    }
+    const allUsers = await readUsersFromFile();
+    // Exclude password hash before sending to client
+    const safeUsers = allUsers.map(({ passwordHash, ...user }) => user);
+    return { users: safeUsers as User[] };
+}
+
+export async function addUserByAdmin(formData: UserFormData): Promise<{ success: boolean; error?: string }> {
+    const session = await getSession();
+    if (session?.role !== 'master') {
+        return { success: false, error: 'Unauthorized: Only Master Admins can add users.' };
+    }
+    if (!formData.password || formData.password.length < 6) {
+        return { success: false, error: 'New users require a password of at least 6 characters.' };
+    }
+
+    return addUser(formData);
+}
+
+export async function updateUserByAdmin(formData: UserFormData): Promise<{ success: boolean; error?: string }> {
+    const session = await getSession();
+    if (session?.role !== 'master') {
+        return { success: false, error: 'Unauthorized: Only Master Admins can update users.' };
+    }
+    if (!formData.id) {
+        return { success: false, error: 'User ID is required for update.' };
+    }
+     if (formData.password && formData.password.length > 0 && formData.password.length < 6) {
+        return { success: false, error: 'If changing password, it must be at least 6 characters.' };
+    }
+    
+    return updateUser(formData.id, formData);
+}
+
+export async function deleteUserByAdmin(userId: string): Promise<{ success: boolean; error?: string }> {
+    const session = await getSession();
+    if (session?.role !== 'master') {
+        return { success: false, error: 'Unauthorized: Only Master Admins can delete users.' };
+    }
+    return deleteUser(userId);
 }
