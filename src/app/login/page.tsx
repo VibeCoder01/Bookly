@@ -54,7 +54,10 @@ export default function LoginPage() {
     try {
       const result = await login(data);
 
-      if (result?.needsPasswordSetup) {
+      if (result?.success) {
+        router.push('/admin');
+        return; // Early exit to prevent setting state on unmounted component
+      } else if (result?.needsPasswordSetup) {
         toast({ title: 'Initial Setup Required', description: 'Please set a password for the master admin.'});
         setNeedsPasswordSetup(true);
         setGlobalError(null);
@@ -77,7 +80,10 @@ export default function LoginPage() {
     try {
       const result = await setInitialMasterPassword(data.password);
 
-      if (result?.error) {
+      if (result?.success) {
+        router.push('/admin');
+        return; // Early exit
+      } else if (result?.error) {
           setGlobalError(result.error);
       }
     } catch (error) {

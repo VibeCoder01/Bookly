@@ -19,7 +19,6 @@ import {
   getUserById,
 } from './auth';
 import { createSession, getSession } from './session';
-import { redirect } from 'next/navigation';
 
 
 // --- Room Data Persistence ---
@@ -594,7 +593,7 @@ const loginFormSchema = z.object({
 });
 
 
-export async function login(formData: z.infer<typeof loginFormSchema>): Promise<{ error?: string; needsPasswordSetup?: boolean }> {
+export async function login(formData: z.infer<typeof loginFormSchema>): Promise<{ success?: boolean; error?: string; needsPasswordSetup?: boolean }> {
   const validation = loginFormSchema.safeParse(formData);
   if (!validation.success) {
     return { error: 'Invalid form data.' };
@@ -617,14 +616,14 @@ export async function login(formData: z.infer<typeof loginFormSchema>): Promise<
   }
 
   await createSession(user);
-  redirect('/admin');
+  return { success: true };
 }
 
 const setInitialPasswordSchema = z.object({
     password: z.string().min(6, { message: 'Password must be at least 6 characters.' })
 });
 
-export async function setInitialMasterPassword(password: string): Promise<{ error?: string }> {
+export async function setInitialMasterPassword(password: string): Promise<{ success?: boolean; error?: string }> {
     const validation = setInitialPasswordSchema.safeParse({ password });
     if (!validation.success) {
         return { error: validation.error.issues[0].message };
@@ -640,7 +639,7 @@ export async function setInitialMasterPassword(password: string): Promise<{ erro
         const updatedAdmin = await getUserById(masterAdmin.id);
         if (updatedAdmin) {
             await createSession(updatedAdmin);
-            redirect('/admin');
+            return { success: true };
         }
     }
     return { error: result.error || 'Failed to set initial password.' };
