@@ -29,11 +29,12 @@ export default function AdminLoginPage() {
     const result = await verifyAdminPassword(password);
 
     if (result.success) {
-      router.refresh(); // Refresh the page. The middleware will handle the redirect.
+      router.push('/admin'); // Navigate to the admin page on successful login.
     } else {
       setError(result.error || 'An unknown error occurred.');
+      setIsLoading(false); // Stop loading only on error.
     }
-    setIsLoading(false);
+    // On success, the component will unmount during navigation, so no need to set loading to false.
   };
 
   return (
