@@ -1,42 +1,24 @@
 
 'use client';
 
-import { useState } from 'react';
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { verifyAdminPassword } from '@/lib/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Loader2, AlertTriangle, KeyRound } from 'lucide-react';
+import { AlertTriangle, KeyRound } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-export default function AdminLoginPage() {
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!password) {
-        setError('Password cannot be empty.');
-        return;
-    }
-    setError('');
-    setIsLoading(true);
-
-    // The server action will redirect on success, so the promise will not resolve.
-    // If it resolves, it's because an error was returned.
-    const result = await verifyAdminPassword(password);
-
-    // This part is only reached on failure. `result` will have an `error` property.
-    setError(result.error || 'An unknown error occurred.');
-    setIsLoading(false);
-  };
+function AdminLoginForm() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get('error');
 
   return (
     <main className="container mx-auto py-20 flex justify-center items-center">
         <div className="w-full max-w-md">
-            <form onSubmit={handleSubmit}>
+            <form action={verifyAdminPassword}>
                 <Card className="shadow-2xl rounded-xl">
                     <CardHeader className="text-center">
                         <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit">
@@ -50,11 +32,9 @@ export default function AdminLoginPage() {
                             <Label htmlFor="password">Password</Label>
                             <Input
                                 id="password"
+                                name="password"
                                 type="password"
                                 placeholder="Enter password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                disabled={isLoading}
                                 required
                             />
                         </div>
@@ -68,8 +48,7 @@ export default function AdminLoginPage() {
                         )}
                     </CardContent>
                     <CardFooter>
-                        <Button type="submit" className="w-full" disabled={isLoading}>
-                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        <Button type="submit" className="w-full">
                             Login
                         </Button>
                     </CardFooter>
@@ -78,4 +57,14 @@ export default function AdminLoginPage() {
         </div>
     </main>
   );
+}
+
+// Wrapping with Suspense is a good practice when using useSearchParams
+// to prevent the entire page from being dynamically rendered.
+export default function AdminLoginPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <AdminLoginForm />
+        </Suspense>
+    )
 }

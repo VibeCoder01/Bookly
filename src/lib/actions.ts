@@ -16,7 +16,13 @@ import { AUTH_COOKIE_NAME } from '@/middleware';
 
 // --- Auth Actions ---
 
-export async function verifyAdminPassword(password: string): Promise<{ error: string }> {
+export async function verifyAdminPassword(formData: FormData) {
+  const password = formData.get('password') as string;
+
+  if (!password) {
+    redirect('/admin/login?error=Password%20cannot%20be%20empty.');
+  }
+
   const config = await readConfigurationFromFile();
   if (password === config.adminPassword) {
     cookies().set(AUTH_COOKIE_NAME, 'true', {
@@ -28,7 +34,7 @@ export async function verifyAdminPassword(password: string): Promise<{ error: st
     });
     redirect('/admin');
   } else {
-    return { error: 'The password you entered is incorrect.' };
+    redirect('/admin/login?error=The%20password%20you%20entered%20is%20incorrect.');
   }
 }
 
