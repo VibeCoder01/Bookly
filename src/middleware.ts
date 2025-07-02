@@ -7,7 +7,7 @@ export const AUTH_COOKIE_NAME = 'bookly-admin-auth';
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const authCookie = request.cookies.get(AUTH_COOKIE_NAME);
-  const isAuthenticated = authCookie?.value === 'true';
+  const isAuthenticated = !!authCookie?.value;
 
   const isLoginPage = pathname.startsWith('/admin/login');
   const isAdminPage = pathname.startsWith('/admin');

@@ -17,7 +17,9 @@ import {
     deleteRoom,
     exportAllSettings,
     importAllSettings,
-    logoutAdmin
+    logoutAdmin,
+    getCurrentAdminUsername,
+    getAdminAccounts
 } from '@/lib/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -62,6 +64,10 @@ const convertDurationValueToMinutes = (value: string): number => {
 
 export default function AdminPage() {
   const { toast } = useToast();
+  const hasPermission = useCallback(
+    (perm: string) => permissions.includes('*') || permissions.includes(perm),
+    [permissions]
+  );
   // Bookings state
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
@@ -75,6 +81,7 @@ export default function AdminPage() {
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isRevertingLogo, setIsRevertingLogo] = useState(false);
+  const [permissions, setPermissions] = useState<string[]>([]);
 
 
   // Rooms state
@@ -88,6 +95,18 @@ export default function AdminPage() {
   const [fileToImport, setFileToImport] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    async function fetchPermissions() {
+      const username = await getCurrentAdminUsername();
+      if (username) {
+        const admins = await getAdminAccounts();
+        const admin = admins.find(a => a.username === username);
+        if (admin) setPermissions(admin.permissions || []);
+      }
+    }
+    fetchPermissions();
+  }, []);
 
 
   const fetchAdminConfiguration = useCallback(async () => {
@@ -358,6 +377,7 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent className="space-y-8">
             {/* --- BOOKINGS OVERVIEW --- */}
+            {hasPermission('view_bookings') && (
             <div>
               <h3 className="text-xl font-semibold mb-3 font-headline text-primary flex items-center">
                 <ListChecks className="mr-2 h-5 w-5" />
@@ -376,6 +396,12 @@ export default function AdminPage() {
                   <Button variant="outline">
                     <Home className="mr-2 h-4 w-4" />
                     Back to Home
+                  </Button>
+                </Link>
+                <Link href="/admin/users" passHref>
+                  <Button variant="outline">
+                    <KeyRound className="mr-2 h-4 w-4" />
+                    Manage Admins
                   </Button>
                 </Link>
                  <Button variant="outline" onClick={handleLogout}>
@@ -450,8 +476,10 @@ export default function AdminPage() {
                    <p className="mt-4 text-muted-foreground">Click "Show All Bookings" to view the booking list.</p>
               )}
             </div>
+            )}
 
            {/* --- ROOM MANAGEMENT --- */}
+           {hasPermission('manage_rooms') && (
             <div className="pt-6 border-t">
                 <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
                   <Sofa className="mr-2 h-5 w-5" />
@@ -512,9 +540,11 @@ export default function AdminPage() {
                   </Card>
                 )}
             </div>
+           )}
 
 
             {/* --- CONFIGURATION --- */}
+            {hasPermission('manage_config') && (
             <div className="pt-6 border-t">
               <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
                 <Settings className="mr-2 h-5 w-5" />
@@ -605,8 +635,10 @@ export default function AdminPage() {
                 </Button>
               </div>
             </div>
+            )}
             
             {/* --- DATA MANAGEMENT --- */}
+            {hasPermission('import_export') && (
             <div className="pt-6 border-t">
               <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
                 <Database className="mr-2 h-5 w-5" />
@@ -635,8 +667,10 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </div>
+            )}
 
             {/* --- LOGO MANAGEMENT --- */}
+            {hasPermission('manage_config') && (
             <div className="pt-6 border-t">
               <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
                 <ImageIcon className="mr-2 h-5 w-5" />
@@ -686,6 +720,7 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </div>
+            )}
 
           </CardContent>
         </Card>

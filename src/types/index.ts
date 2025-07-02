@@ -93,3 +93,10 @@ export interface ExportedSettings {
   rooms: Room[];
   bookings: Booking[];
 }
+
+export interface AdminAccount {
+  username: string;
+  password: string;
+  permissions: string[];
+  requirePasswordChange?: boolean;
+}

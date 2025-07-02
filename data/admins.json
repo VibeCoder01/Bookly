@@ -1,0 +1,8 @@
+[
+  {
+    "username": "sysadmin",
+    "password": "password",
+    "permissions": ["*"],
+    "requirePasswordChange": true
+  }
+]

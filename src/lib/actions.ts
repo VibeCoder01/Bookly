@@ -1,8 +1,9 @@
 
 'use server';
 
-import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings, RoomWithDailyUsage, SlotStatus } from '@/types';
+import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings, RoomWithDailyUsage, SlotStatus, AdminAccount } from '@/types';
 import { readConfigurationFromFile, writeConfigurationToFile } from './config-store';
+import { readAdminsFromFile, writeAdminsToFile } from './admin-store';
 import { z } from 'zod';
 import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes, isWeekend, addDays } from 'date-fns';
 import fs from 'fs';
@@ -16,31 +17,44 @@ import { AUTH_COOKIE_NAME } from '@/middleware';
 
 // --- Auth Actions ---
 
-export async function verifyAdminPassword(formData: FormData) {
+export async function verifyAdminCredentials(formData: FormData) {
+  const username = (formData.get('username') as string || '').trim();
   const password = formData.get('password') as string;
 
-  if (!password) {
-    redirect('/admin/login?error=Password%20cannot%20be%20empty.');
+  if (!username || !password) {
+    redirect('/admin/login?error=Username%20and%20password%20cannot%20be%20empty.');
   }
 
-  const config = await readConfigurationFromFile();
-  if (password === config.adminPassword) {
-    cookies().set(AUTH_COOKIE_NAME, 'true', {
+  const admins = await readAdminsFromFile();
+  const admin = admins.find(a => a.username === username);
+
+  if (admin && admin.password === password) {
+    cookies().set(AUTH_COOKIE_NAME, username, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       sameSite: 'strict',
-      maxAge: 60 * 60 * 24, // 1 day
+      maxAge: 60 * 60 * 24,
     });
+
+    if (admin.requirePasswordChange) {
+      redirect('/admin/change-password');
+    }
+
     redirect('/admin');
   } else {
-    redirect('/admin/login?error=The%20password%20you%20entered%20is%20incorrect.');
+    redirect('/admin/login?error=Invalid%20credentials.');
   }
 }
 
 export async function logoutAdmin() {
   cookies().delete(AUTH_COOKIE_NAME);
   redirect('/admin/login');
+}
+
+export function getCurrentAdminUsername(): string | null {
+  const username = cookies().get(AUTH_COOKIE_NAME)?.value;
+  return username || null;
 }
 
 
@@ -721,4 +735,49 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
     });
 
     return roomsWithUsage;
+}
+
+// --- Admin Management Actions ---
+export async function getAdminAccounts(): Promise<AdminAccount[]> {
+  return await readAdminsFromFile();
+}
+
+export async function saveAdminAccount(account: AdminAccount): Promise<{ success: boolean; error?: string }> {
+  const admins = await readAdminsFromFile();
+  const existingIndex = admins.findIndex(a => a.username === account.username);
+  if (existingIndex >= 0) {
+    admins[existingIndex] = account;
+  } else {
+    admins.push(account);
+  }
+  await writeAdminsToFile(admins);
+  return { success: true };
+}
+
+export async function deleteAdminAccount(username: string): Promise<{ success: boolean; error?: string }> {
+  const admins = await readAdminsFromFile();
+  const updated = admins.filter(a => a.username !== username);
+  if (updated.length === admins.length) {
+    return { success: false, error: 'Admin not found.' };
+  }
+  await writeAdminsToFile(updated);
+  return { success: true };
+}
+
+export async function changeAdminPassword(username: string, newPassword: string): Promise<{ success: boolean; error?: string }> {
+  const admins = await readAdminsFromFile();
+  const index = admins.findIndex(a => a.username === username);
+  if (index === -1) return { success: false, error: 'Admin not found.' };
+  admins[index].password = newPassword;
+  admins[index].requirePasswordChange = false;
+  await writeAdminsToFile(admins);
+  return { success: true };
+}
+
+export async function updateCurrentAdminPassword(formData: FormData): Promise<{ success: boolean; error?: string }> {
+  const username = cookies().get(AUTH_COOKIE_NAME)?.value;
+  if (!username) return { success: false, error: 'Not authenticated' };
+  const newPassword = (formData.get('password') as string || '').trim();
+  if (!newPassword) return { success: false, error: 'Password cannot be empty.' };
+  return await changeAdminPassword(username, newPassword);
 }

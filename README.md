@@ -14,6 +14,7 @@ This project was bootstrapped with [Firebase Studio](https://firebase.google.com
   - Configuring application-wide settings like booking slot duration and workday hours.
 - **Data Persistence:** Uses a simple flat-file system (JSON) for storing all application data, making it easy to inspect and manage.
 - **Import/Export:** Easily back up and restore all application data (rooms, bookings, settings) with a single click.
+- **Multi-Admin Support:** Manage multiple admin accounts with permission-based access. A default `sysadmin` user is created on first run and must change the password upon initial login.
 
 ## Screenshots
 

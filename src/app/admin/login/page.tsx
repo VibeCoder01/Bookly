@@ -3,7 +3,7 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { verifyAdminPassword } from '@/lib/actions';
+import { verifyAdminCredentials } from '@/lib/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -18,16 +18,25 @@ function AdminLoginForm() {
   return (
     <main className="container mx-auto py-20 flex justify-center items-center">
         <div className="w-full max-w-md">
-            <form action={verifyAdminPassword}>
+            <form action={verifyAdminCredentials}>
                 <Card className="shadow-2xl rounded-xl">
                     <CardHeader className="text-center">
                         <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit">
                            <KeyRound className="h-8 w-8 text-primary" />
                         </div>
                         <CardTitle className="font-headline text-2xl text-primary mt-2">Admin Access</CardTitle>
-                        <CardDescription>Please enter the admin password to continue.</CardDescription>
+                        <CardDescription>Please enter your admin credentials to continue.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="username">Username</Label>
+                            <Input
+                                id="username"
+                                name="username"
+                                placeholder="Enter username"
+                                required
+                            />
+                        </div>
                         <div className="space-y-2">
                             <Label htmlFor="password">Password</Label>
                             <Input
