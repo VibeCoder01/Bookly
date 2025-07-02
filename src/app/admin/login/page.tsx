@@ -29,8 +29,7 @@ export default function AdminLoginPage() {
     const result = await verifyAdminPassword(password);
 
     if (result.success) {
-      router.push('/admin');
-      router.refresh(); // Refresh to ensure server-side components re-render with auth state
+      router.refresh(); // Refresh the page. The middleware will handle the redirect.
     } else {
       setError(result.error || 'An unknown error occurred.');
     }

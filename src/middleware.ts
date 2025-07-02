@@ -4,34 +4,32 @@ import type { NextRequest } from 'next/server'
 
 export const AUTH_COOKIE_NAME = 'bookly-admin-auth';
 
-// This function can be marked `async` if using `await` inside
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const authCookie = request.cookies.get(AUTH_COOKIE_NAME);
+  const isAuthenticated = authCookie?.value === 'true';
 
-  // Allow requests to the login page to pass through without checks
-  if (pathname.startsWith('/admin/login')) {
-    return NextResponse.next();
+  const isLoginPage = pathname.startsWith('/admin/login');
+  const isAdminPage = pathname.startsWith('/admin');
+
+  // If authenticated and on the login page, redirect to the admin dashboard.
+  if (isAuthenticated && isLoginPage) {
+    return NextResponse.redirect(new URL('/admin', request.url));
   }
 
-  // For any other page under /admin, we must check for our auth cookie
-  if (pathname.startsWith('/admin')) {
-    const authCookie = request.cookies.get(AUTH_COOKIE_NAME);
-
-    // If the cookie doesn't exist or its value is not 'true', redirect to login
-    if (!authCookie || authCookie.value !== 'true') {
-      const loginUrl = new URL('/admin/login', request.url);
-      // We can add a `from` query param to redirect back after login, if desired
-      loginUrl.searchParams.set('from', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+  // If not authenticated and on a protected admin page, redirect to the login page.
+  if (!isAuthenticated && isAdminPage && !isLoginPage) {
+    const loginUrl = new URL('/admin/login', request.url);
+    loginUrl.searchParams.set('from', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // If all checks pass, allow the request to continue
+  // Otherwise, allow the request to proceed.
   return NextResponse.next();
 }
 
-// See "Matching Paths" below to learn more
+// Match all paths under /admin to ensure this logic runs for both the
+// login page and the protected admin area.
 export const config = {
-  // Match all paths under /admin, except for Next.js specific folders and static assets
   matcher: '/admin/:path*',
 }
