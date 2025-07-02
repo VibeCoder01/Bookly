@@ -4,7 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text, ImageIcon } from 'lucide-react';
+import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text, ImageIcon, KeyRound, LogOut } from 'lucide-react';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Booking, Room, AppConfiguration } from '@/types';
 import { 
@@ -16,7 +16,8 @@ import {
     getRooms,
     deleteRoom,
     exportAllSettings,
-    importAllSettings
+    importAllSettings,
+    logoutAdmin
 } from '@/lib/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -42,6 +43,7 @@ interface AdminConfigFormState {
   slotDuration: string;
   startOfDay: string;
   endOfDay: string;
+  adminPassword: string;
 }
 
 const convertMinutesToDurationString = (minutes: number): string => {
@@ -67,7 +69,7 @@ export default function AdminPage() {
   const [showBookingsTable, setShowBookingsTable] = useState(false);
 
   // Configuration state
-  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: ''});
+  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: '', adminPassword: '' });
   const [currentLogo, setCurrentLogo] = useState<string | undefined>(undefined);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
@@ -91,6 +93,7 @@ export default function AdminPage() {
   const fetchAdminConfiguration = useCallback(async () => {
     setIsLoadingConfig(true);
     try {
+      // We only fetch non-sensitive config for display. Password is never sent to client.
       const currentConfig = await getCurrentConfiguration();
       setConfig({
         appName: currentConfig.appName,
@@ -98,6 +101,7 @@ export default function AdminPage() {
         slotDuration: convertMinutesToDurationString(currentConfig.slotDurationMinutes),
         startOfDay: currentConfig.startOfDay,
         endOfDay: currentConfig.endOfDay,
+        adminPassword: '', // Always initialize as empty for the 'new password' field
       });
       setCurrentLogo(currentConfig.appLogo);
     } catch (err) {
@@ -107,7 +111,7 @@ export default function AdminPage() {
         title: 'Error Fetching Configuration',
         description: 'Could not load current settings. Displaying defaults.',
       });
-      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00' });
+      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00', adminPassword: '' });
       setCurrentLogo(undefined);
     } finally {
       setIsLoadingConfig(false);
@@ -176,22 +180,25 @@ export default function AdminPage() {
   const handleApplyChanges = async () => {
     setIsApplyingChanges(true);
 
-    const currentConfigFromServer = await getCurrentConfiguration();
-
-    const configToSave: AppConfiguration = {
-      ...currentConfigFromServer,
+    const updates: Partial<AppConfiguration> = {
       appName: config.appName,
       appSubtitle: config.appSubtitle,
       slotDurationMinutes: convertDurationValueToMinutes(config.slotDuration),
       startOfDay: config.startOfDay,
       endOfDay: config.endOfDay,
     };
+    
+    // Only include password in the update if a new one was actually entered.
+    if (config.adminPassword.trim()) {
+      updates.adminPassword = config.adminPassword.trim();
+    }
 
-    const result = await serverUpdateAppConfiguration(configToSave);
+    const result = await serverUpdateAppConfiguration(updates);
 
     if (result.success) {
       toast({ title: 'Configuration Updated', description: 'Your application settings have been saved.' });
-      await fetchAdminConfiguration(); // Refresh config from server
+      // Refresh config from server, which will also clear the password field in the UI state
+      await fetchAdminConfiguration(); 
     } else {
       toast({ variant: 'destructive', title: 'Update Failed', description: result.error || 'An unexpected error occurred.' });
     }
@@ -260,6 +267,7 @@ export default function AdminPage() {
     switch(settingKey) {
       case 'appName': return <Text className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'appSubtitle': return <Text className="mr-2 h-4 w-4 text-muted-foreground" />;
+      case 'adminPassword': return <KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'slotDuration': return <Clock className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'startOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'endOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />;
@@ -336,6 +344,10 @@ export default function AdminPage() {
     setIsImporting(false);
   };
 
+  const handleLogout = async () => {
+      await logoutAdmin();
+  }
+
   return (
     <>
       <main className="container mx-auto py-8 px-4">
@@ -351,7 +363,7 @@ export default function AdminPage() {
                 <ListChecks className="mr-2 h-5 w-5" />
                 Bookings Overview
               </h3>
-              <div className="flex space-x-4">
+              <div className="flex flex-wrap gap-2">
                 <Button onClick={handleShowAllBookings} disabled={isLoadingBookings} variant="secondary">
                   {isLoadingBookings && showBookingsTable ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -366,6 +378,10 @@ export default function AdminPage() {
                     Back to Home
                   </Button>
                 </Link>
+                 <Button variant="outline" onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Logout
+                </Button>
               </div>
               {showBookingsTable && (
                 <div className="mt-6">
@@ -534,6 +550,14 @@ export default function AdminPage() {
                               </TableCell>
                               <TableCell className="text-right pr-6">
                                   <Input value={config.appSubtitle} onChange={(e) => handleConfigChange('appSubtitle', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="e.g., Room booking system" disabled={isApplyingChanges} />
+                              </TableCell>
+                          </TableRow>
+                          <TableRow>
+                              <TableCell className="font-medium pl-6 flex items-center">
+                                  {getIconForSetting('adminPassword')} New Admin Password
+                              </TableCell>
+                              <TableCell className="text-right pr-6">
+                                  <Input type="password" value={config.adminPassword} onChange={(e) => handleConfigChange('adminPassword', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="Leave blank to keep current" disabled={isApplyingChanges} />
                               </TableCell>
                           </TableRow>
                           <TableRow>

@@ -1,5 +1,6 @@
 
 
+
 export interface Room {
   id: string;
   name: string;
@@ -75,6 +76,7 @@ export interface AppConfiguration {
   appName: string;
   appSubtitle: string;
   appLogo?: string;
+  adminPassword?: string;
   slotDurationMinutes: number;
   startOfDay: string; // HH:MM format
   endOfDay: string;   // HH:MM format

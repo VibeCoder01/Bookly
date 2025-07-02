@@ -12,6 +12,7 @@ const DEFAULT_CONFIG: AppConfiguration = {
   appName: 'Bookly',
   appSubtitle: 'Room booking system',
   appLogo: undefined,
+  adminPassword: 'password',
   slotDurationMinutes: 60, // Default: 60 minutes
   startOfDay: '09:00',     // Default: 09:00 (HH:MM)
   endOfDay: '17:00',       // Default: 17:00 (HH:MM)
@@ -39,6 +40,9 @@ export const readConfigurationFromFile = async (): Promise<AppConfiguration> => 
       }
       if (!config.appSubtitle?.trim()) {
         config.appSubtitle = DEFAULT_CONFIG.appSubtitle;
+      }
+      if (!config.adminPassword?.trim()) {
+        config.adminPassword = DEFAULT_CONFIG.adminPassword;
       }
 
       return config;

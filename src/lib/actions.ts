@@ -9,6 +9,34 @@ import fs from 'fs';
 import path from 'path';
 import { getPersistedBookings, addMockBooking, writeAllBookings } from './mock-data';
 import { revalidatePath } from 'next/cache';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { AUTH_COOKIE_NAME } from '@/middleware';
+
+
+// --- Auth Actions ---
+
+export async function verifyAdminPassword(password: string): Promise<{ success: boolean; error?: string }> {
+  const config = await readConfigurationFromFile();
+  if (password === config.adminPassword) {
+    cookies().set(AUTH_COOKIE_NAME, 'true', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24, // 1 day
+    });
+    return { success: true };
+  } else {
+    return { success: false, error: 'The password you entered is incorrect.' };
+  }
+}
+
+export async function logoutAdmin() {
+  cookies().delete(AUTH_COOKIE_NAME);
+  redirect('/admin/login');
+}
+
 
 // --- Room Data Persistence ---
 const ROOMS_FILE_PATH = path.join(process.cwd(), 'data', 'rooms.json');
@@ -129,17 +157,20 @@ const timeStringSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invali
 const DEFAULT_APP_NAME = 'Bookly';
 const DEFAULT_APP_SUBTITLE = 'Room booking system';
 
-const appConfigurationSchema = z.object({
+const appConfigurationObjectSchema = z.object({
   appName: z.string().min(1, "App Name cannot be empty."),
   appSubtitle: z.string().min(1, "App Subtitle cannot be empty."),
   appLogo: z.string().optional(),
+  adminPassword: z.string().min(1, "Admin password cannot be empty."),
   slotDurationMinutes: z.number()
     .min(MIN_SLOT_DURATION, `Duration must be at least ${MIN_SLOT_DURATION} minutes.`)
     .max(MAX_SLOT_DURATION, `Duration must be at most ${MAX_SLOT_DURATION} minutes.`)
     .refine(val => val % 15 === 0, 'Duration must be in multiples of 15 minutes.'),
   startOfDay: timeStringSchema,
   endOfDay: timeStringSchema,
-}).refine(data => {
+});
+
+const appConfigurationSchema = appConfigurationObjectSchema.refine(data => {
     const tempDate = new Date();
     const [startH, startM] = data.startOfDay.split(':').map(Number);
     const [endH, endM] = data.endOfDay.split(':').map(Number);
@@ -151,26 +182,43 @@ const appConfigurationSchema = z.object({
     path: ['endOfDay'],
 });
 
+const appConfigurationUpdateSchema = appConfigurationObjectSchema.partial();
+
+
 export async function updateAppConfiguration(
-  newConfig: AppConfiguration
+  updates: Partial<AppConfiguration>
 ): Promise<{ success: boolean; error?: string; fieldErrors?: Record<string, string[] | undefined> }> {
     await new Promise(resolve => setTimeout(resolve, 200));
 
-    const processedConfig = { ...newConfig };
-    if (!processedConfig.appName?.trim()) {
-      processedConfig.appName = DEFAULT_APP_NAME;
-    }
-    if (!processedConfig.appSubtitle?.trim()) {
-      processedConfig.appSubtitle = DEFAULT_APP_SUBTITLE;
+    // If a blank password is submitted, ignore it to keep the current one.
+    if (updates.adminPassword === '') {
+        delete updates.adminPassword;
     }
 
-    const validation = appConfigurationSchema.safeParse(processedConfig);
+    const currentConfig = await readConfigurationFromFile();
+    
+    let processedUpdates = { ...updates };
+    if (processedUpdates.appName !== undefined && !processedUpdates.appName.trim()) {
+      processedUpdates.appName = DEFAULT_APP_NAME;
+    }
+    if (processedUpdates.appSubtitle !== undefined && !processedUpdates.appSubtitle.trim()) {
+      processedUpdates.appSubtitle = DEFAULT_APP_SUBTITLE;
+    }
+    
+    const validation = appConfigurationUpdateSchema.safeParse(processedUpdates);
     if (!validation.success) {
-        return { success: false, error: 'Invalid configuration data.', fieldErrors: validation.error.flatten().fieldErrors };
+        return { success: false, error: 'Invalid configuration data provided.', fieldErrors: validation.error.flatten().fieldErrors };
+    }
+
+    const newConfig = { ...currentConfig, ...validation.data };
+
+    const finalValidation = appConfigurationSchema.safeParse(newConfig);
+    if (!finalValidation.success) {
+        return { success: false, error: 'Validation failed on merged configuration.', fieldErrors: finalValidation.error.flatten().fieldErrors };
     }
 
     try {
-        await writeConfigurationToFile(validation.data);
+        await writeConfigurationToFile(finalValidation.data as AppConfiguration);
         console.log(`[Bookly Config] System configuration updated and persisted.`);
         revalidatePath('/', 'layout');
         return { success: true };
@@ -493,6 +541,7 @@ const exportedSettingsSchema = z.object({
     appName: z.string(),
     appSubtitle: z.string(),
     appLogo: z.string().optional(),
+    adminPassword: z.string().optional(),
     slotDurationMinutes: z.number(),
     startOfDay: z.string(),
     endOfDay: z.string(),

@@ -1,7 +1,9 @@
+
 {
   "appName": "Bookly",
   "appSubtitle": "Room booking system",
   "slotDurationMinutes": 30,
   "startOfDay": "09:00",
-  "endOfDay": "17:00"
+  "endOfDay": "17:00",
+  "adminPassword": "password"
 }
