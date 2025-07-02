@@ -16,7 +16,7 @@ import { AUTH_COOKIE_NAME } from '@/middleware';
 
 // --- Auth Actions ---
 
-export async function verifyAdminPassword(password: string): Promise<{ success: boolean; error?: string }> {
+export async function verifyAdminPassword(password: string): Promise<{ error: string }> {
   const config = await readConfigurationFromFile();
   if (password === config.adminPassword) {
     cookies().set(AUTH_COOKIE_NAME, 'true', {
@@ -26,9 +26,9 @@ export async function verifyAdminPassword(password: string): Promise<{ success: 
       sameSite: 'strict',
       maxAge: 60 * 60 * 24, // 1 day
     });
-    return { success: true };
+    redirect('/admin');
   } else {
-    return { success: false, error: 'The password you entered is incorrect.' };
+    return { error: 'The password you entered is incorrect.' };
   }
 }
 

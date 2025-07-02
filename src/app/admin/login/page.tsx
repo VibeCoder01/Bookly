@@ -24,17 +24,13 @@ export default function AdminLoginPage() {
     setError('');
     setIsLoading(true);
 
+    // The server action will redirect on success, so the promise will not resolve.
+    // If it resolves, it's because an error was returned.
     const result = await verifyAdminPassword(password);
 
-    if (result.success) {
-      // A full page navigation is more reliable for post-login redirects
-      // as it guarantees the browser sends the newly set authentication cookie.
-      window.location.href = '/admin';
-    } else {
-      setError(result.error || 'An unknown error occurred.');
-      setIsLoading(false); // Stop loading only on error.
-    }
-    // On success, the page will reload, so no need to set loading to false.
+    // This part is only reached on failure. `result` will have an `error` property.
+    setError(result.error || 'An unknown error occurred.');
+    setIsLoading(false);
   };
 
   return (
