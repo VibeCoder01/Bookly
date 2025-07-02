@@ -2,7 +2,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { verifyAdminPassword } from '@/lib/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -12,7 +11,6 @@ import { Loader2, AlertTriangle, KeyRound } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function AdminLoginPage() {
-  const router = useRouter();
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -29,12 +27,14 @@ export default function AdminLoginPage() {
     const result = await verifyAdminPassword(password);
 
     if (result.success) {
-      router.push('/admin'); // Navigate to the admin page on successful login.
+      // A full page navigation is more reliable for post-login redirects
+      // as it guarantees the browser sends the newly set authentication cookie.
+      window.location.href = '/admin';
     } else {
       setError(result.error || 'An unknown error occurred.');
       setIsLoading(false); // Stop loading only on error.
     }
-    // On success, the component will unmount during navigation, so no need to set loading to false.
+    // On success, the page will reload, so no need to set loading to false.
   };
 
   return (
