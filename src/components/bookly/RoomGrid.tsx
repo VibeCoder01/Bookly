@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -50,9 +51,9 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
         xs: {
           container: 'w-64',
           iconPadding: 'p-6',
-          nameText: 'text-4xl mb-3',
+          nameText: 'text-4xl mb-3 h-20',
           chairText: 'text-xl',
-          capacityText: 'text-4xl',
+          capacityText: 'text-xl',
           usagePadding: 'pt-4 pb-5 px-5',
           usageTitle: 'text-base mb-2',
           usageDaySpacing: 'space-y-1',
@@ -63,9 +64,9 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
         sm: {
           container: 'w-80',
           iconPadding: 'p-8',
-          nameText: 'text-5xl mb-4',
+          nameText: 'text-5xl mb-4 h-24',
           chairText: 'text-2xl',
-          capacityText: 'text-5xl',
+          capacityText: 'text-2xl',
           usagePadding: 'pt-5 pb-6 px-6',
           usageTitle: 'text-lg mb-2',
           usageDaySpacing: 'space-y-1.5',
@@ -76,9 +77,9 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
         md: {
           container: 'w-96',
           iconPadding: 'p-10',
-          nameText: 'text-6xl mb-4',
+          nameText: 'text-6xl mb-4 h-32',
           chairText: 'text-3xl',
-          capacityText: 'text-6xl',
+          capacityText: 'text-3xl',
           usagePadding: 'pt-6 pb-7 px-7',
           usageTitle: 'text-xl mb-3',
           usageDaySpacing: 'space-y-1.5',
