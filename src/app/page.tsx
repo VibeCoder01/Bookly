@@ -9,9 +9,9 @@ export default async function HomePage() {
   ]);
 
   return (
-    <main className="flex-grow flex items-center justify-center p-6">
+    <main className="flex-grow flex flex-col items-center justify-center p-6">
       {roomsWithUsage.length > 0 ? (
-          <RoomGrid roomsWithUsage={roomsWithUsage} config={config} />
+          <RoomGrid initialRoomsWithUsage={roomsWithUsage} config={config} />
       ) : (
          <p className="text-muted-foreground">No rooms have been configured. Please add a room in the admin panel.</p>
       )}

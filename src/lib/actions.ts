@@ -4,7 +4,7 @@
 import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings, RoomWithDailyUsage, SlotStatus } from '@/types';
 import { readConfigurationFromFile, writeConfigurationToFile } from './config-store';
 import { z } from 'zod';
-import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes, isWeekend, addDays } from 'date-fns';
+import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes, isWeekend, addDays, startOfDay } from 'date-fns';
 import fs from 'fs';
 import path from 'path';
 import { getPersistedBookings, addMockBooking, writeAllBookings } from './mock-data';
@@ -743,7 +743,7 @@ export async function importAllSettings(jsonContent: string): Promise<{ success:
 }
 
 // --- Usage Calculation Action ---
-export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
+export async function getRoomsWithDailyUsage(startDate?: string): Promise<RoomWithDailyUsage[]> {
     const [
         { rooms }, 
         allBookings, 
@@ -755,7 +755,11 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
     ]);
 
     const nextFiveWorkingDays: string[] = [];
-    let currentDate = new Date(new Date().setHours(0, 0, 0, 0));
+    let currentDate = startDate 
+        ? parse(startDate, 'yyyy-MM-dd', new Date())
+        : new Date();
+    currentDate = startOfDay(currentDate);
+
     while (nextFiveWorkingDays.length < 5) {
         if (!isWeekend(currentDate)) {
             nextFiveWorkingDays.push(format(currentDate, 'yyyy-MM-dd'));

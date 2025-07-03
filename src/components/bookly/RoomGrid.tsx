@@ -4,12 +4,15 @@
 import Link from 'next/link';
 import type { RoomWithDailyUsage, AppConfiguration, SlotStatus } from '@/types';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { useState } from 'react';
+import { format, addDays, subDays } from 'date-fns';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { SlotDetailsDialog } from '@/components/bookly/SlotDetailsDialog';
+import { getRoomsWithDailyUsage } from '@/lib/actions';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 interface RoomGridProps {
-    roomsWithUsage: RoomWithDailyUsage[];
+    initialRoomsWithUsage: RoomWithDailyUsage[];
     config: AppConfiguration;
 }
 
@@ -35,13 +38,47 @@ const stringToHash = (str: string): number => {
 };
 
 
-export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
+export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
     const [isSlotDetailsOpen, setIsSlotDetailsOpen] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState<{ date: string; slot: SlotStatus } | null>(null);
+
+    const [gridData, setGridData] = useState<RoomWithDailyUsage[]>(initialRoomsWithUsage);
+    const [viewDate, setViewDate] = useState(new Date());
+    const [isLoading, setIsLoading] = useState(false);
+    const isInitialMount = useRef(true);
+
+    useEffect(() => {
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
+        }
+
+        const fetchNewData = async () => {
+            setIsLoading(true);
+            try {
+                const newGridData = await getRoomsWithDailyUsage(format(viewDate, 'yyyy-MM-dd'));
+                setGridData(newGridData);
+            } catch (error) {
+                console.error("Failed to fetch new room usage data:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchNewData();
+    }, [viewDate]);
 
     const handleSlotClick = (date: string, slot: SlotStatus) => {
         setSelectedSlot({ date, slot });
         setIsSlotDetailsOpen(true);
+    };
+    
+    const handlePrevWeek = () => {
+        setViewDate(current => subDays(current, 7));
+    };
+
+    const handleNextWeek = () => {
+        setViewDate(current => addDays(current, 7));
     };
 
     const scale = config.homePageScale || 'sm';
@@ -55,8 +92,6 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
           chairText: 'text-xl',
           capacityText: 'text-xl',
           usagePadding: 'pt-4 pb-5 px-5',
-          usageTitle: 'text-base mb-2',
-          usageDaySpacing: 'space-y-1',
           dayLetter: 'text-base w-4',
           usageBar: 'h-4',
           slotGap: is15MinSlots ? 'gap-px' : 'gap-0.5',
@@ -68,8 +103,6 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
           chairText: 'text-2xl',
           capacityText: 'text-2xl',
           usagePadding: 'pt-5 pb-6 px-6',
-          usageTitle: 'text-lg mb-2',
-          usageDaySpacing: 'space-y-1.5',
           dayLetter: 'text-lg w-5',
           usageBar: 'h-5',
           slotGap: is15MinSlots ? 'gap-0.5' : 'gap-1',
@@ -81,8 +114,6 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
           chairText: 'text-3xl',
           capacityText: 'text-3xl',
           usagePadding: 'pt-6 pb-7 px-7',
-          usageTitle: 'text-xl mb-3',
-          usageDaySpacing: 'space-y-1.5',
           dayLetter: 'text-xl w-6',
           usageBar: 'h-6',
           slotGap: is15MinSlots ? 'gap-0.5' : 'gap-1.5',
@@ -90,23 +121,54 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
     };
 
     const styles = scalingStyles[scale];
+    
+    const firstDayInView = useMemo(() => {
+        if (gridData.length > 0 && gridData[0].dailyUsage.length > 0) {
+            const firstDate = gridData[0].dailyUsage[0].date;
+            return format(new Date(firstDate + 'T00:00:00'), 'PPP');
+        }
+        return '...';
+    }, [gridData]);
 
     return (
         <>
+            <div className="w-full max-w-7xl mx-auto mb-6">
+                 <div className="flex items-center justify-center gap-4">
+                    <Button variant="outline" size="icon" onClick={handlePrevWeek} disabled={isLoading}>
+                        <ChevronLeft className="h-4 w-4" />
+                        <span className="sr-only">Previous 5 days</span>
+                    </Button>
+                    <div className="text-center font-semibold text-lg w-64">
+                        {isLoading ? (
+                             <div className="flex items-center justify-center text-muted-foreground">
+                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                                <span>Loading...</span>
+                             </div>
+                        ) : (
+                            <span>Usage from {firstDayInView}</span>
+                        )}
+                    </div>
+                    <Button variant="outline" size="icon" onClick={handleNextWeek} disabled={isLoading}>
+                        <ChevronRight className="h-4 w-4" />
+                        <span className="sr-only">Next 5 days</span>
+                    </Button>
+                </div>
+            </div>
             <div className="flex flex-wrap justify-center gap-10">
-                {roomsWithUsage.map((room) => (
+                {gridData.map((room) => (
                     <div
                     key={room.id}
                     className={cn(
                         "rounded-xl shadow-lg flex flex-col bg-accent text-accent-foreground hover:bg-accent/90 transition-all duration-200 ease-in-out transform hover:-translate-y-1 overflow-hidden",
-                        styles.container
+                        styles.container,
+                        isLoading && "opacity-50 pointer-events-none"
                     )}
                     >
                     <Link
                         href={`/book?roomId=${room.id}`}
                         className={cn("flex flex-col items-center flex-grow justify-center", styles.iconPadding)}
                     >
-                        <span className={cn("text-center font-bold", styles.nameText)}>{room.name}</span>
+                        <span className={cn("text-center font-bold", styles.nameText, "flex items-center justify-center")}>{room.name}</span>
                         <div className="flex items-baseline gap-x-2">
                             <span className={cn("font-medium", styles.chairText)}>Seat</span>
                             <span className={cn(styles.capacityText)}>x {room.capacity}</span>
@@ -114,10 +176,7 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
                     </Link>
 
                     <div className={cn("w-full bg-black/10", styles.usagePadding)}>
-                        <p className={cn("text-center font-medium text-accent-foreground/80", styles.usageTitle)}>
-                            Usage (Next 5 Working Days)
-                        </p>
-                        <div className={cn(styles.usageDaySpacing)}>
+                        <div className="space-y-1.5">
                             {room.dailyUsage.map((day) => {
                             return (
                                 <div key={day.date} className="flex items-center gap-2">
