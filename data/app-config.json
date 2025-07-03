@@ -1,8 +1,8 @@
 {
   "appName": "Bookly",
   "appSubtitle": "Room booking system",
-  "adminPasswordHash": "663e5003dda92c1543d020d9dfccbd370eaeea02dac587f558adb717a36162dd49a470c9c138773ec8ed42eaa1c77c5654f249a324a25a4d33fd1ff1a3b4af43",
-  "adminPasswordSalt": "c7eaeb7213b2c5a9801c36956e8dbcee",
+  "adminPasswordHash": "868d7c4bb21e7a9454ddba361cdbb5ce2154c6379274a2d23630d6d901248a4bd8b48791805ec16aef755d7e4023db21c061c0b8733c940195f11077dec3acfa",
+  "adminPasswordSalt": "f500b2fd2ee1bc737d340b1dadd60769",
   "slotDurationMinutes": 30,
   "startOfDay": "09:00",
   "endOfDay": "17:00"
