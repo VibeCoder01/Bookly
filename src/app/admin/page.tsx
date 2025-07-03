@@ -62,7 +62,6 @@ const convertDurationValueToMinutes = (value: string): number => {
 
 export default function AdminPage() {
   const { toast } = useToast();
-  const searchParams = useSearchParams();
   const router = useRouter();
 
   // Bookings state
@@ -151,17 +150,6 @@ export default function AdminPage() {
       setIsLoadingBookings(false);
     }
   }, []);
-
-  useEffect(() => {
-    const successMessage = searchParams.get('success');
-    if (successMessage) {
-      toast({
-        title: 'Success',
-        description: successMessage,
-      });
-      router.replace('/admin', { scroll: false });
-    }
-  }, [searchParams, router, toast]);
 
   useEffect(() => {
     fetchAdminConfiguration();
