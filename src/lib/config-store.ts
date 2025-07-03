@@ -72,13 +72,26 @@ export const readConfigurationFromFile = async (): Promise<AppConfiguration> => 
 
 export const writeConfigurationToFile = async (config: AppConfiguration): Promise<void> => {
   ensureDataDirectoryExists();
-  try {
-    const configToWrite = { ...config };
-    delete configToWrite.adminPassword;
+  const configToWrite = { ...config };
+  delete configToWrite.adminPassword;
 
-    await fs.promises.writeFile(CONFIG_FILE_PATH, JSON.stringify(configToWrite, null, 2));
+  const tempFilePath = CONFIG_FILE_PATH + '.tmp';
+
+  try {
+    await fs.promises.writeFile(tempFilePath, JSON.stringify(configToWrite, null, 2), 'utf-8');
+    await fs.promises.rename(tempFilePath, CONFIG_FILE_PATH);
   } catch (error) {
     console.error(`[Bookly Config] Error writing to ${CONFIG_FILE_PATH}:`, error);
-    throw new Error('Failed to write configuration to file.');
+    
+    // Attempt to clean up the temp file if it exists
+    try {
+      if (fs.existsSync(tempFilePath)) {
+        await fs.promises.unlink(tempFilePath);
+      }
+    } catch (cleanupError) {
+      console.error(`[Bookly Config] Failed to clean up temp file ${tempFilePath}:`, cleanupError);
+    }
+
+    throw new Error('Failed to write configuration to file. Check server logs and file permissions.');
   }
 };

@@ -99,9 +99,10 @@ export async function changeAdminPassword(formData: FormData) {
   try {
     await writeConfigurationToFile(newConfig);
     redirect('/admin/change-password?success=' + encodeURIComponent('Password updated successfully.'));
-  } catch (error) {
+  } catch (error: any) {
     console.error('[Change Password Error]', error);
-    redirect('/admin/change-password?error=' + encodeURIComponent('Failed to save the new password.'));
+    const msg = encodeURIComponent(error.message ?? 'Failed to save the new password.');
+    redirect(`/admin/change-password?error=${msg}`);
   }
 }
 
