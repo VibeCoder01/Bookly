@@ -79,17 +79,15 @@ export default async function HomePage() {
                                 ? `${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime}\nBooked: "${slot.title}" by ${slot.userName}`
                                 : `${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime} (Available)`;
 
-                              const slotColor = slot.isBooked && slot.title
-                                ? colorPalette[stringToHash(slot.title) % colorPalette.length]
-                                : 'bg-transparent border border-accent-foreground/30';
-
                               return (
                                 <div
                                   key={slot.startTime}
                                   title={tooltipText}
                                   className={cn(
-                                    'h-2 flex-1 rounded-sm',
-                                    slotColor || 'bg-white/90' // Fallback for safety
+                                    'h-2 flex-1 rounded-sm border border-accent-foreground/30',
+                                    slot.isBooked && slot.title
+                                      ? colorPalette[stringToHash(slot.title) % colorPalette.length]
+                                      : 'bg-transparent'
                                   )}
                                 />
                               );
