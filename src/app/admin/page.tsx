@@ -599,9 +599,9 @@ export default function AdminPage() {
                   <CardDescription>Manage the password used to access the admin dashboard.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <Link href="/admin/change-password" passHref>
-                    <Button variant="outline">Change Password</Button>
-                  </Link>
+                  <Button asChild variant="outline">
+                    <Link href="/admin/change-password">Change Password</Link>
+                  </Button>
                 </CardContent>
               </Card>
             </div>
