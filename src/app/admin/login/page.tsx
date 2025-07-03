@@ -1,7 +1,6 @@
 
 'use client';
 
-import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { verifyAdminPassword } from '@/lib/actions';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { AlertTriangle, KeyRound } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-function AdminLoginForm() {
+export default function AdminLoginPage() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
   const from = searchParams.get('from') ?? '/admin';
@@ -59,14 +58,4 @@ function AdminLoginForm() {
         </div>
     </main>
   );
-}
-
-// Wrapping with Suspense is a good practice when using useSearchParams
-// to prevent the entire page from being dynamically rendered.
-export default function AdminLoginPage() {
-    return (
-        <Suspense fallback={<div>Loading...</div>}>
-            <AdminLoginForm />
-        </Suspense>
-    )
 }
