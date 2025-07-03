@@ -14,11 +14,13 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 function AdminLoginForm() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
+  const from = searchParams.get('from') ?? '/admin';
 
   return (
     <main className="container mx-auto py-20 flex justify-center items-center">
         <div className="w-full max-w-md">
             <form action={verifyAdminPassword}>
+                <input type="hidden" name="from" value={from} />
                 <Card className="shadow-2xl rounded-xl">
                     <CardHeader className="text-center">
                         <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit">

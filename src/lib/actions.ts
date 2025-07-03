@@ -19,9 +19,10 @@ import { verifyPassword, hashPassword } from './crypto';
 
 export async function verifyAdminPassword(formData: FormData) {
   const password = formData.get('password') as string;
+  const from = (formData.get('from') as string) || '/admin';
 
   if (!password) {
-    redirect('/admin/login?error=Password%20cannot%20be%20empty.');
+    redirect(`/admin/login?error=Password%20cannot%20be%20empty.&from=${encodeURIComponent(from)}`);
     return;
   }
 
@@ -29,7 +30,7 @@ export async function verifyAdminPassword(formData: FormData) {
 
   if (!config.adminPasswordHash || !config.adminPasswordSalt) {
       console.error("[Auth Error] Password hash or salt is missing from configuration.");
-      redirect('/admin/login?error=System%20misconfigured.%20Cannot%20log%20in.');
+      redirect(`/admin/login?error=System%20misconfigured.%20Cannot%20log%20in.&from=${encodeURIComponent(from)}`);
       return;
   }
 
@@ -43,9 +44,9 @@ export async function verifyAdminPassword(formData: FormData) {
       sameSite: 'strict',
       maxAge: 60 * 60 * 24, // 1 day
     });
-    redirect('/admin');
+    redirect(from);
   } else {
-    redirect('/admin/login?error=The%20password%20you%20entered%20is%20incorrect.');
+    redirect(`/admin/login?error=The%20password%20you%20entered%20is%20incorrect.&from=${encodeURIComponent(from)}`);
   }
 }
 
