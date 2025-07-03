@@ -82,6 +82,7 @@ export interface AppConfiguration {
   startOfDay: string; // HH:MM format
   endOfDay: string;   // HH:MM format
   homePageScale?: 'xs' | 'sm' | 'md';
+  weekStartsOnMonday?: boolean;
 }
 
 export interface RoomFormData {
@@ -95,3 +96,5 @@ export interface ExportedSettings {
   rooms: Room[];
   bookings: Booking[];
 }
+
+    

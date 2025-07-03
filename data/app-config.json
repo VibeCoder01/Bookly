@@ -3,7 +3,7 @@
   "appSubtitle": "Room booking system",
   "adminPasswordHash": "868d7c4bb21e7a9454ddba361cdbb5ce2154c6379274a2d23630d6d901248a4bd8b48791805ec16aef755d7e4023db21c061c0b8733c940195f11077dec3acfa",
   "adminPasswordSalt": "f500b2fd2ee1bc737d340b1dadd60769",
-  "slotDurationMinutes": 15,
+  "slotDurationMinutes": 30,
   "startOfDay": "09:00",
   "endOfDay": "17:00",
   "homePageScale": "xs"

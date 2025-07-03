@@ -21,6 +21,7 @@ const DEFAULT_CONFIG: AppConfiguration = {
   startOfDay: '09:00',
   endOfDay: '17:00',
   homePageScale: 'sm',
+  weekStartsOnMonday: false,
 };
 
 const ensureDataDirectoryExists = () => {
@@ -96,3 +97,5 @@ export const writeConfigurationToFile = async (config: AppConfiguration): Promis
     throw new Error('Failed to write configuration to file. Check server logs and file permissions.');
   }
 };
+
+    

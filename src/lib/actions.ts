@@ -4,7 +4,7 @@
 import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings, RoomWithDailyUsage, SlotStatus } from '@/types';
 import { readConfigurationFromFile, writeConfigurationToFile } from './config-store';
 import { z } from 'zod';
-import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes, isWeekend, addDays, startOfDay } from 'date-fns';
+import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes, isWeekend, addDays, startOfDay, startOfWeek } from 'date-fns';
 import fs from 'fs';
 import path from 'path';
 import { getPersistedBookings, addMockBooking, writeAllBookings } from './mock-data';
@@ -238,6 +238,7 @@ const appConfigurationObjectSchema = z.object({
   startOfDay: timeStringSchema,
   endOfDay: timeStringSchema,
   homePageScale: z.enum(['xs', 'sm', 'md']).optional(),
+  weekStartsOnMonday: z.boolean().optional(),
 });
 
 const appConfigurationSchema = appConfigurationObjectSchema.refine(data => {
@@ -678,6 +679,7 @@ const exportedSettingsSchema = z.object({
     startOfDay: z.string(),
     endOfDay: z.string(),
     homePageScale: z.enum(['xs', 'sm', 'md']).optional(),
+    weekStartsOnMonday: z.boolean().optional(),
   }),
   rooms: z.array(z.object({
     id: z.string(),
@@ -758,6 +760,11 @@ export async function getRoomsWithDailyUsage(startDate?: string): Promise<RoomWi
     let currentDate = startDate 
         ? parse(startDate, 'yyyy-MM-dd', new Date())
         : new Date();
+    
+    if (appConfig.weekStartsOnMonday) {
+      currentDate = startOfWeek(currentDate, { weekStartsOn: 1 /* Monday */ });
+    }
+    
     currentDate = startOfDay(currentDate);
 
     while (nextFiveWorkingDays.length < 5) {
@@ -846,3 +853,5 @@ export async function getRoomsWithDailyUsage(startDate?: string): Promise<RoomWi
 
     return roomsWithUsage;
 }
+
+    
