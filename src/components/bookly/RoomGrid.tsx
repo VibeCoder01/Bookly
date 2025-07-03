@@ -45,6 +45,7 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
     };
 
     const scale = config.homePageScale || 'sm';
+    const is15MinSlots = config.slotDurationMinutes === 15;
 
     const scalingStyles = {
         xs: {
@@ -58,7 +59,7 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
           usageDaySpacing: 'space-y-1',
           dayLetter: 'text-base w-4',
           usageBar: 'h-4',
-          slotGap: 'gap-1',
+          slotGap: is15MinSlots ? 'gap-px' : 'gap-0.5',
         },
         sm: {
           container: 'w-80',
@@ -71,7 +72,7 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
           usageDaySpacing: 'space-y-1.5',
           dayLetter: 'text-lg w-5',
           usageBar: 'h-5',
-          slotGap: 'gap-1.5',
+          slotGap: is15MinSlots ? 'gap-0.5' : 'gap-1',
         },
         md: {
           container: 'w-96',
@@ -84,7 +85,7 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
           usageDaySpacing: 'space-y-1.5',
           dayLetter: 'text-xl w-6',
           usageBar: 'h-6',
-          slotGap: 'gap-1.5',
+          slotGap: is15MinSlots ? 'gap-0.5' : 'gap-1.5',
         },
     };
 
@@ -103,30 +104,33 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
                     >
                     <Link
                         href={`/book?roomId=${room.id}`}
-                        className="block"
+                        className={cn("flex flex-col items-center flex-grow justify-center", styles.iconPadding)}
                     >
-                        <div className={cn("flex flex-col items-center flex-grow justify-center", styles.iconPadding)}>
-                            <div className="flex items-center gap-x-2">
-                                <svg
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    width={styles.iconSize}
-                                    height={styles.iconSize}
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                >
-                                    <path d="M5 11V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6" />
-                                    <path d="M3 11h18v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3Z" />
-                                    <path d="M6 16v6" />
-                                    <path d="M18 16v6" />
-                                </svg>
-                                <span className={cn("font-semibold", styles.capacityText)}>x {room.capacity}</span>
-                            </div>
-                            <span className={cn("text-center font-bold", styles.nameText)}>{room.name}</span>
+                        <div className="flex items-center gap-x-2">
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width={styles.iconSize}
+                                height={styles.iconSize}
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <path d="M12.22 18.06a2.5 2.5 0 0 1-4.44 0"/>
+                                <path d="M16.5 20a2 2 0 0 0 2-2v-3"/>
+                                <path d="M7.5 20a2 2 0 0 1-2-2v-3"/>
+                                <path d="M14.5 2a2 2 0 0 1 2 2v1H7.5V4a2 2 0 0 1 2-2h5Z"/>
+                                <path d="M5.5 15V8a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v7"/>
+                                <path d="M3.5 12a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h1"/>
+                                <path d="M22.5 14a2 2 0 0 0-2-2h-1"/>
+                                <path d="M9 11v2"/>
+                                <path d="M15 11v2"/>
+                            </svg>
+                            <span className={cn("font-semibold", styles.capacityText)}>x {room.capacity}</span>
                         </div>
+                        <span className={cn("text-center font-bold", styles.nameText)}>{room.name}</span>
                     </Link>
 
                     <div className={cn("w-full bg-black/10", styles.usagePadding)}>
