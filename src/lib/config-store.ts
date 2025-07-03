@@ -22,6 +22,7 @@ const DEFAULT_CONFIG: AppConfiguration = {
   endOfDay: '17:00',
   homePageScale: 'sm',
   weekStartsOnMonday: false,
+  includeWeekends: false,
 };
 
 const ensureDataDirectoryExists = () => {

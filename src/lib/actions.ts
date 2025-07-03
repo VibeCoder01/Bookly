@@ -239,6 +239,7 @@ const appConfigurationObjectSchema = z.object({
   endOfDay: timeStringSchema,
   homePageScale: z.enum(['xs', 'sm', 'md']).optional(),
   weekStartsOnMonday: z.boolean().optional(),
+  includeWeekends: z.boolean().optional(),
 });
 
 const appConfigurationSchema = appConfigurationObjectSchema.refine(data => {
@@ -680,6 +681,7 @@ const exportedSettingsSchema = z.object({
     endOfDay: z.string(),
     homePageScale: z.enum(['xs', 'sm', 'md']).optional(),
     weekStartsOnMonday: z.boolean().optional(),
+    includeWeekends: z.boolean().optional(),
   }),
   rooms: z.array(z.object({
     id: z.string(),
@@ -756,7 +758,7 @@ export async function getRoomsWithDailyUsage(startDate?: string): Promise<RoomWi
         getCurrentConfiguration()
     ]);
 
-    const nextFiveWorkingDays: string[] = [];
+    const daysToDisplay: string[] = [];
     let currentDate = startDate 
         ? parse(startDate, 'yyyy-MM-dd', new Date())
         : new Date();
@@ -767,11 +769,18 @@ export async function getRoomsWithDailyUsage(startDate?: string): Promise<RoomWi
     
     currentDate = startOfDay(currentDate);
 
-    while (nextFiveWorkingDays.length < 5) {
-        if (!isWeekend(currentDate)) {
-            nextFiveWorkingDays.push(format(currentDate, 'yyyy-MM-dd'));
+    if (appConfig.includeWeekends) {
+        for (let i = 0; i < 7; i++) {
+            daysToDisplay.push(format(currentDate, 'yyyy-MM-dd'));
+            currentDate = addDays(currentDate, 1);
         }
-        currentDate = addDays(currentDate, 1);
+    } else {
+        while (daysToDisplay.length < 5) {
+            if (!isWeekend(currentDate)) {
+                daysToDisplay.push(format(currentDate, 'yyyy-MM-dd'));
+            }
+            currentDate = addDays(currentDate, 1);
+        }
     }
     
     const generateDaySlots = () => {
@@ -812,7 +821,7 @@ export async function getRoomsWithDailyUsage(startDate?: string): Promise<RoomWi
     const roomsWithUsage = rooms.map(room => {
         const roomBookingsByDay = bookingsByRoomThenDay[room.id] || {};
         
-        const dailyUsage = nextFiveWorkingDays.map(day => {
+        const dailyUsage = daysToDisplay.map(day => {
             const bookingsForThisDay = roomBookingsByDay[day] || [];
             
             const slotStatusMap: Record<string, SlotStatus> = {};

@@ -1,4 +1,5 @@
 
+
 export interface Room {
   id: string;
   name: string;
@@ -83,6 +84,7 @@ export interface AppConfiguration {
   endOfDay: string;   // HH:MM format
   homePageScale?: 'xs' | 'sm' | 'md';
   weekStartsOnMonday?: boolean;
+  includeWeekends?: boolean;
 }
 
 export interface RoomFormData {

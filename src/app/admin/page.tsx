@@ -47,6 +47,7 @@ interface AdminConfigFormState {
   endOfDay: string;
   homePageScale: string;
   weekStartsOnMonday: boolean;
+  includeWeekends: boolean;
 }
 
 const convertMinutesToDurationString = (minutes: number): string => {
@@ -74,7 +75,7 @@ export default function AdminPage() {
   const [showBookingsTable, setShowBookingsTable] = useState(false);
 
   // Configuration state
-  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: '', homePageScale: 'sm', weekStartsOnMonday: false });
+  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: '', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false });
   const [currentLogo, setCurrentLogo] = useState<string | undefined>(undefined);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
@@ -108,6 +109,7 @@ export default function AdminPage() {
         endOfDay: currentConfig.endOfDay,
         homePageScale: currentConfig.homePageScale || 'sm',
         weekStartsOnMonday: !!currentConfig.weekStartsOnMonday,
+        includeWeekends: !!currentConfig.includeWeekends,
       });
       setCurrentLogo(currentConfig.appLogo);
     } catch (err) {
@@ -117,7 +119,7 @@ export default function AdminPage() {
         title: 'Error Fetching Configuration',
         description: 'Could not load current settings. Displaying defaults.',
       });
-      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00', homePageScale: 'sm', weekStartsOnMonday: false });
+      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false });
       setCurrentLogo(undefined);
     } finally {
       setIsLoadingConfig(false);
@@ -194,6 +196,7 @@ export default function AdminPage() {
       endOfDay: config.endOfDay,
       homePageScale: config.homePageScale as 'xs' | 'sm' | 'md',
       weekStartsOnMonday: config.weekStartsOnMonday,
+      includeWeekends: config.includeWeekends,
     };
 
     const result = await serverUpdateAppConfiguration(updates);
@@ -272,6 +275,7 @@ export default function AdminPage() {
       case 'endOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'homePageScale': return <Scaling className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'weekStartsOnMonday': return <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />;
+      case 'includeWeekends': return <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />;
       default: return null;
     }
   };
@@ -613,6 +617,19 @@ export default function AdminPage() {
                                     onCheckedChange={(checked) => handleConfigChange('weekStartsOnMonday', checked)}
                                     disabled={isApplyingChanges}
                                     aria-label="Toggle week start day"
+                                />
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium pl-6 flex items-center">
+                                {getIconForSetting('includeWeekends')} Include Weekends in Home View
+                            </TableCell>
+                            <TableCell className="text-right pr-6 flex justify-end items-center">
+                                <Switch
+                                    checked={config.includeWeekends}
+                                    onCheckedChange={(checked) => handleConfigChange('includeWeekends', checked)}
+                                    disabled={isApplyingChanges}
+                                    aria-label="Toggle including weekends in the home page view"
                                 />
                             </TableCell>
                           </TableRow>
