@@ -104,7 +104,7 @@ export async function changeAdminPassword(formData: FormData) {
     redirect(`/admin/change-password?error=${msg}`);
   }
 
-  redirect('/admin/change-password?success=' + encodeURIComponent('Password updated successfully.'));
+  redirect('/admin?success=' + encodeURIComponent('Password updated successfully.'));
 }
 
 export async function logoutAdmin() {
@@ -702,7 +702,7 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
 
         while (isBefore(slotTime, dayEndTime)) {
             const slotStart = new Date(slotTime);
-            const slotEnd = addMinutes(slotStart, appConfig.slotDurationMinutes);
+            const slotEnd = addMinutes(slotTime, appConfig.slotDurationMinutes);
             if (isBefore(dayEndTime, slotEnd) || isEqual(dayEndTime, slotStart)) {
                 break;
             }

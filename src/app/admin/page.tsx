@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text, ImageIcon, KeyRound, LogOut } from 'lucide-react';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Booking, Room, AppConfiguration } from '@/types';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { 
     getAllBookings, 
     updateAppConfiguration as serverUpdateAppConfiguration,
@@ -61,6 +62,9 @@ const convertDurationValueToMinutes = (value: string): number => {
 
 export default function AdminPage() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   // Bookings state
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
@@ -147,6 +151,17 @@ export default function AdminPage() {
       setIsLoadingBookings(false);
     }
   }, []);
+
+  useEffect(() => {
+    const successMessage = searchParams.get('success');
+    if (successMessage) {
+      toast({
+        title: 'Success',
+        description: successMessage,
+      });
+      router.replace('/admin', { scroll: false });
+    }
+  }, [searchParams, router, toast]);
 
   useEffect(() => {
     fetchAdminConfiguration();
