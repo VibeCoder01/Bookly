@@ -134,7 +134,7 @@ export default async function HomePage() {
                           <span className={cn("font-mono font-bold text-accent-foreground/70 text-center", styles.dayLetter)}>
                             {format(new Date(day.date + 'T00:00:00'), 'EEEEE')}
                           </span>
-                          <div className="flex gap-px flex-1">
+                          <div className="flex gap-1 flex-1">
                             {day.slots.map((slot) => {
                               const tooltipText = slot.isBooked
                                 ? `${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime}\nBooked: "${slot.title}" by ${slot.userName}`
