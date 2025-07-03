@@ -590,6 +590,34 @@ export async function getAllBookings(): Promise<{ bookings: Booking[]; error?: s
   return { bookings: sortedBookings };
 }
 
+export async function deleteBooking(bookingId: string): Promise<{ success: boolean; error?: string }> {
+    if (!bookingId) {
+        return { success: false, error: 'Booking ID is required.' };
+    }
+    
+    try {
+        const allBookings = await getPersistedBookings();
+        const bookingsCount = allBookings.length;
+        const updatedBookings = allBookings.filter(booking => booking.id !== bookingId);
+
+        if (updatedBookings.length === bookingsCount) {
+            return { success: false, error: 'Booking not found.' };
+        }
+
+        await writeAllBookings(updatedBookings);
+
+        revalidatePath('/');
+        revalidatePath('/book');
+        revalidatePath('/admin');
+
+        return { success: true };
+    } catch (error) {
+        console.error(`[Delete Booking Error] Failed to delete booking ID ${bookingId}:`, error);
+        return { success: false, error: 'An error occurred while deleting the booking.' };
+    }
+}
+
+
 // --- Data Management Actions ---
 
 const exportedSettingsSchema = z.object({

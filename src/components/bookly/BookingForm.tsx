@@ -251,6 +251,13 @@ export function BookingForm({ rooms, onBookingAttemptCompleted, initialRoomId }:
       setIsLoadingRoomBookings(false);
     }
   };
+
+  const handleBookingDeleted = () => {
+    if (selectedRoomId && selectedDate) {
+      // Re-fetch available slots to reflect the deletion
+      fetchIndividualSlots(selectedRoomId, selectedDate);
+    }
+  };
   
   const isDetailsButtonDisabled = !selectedRoomId || !selectedDate || isLoadingSlots || isLoadingRoomBookings || isSubmittingForm;
   const isBookRoomButtonDisabled = isSubmittingForm || isLoadingSlots || isLoadingRoomBookings || !selectedStartTimeValue || !watchedEndTime;
@@ -499,6 +506,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted, initialRoomId }:
           roomName={roomDetailsForDialog.roomName}
           date={roomDetailsForDialog.date}
           bookings={bookingsForSelectedRoomDate}
+          onBookingDeleted={handleBookingDeleted}
         />
       )}
     </>
