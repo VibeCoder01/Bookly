@@ -52,10 +52,11 @@ export default async function HomePage() {
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       >
-                        <path d="M17 12v-2a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2" />
-                        <path d="M7 12h10v5a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-5Z" />
-                        <path d="M12 19v3" />
-                        <path d="M15 22H9" />
+                        <path d="M5 18h14"/>
+                        <path d="M5 11h14v7H5z"/>
+                        <path d="M7 11V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v4"/>
+                        <path d="M9 18v3"/>
+                        <path d="M15 18v3"/>
                       </svg>
                       <span className="text-xl font-semibold">x {room.capacity}</span>
                   </div>
