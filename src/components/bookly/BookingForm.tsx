@@ -252,12 +252,20 @@ export function BookingForm({ rooms, onBookingAttemptCompleted, initialRoomId }:
     }
   };
 
-  const handleBookingDeleted = () => {
+  const handleDataModified = useCallback(async () => {
     if (selectedRoomId && selectedDate) {
-      // Re-fetch available slots to reflect the deletion
+      // Re-fetch available slots to reflect the change
       fetchIndividualSlots(selectedRoomId, selectedDate);
+      
+      // Re-fetch bookings for the dialog to show updated info
+      const result = await getBookingsForRoomAndDate(selectedRoomId, format(selectedDate, 'yyyy-MM-dd'));
+      if (result.error) {
+        toast({ variant: 'destructive', title: 'Error Refreshing Data', description: 'Could not refresh booking details.' });
+      } else {
+        setBookingsForSelectedRoomDate(result.bookings);
+      }
     }
-  };
+  }, [selectedRoomId, selectedDate, fetchIndividualSlots, toast]);
   
   const isDetailsButtonDisabled = !selectedRoomId || !selectedDate || isLoadingSlots || isLoadingRoomBookings || isSubmittingForm;
   const isBookRoomButtonDisabled = isSubmittingForm || isLoadingSlots || isLoadingRoomBookings || !selectedStartTimeValue || !watchedEndTime;
@@ -506,7 +514,7 @@ export function BookingForm({ rooms, onBookingAttemptCompleted, initialRoomId }:
           roomName={roomDetailsForDialog.roomName}
           date={roomDetailsForDialog.date}
           bookings={bookingsForSelectedRoomDate}
-          onBookingDeleted={handleBookingDeleted}
+          onDataModified={handleDataModified}
         />
       )}
     </>

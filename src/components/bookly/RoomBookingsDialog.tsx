@@ -25,10 +25,11 @@ import {
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CalendarDays, UserCircle, Mail, Trash2, Loader2 } from 'lucide-react';
+import { CalendarDays, UserCircle, Mail, Trash2, Loader2, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteBooking } from '@/lib/actions';
 import { cn } from '@/lib/utils';
+import { BookingEditDialog } from './BookingEditDialog';
 
 
 interface RoomBookingsDialogProps {
@@ -37,17 +38,19 @@ interface RoomBookingsDialogProps {
   roomName: string;
   date: string; // Formatted date string (e.g., PPP from date-fns)
   bookings: Booking[];
-  onBookingDeleted: () => void;
+  onDataModified: () => void;
 }
 
-export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, bookings, onBookingDeleted }: RoomBookingsDialogProps) {
+export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, bookings, onDataModified }: RoomBookingsDialogProps) {
   const { toast } = useToast();
   const [localBookings, setLocalBookings] = useState<Booking[]>(bookings);
   const [bookingToDelete, setBookingToDelete] = useState<Booking | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [bookingToEdit, setBookingToEdit] = useState<Booking | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
-    // Sync local state if the initial bookings prop changes, e.g., when dialog is re-opened
+    // Sync local state if the initial bookings prop changes, e.g., when dialog is re-opened for new data
     if (isOpen) {
         setLocalBookings(bookings);
     }
@@ -62,13 +65,22 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
     if (result.success) {
         toast({ title: 'Booking Deleted', description: `The booking for "${bookingToDelete.title}" has been deleted.` });
         setLocalBookings(prev => prev.filter(b => b.id !== bookingToDelete.id));
-        onBookingDeleted();
+        onDataModified();
     } else {
         toast({ variant: 'destructive', title: 'Error Deleting Booking', description: result.error });
     }
 
     setIsDeleting(false);
     setBookingToDelete(null);
+  };
+
+  const handleEditClick = (booking: Booking) => {
+    setBookingToEdit(booking);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleEditSuccess = () => {
+    onDataModified();
   };
 
   return (
@@ -93,7 +105,7 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
                     <TableHead className="w-[120px]">Time Slot</TableHead>
                     <TableHead>Title</TableHead>
                     <TableHead>Booked By</TableHead>
-                    <TableHead className="w-[80px] text-right">Actions</TableHead>
+                    <TableHead className="w-[120px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -113,10 +125,16 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                         <Button variant="ghost" size="icon" onClick={() => setBookingToDelete(booking)} disabled={isDeleting}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                            <span className="sr-only">Delete booking</span>
-                         </Button>
+                         <div className="flex items-center justify-end space-x-1">
+                            <Button variant="ghost" size="icon" onClick={() => handleEditClick(booking)} disabled={isDeleting}>
+                                <Pencil className="h-4 w-4 text-primary" />
+                                <span className="sr-only">Edit booking</span>
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => setBookingToDelete(booking)} disabled={isDeleting}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                                <span className="sr-only">Delete booking</span>
+                            </Button>
+                         </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -156,6 +174,13 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <BookingEditDialog 
+        isOpen={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onSuccess={handleEditSuccess}
+        booking={bookingToEdit}
+      />
     </>
   );
 }

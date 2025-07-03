@@ -546,6 +546,52 @@ export async function submitBooking(
   return { booking: newBooking };
 }
 
+const bookingUpdateSchema = z.object({
+  id: z.string().min(1, 'Booking ID is required.'),
+  title: z.string().min(3, 'Title must be at least 3 characters.').max(100, 'Title must be 100 characters or less.'),
+  userName: z.string().min(2, 'Name must be at least 2 characters.'),
+  userEmail: z.string().email('Invalid email address.'),
+});
+
+export async function updateBooking(
+  formData: { id: string; title: string; userName: string; userEmail: string }
+): Promise<{ success: boolean; error?: string; fieldErrors?: Record<string, string[] | undefined> }> {
+    const validationResult = bookingUpdateSchema.safeParse(formData);
+    if (!validationResult.success) {
+        return { success: false, error: "Validation failed.", fieldErrors: validationResult.error.flatten().fieldErrors };
+    }
+
+    const { id, title, userName, userEmail } = validationResult.data;
+
+    try {
+        const allBookings = await getPersistedBookings();
+        const bookingIndex = allBookings.findIndex(b => b.id === id);
+
+        if (bookingIndex === -1) {
+            return { success: false, error: 'Booking not found.' };
+        }
+
+        allBookings[bookingIndex] = {
+            ...allBookings[bookingIndex],
+            title,
+            userName,
+            userEmail,
+        };
+
+        await writeAllBookings(allBookings);
+
+        revalidatePath('/');
+        revalidatePath('/book');
+        revalidatePath('/admin');
+        
+        return { success: true };
+    } catch (error) {
+        console.error(`[Update Booking Error] Failed to update booking ID ${id}:`, error);
+        return { success: false, error: 'An error occurred while updating the booking.' };
+    }
+}
+
+
 export async function getBookingsForRoomAndDate(
   roomId: string,
   date: string
