@@ -67,7 +67,7 @@ export default async function HomePage() {
 
                               const slotColor = slot.isBooked && slot.bookingId
                                 ? bookingColors.get(slot.bookingId)
-                                : 'bg-white/30';
+                                : 'bg-transparent border border-white/50';
 
                               return (
                                 <div
