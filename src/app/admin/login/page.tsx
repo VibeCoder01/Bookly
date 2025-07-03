@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { AlertTriangle, KeyRound } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import Link from 'next/link';
 
 export default function AdminLoginPage() {
   const searchParams = useSearchParams();
@@ -48,9 +49,12 @@ export default function AdminLoginPage() {
                             </Alert>
                         )}
                     </CardContent>
-                    <CardFooter>
+                    <CardFooter className="flex flex-col gap-4">
                         <Button type="submit" className="w-full">
                             Login
+                        </Button>
+                        <Button asChild variant="link" className="text-muted-foreground font-normal">
+                           <Link href="/">Cancel</Link>
                         </Button>
                     </CardFooter>
                 </Card>
