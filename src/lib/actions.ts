@@ -19,19 +19,23 @@ import { verifyPassword, hashPassword } from './crypto';
 
 export async function verifyAdminPassword(formData: FormData) {
   const password = formData.get('password') as string;
-  const from = (formData.get('from') as string) || '/admin';
+  let from = (formData.get('from') as string) || '/admin';
+
+  // Security: Ensure the redirect is only within the admin area.
+  if (!from.startsWith('/admin')) {
+    from = '/admin';
+  }
 
   if (!password) {
-    redirect(`/admin/login?error=Password%20cannot%20be%20empty.&from=${encodeURIComponent(from)}`);
-    return;
+    const err = encodeURIComponent('Password cannot be empty.');
+    redirect(`/admin/login?error=${err}&from=${encodeURIComponent(from)}`);
   }
 
   const config = await readConfigurationFromFile();
-
   if (!config.adminPasswordHash || !config.adminPasswordSalt) {
-      console.error("[Auth Error] Password hash or salt is missing from configuration.");
-      redirect(`/admin/login?error=System%20misconfigured.%20Cannot%20log%20in.&from=${encodeURIComponent(from)}`);
-      return;
+    console.error("[Auth Error] Password hash or salt is missing from configuration.");
+    const err = encodeURIComponent('System misconfigured. Cannot log in.');
+    redirect(`/admin/login?error=${err}&from=${encodeURIComponent(from)}`);
   }
 
   const isValid = verifyPassword(password, config.adminPasswordHash, config.adminPasswordSalt);
@@ -46,7 +50,8 @@ export async function verifyAdminPassword(formData: FormData) {
     });
     redirect(from);
   } else {
-    redirect(`/admin/login?error=The%20password%20you%20entered%20is%20incorrect.&from=${encodeURIComponent(from)}`);
+    const err = encodeURIComponent('The password you entered is incorrect.');
+    redirect(`/admin/login?error=${err}&from=${encodeURIComponent(from)}`);
   }
 }
 
@@ -56,29 +61,29 @@ export async function changeAdminPassword(formData: FormData) {
   const confirmPassword = formData.get('confirmPassword') as string;
 
   if (!oldPassword || !newPassword || !confirmPassword) {
-    redirect('/admin/change-password?error=All%20fields%20are%20required.');
+    redirect('/admin/change-password?error=' + encodeURIComponent('All fields are required.'));
     return;
   }
 
   if (newPassword !== confirmPassword) {
-    redirect('/admin/change-password?error=New%20passwords%20do%20not%20match.');
+    redirect('/admin/change-password?error=' + encodeURIComponent('New passwords do not match.'));
     return;
   }
 
   if (newPassword.length < 8) {
-    redirect('/admin/change-password?error=New%20password%20must%20be%20at%20least%208%20characters%20long.');
+    redirect('/admin/change-password?error=' + encodeURIComponent('New password must be at least 8 characters long.'));
     return;
   }
 
   const config = await readConfigurationFromFile();
   if (!config.adminPasswordHash || !config.adminPasswordSalt) {
-    redirect('/admin/change-password?error=System%20configuration%20error.%20Cannot%20change%20password.');
+    redirect('/admin/change-password?error=' + encodeURIComponent('System configuration error. Cannot change password.'));
     return;
   }
 
   const isOldPasswordValid = verifyPassword(oldPassword, config.adminPasswordHash, config.adminPasswordSalt);
   if (!isOldPasswordValid) {
-    redirect('/admin/change-password?error=The%20old%20password%20you%20entered%20is%20incorrect.');
+    redirect('/admin/change-password?error=' + encodeURIComponent('The old password you entered is incorrect.'));
     return;
   }
 
@@ -93,10 +98,10 @@ export async function changeAdminPassword(formData: FormData) {
 
   try {
     await writeConfigurationToFile(newConfig);
-    redirect('/admin/change-password?success=Password%20updated%20successfully.');
+    redirect('/admin/change-password?success=' + encodeURIComponent('Password updated successfully.'));
   } catch (error) {
     console.error('[Change Password Error]', error);
-    redirect('/admin/change-password?error=Failed%20to%20save%20the%20new%20password.');
+    redirect('/admin/change-password?error=' + encodeURIComponent('Failed to save the new password.'));
   }
 }
 
