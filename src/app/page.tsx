@@ -36,6 +36,18 @@ export default async function HomePage() {
 
   const scalingStyles = {
     xs: {
+      container: 'w-64',
+      iconPadding: 'p-6',
+      iconSize: 48,
+      capacityText: 'text-3xl',
+      nameText: 'mt-2 text-xl',
+      usagePadding: 'pt-4 pb-5 px-5',
+      usageTitle: 'text-base mb-2',
+      usageDaySpacing: 'space-y-1',
+      dayLetter: 'text-base w-4',
+      usageBar: 'h-4',
+    },
+    sm: {
       container: 'w-80',
       iconPadding: 'p-8',
       iconSize: 64,
@@ -47,7 +59,7 @@ export default async function HomePage() {
       dayLetter: 'text-lg w-5',
       usageBar: 'h-5',
     },
-    sm: {
+    md: {
       container: 'w-[28rem]',
       iconPadding: 'p-12',
       iconSize: 80,
@@ -58,18 +70,6 @@ export default async function HomePage() {
       usageDaySpacing: 'space-y-2',
       dayLetter: 'text-2xl w-6',
       usageBar: 'h-7',
-    },
-    md: {
-      container: 'w-[32rem]',
-      iconPadding: 'p-14',
-      iconSize: 96,
-      capacityText: 'text-7xl',
-      nameText: 'mt-5 text-5xl',
-      usagePadding: 'pt-7 pb-9 px-9',
-      usageTitle: 'text-3xl mb-4',
-      usageDaySpacing: 'space-y-2.5',
-      dayLetter: 'text-3xl w-8',
-      usageBar: 'h-8',
     },
   };
 
@@ -122,7 +122,7 @@ export default async function HomePage() {
                           <span className={cn("font-mono font-bold text-accent-foreground/70 text-center", styles.dayLetter)}>
                             {format(new Date(day.date + 'T00:00:00'), 'EEEEE')}
                           </span>
-                          <div className="flex gap-1 flex-1">
+                          <div className="flex gap-1.5 flex-1">
                             {day.slots.map((slot) => {
                               const tooltipText = slot.isBooked
                                 ? `${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime}\nBooked: "${slot.title}" by ${slot.userName}`
