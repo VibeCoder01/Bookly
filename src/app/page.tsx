@@ -1,6 +1,6 @@
 
 import Link from 'next/link';
-import { getRoomsWithDailyUsage } from '@/lib/actions';
+import { getRoomsWithDailyUsage, getCurrentConfiguration } from '@/lib/actions';
 import type { RoomWithDailyUsage } from '@/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -27,7 +27,65 @@ const stringToHash = (str: string): number => {
 };
 
 export default async function HomePage() {
-  const roomsWithUsage: RoomWithDailyUsage[] = await getRoomsWithDailyUsage();
+  const [roomsWithUsage, config] = await Promise.all([
+    getRoomsWithDailyUsage(),
+    getCurrentConfiguration(),
+  ]);
+
+  const scale = config.homePageScale || 'md';
+
+  const scalingStyles = {
+    xs: {
+      container: 'w-64',
+      iconPadding: 'p-6',
+      iconSize: 48,
+      capacityText: 'text-3xl',
+      nameText: 'mt-2 text-xl',
+      usagePadding: 'pt-4 pb-5 px-5',
+      usageTitle: 'text-base mb-2',
+      usageDaySpacing: 'space-y-1',
+      dayLetter: 'text-base w-4',
+      usageBar: 'h-4',
+    },
+    sm: {
+      container: 'w-80',
+      iconPadding: 'p-8',
+      iconSize: 64,
+      capacityText: 'text-4xl',
+      nameText: 'mt-3 text-2xl',
+      usagePadding: 'pt-5 pb-6 px-6',
+      usageTitle: 'text-lg mb-2',
+      usageDaySpacing: 'space-y-1.5',
+      dayLetter: 'text-lg w-5',
+      usageBar: 'h-5',
+    },
+    md: {
+      container: 'w-[28rem]',
+      iconPadding: 'p-12',
+      iconSize: 80,
+      capacityText: 'text-6xl',
+      nameText: 'mt-4 text-4xl',
+      usagePadding: 'pt-6 pb-8 px-8',
+      usageTitle: 'text-2xl mb-3',
+      usageDaySpacing: 'space-y-2',
+      dayLetter: 'text-2xl w-6',
+      usageBar: 'h-7',
+    },
+    lg: {
+      container: 'w-[32rem]',
+      iconPadding: 'p-14',
+      iconSize: 96,
+      capacityText: 'text-7xl',
+      nameText: 'mt-5 text-5xl',
+      usagePadding: 'pt-7 pb-9 px-9',
+      usageTitle: 'text-3xl mb-4',
+      usageDaySpacing: 'space-y-2.5',
+      dayLetter: 'text-3xl w-8',
+      usageBar: 'h-8',
+    },
+  };
+
+  const styles = scalingStyles[scale];
 
   return (
     <main className="flex-grow flex items-center justify-center p-6">
@@ -37,14 +95,17 @@ export default async function HomePage() {
             <Link
               key={room.id}
               href={`/book?roomId=${room.id}`}
-              className="w-80 rounded-xl shadow-lg flex flex-col bg-accent text-accent-foreground hover:bg-accent/90 transition-all duration-200 ease-in-out transform hover:-translate-y-1 overflow-hidden"
+              className={cn(
+                "rounded-xl shadow-lg flex flex-col bg-accent text-accent-foreground hover:bg-accent/90 transition-all duration-200 ease-in-out transform hover:-translate-y-1 overflow-hidden",
+                styles.container
+              )}
             >
-              <div className="flex flex-col items-center p-10 flex-grow justify-center">
+              <div className={cn("flex flex-col items-center flex-grow justify-center", styles.iconPadding)}>
                   <div className="flex items-center gap-x-2">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        width="56"
-                        height="56"
+                        width={styles.iconSize}
+                        height={styles.iconSize}
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -57,20 +118,20 @@ export default async function HomePage() {
                         <path d="M7 15v6" />
                         <path d="M17 15v6" />
                       </svg>
-                      <span className="text-4xl font-semibold">x {room.capacity}</span>
+                      <span className={cn("font-semibold", styles.capacityText)}>x {room.capacity}</span>
                   </div>
-                  <span className="mt-3 text-2xl text-center font-bold">{room.name}</span>
+                  <span className={cn("text-center font-bold", styles.nameText)}>{room.name}</span>
               </div>
 
-              <div className="w-full pt-5 pb-6 px-6 bg-black/10">
-                  <p className="text-lg text-center font-medium text-accent-foreground/80 mb-2">
+              <div className={cn("w-full bg-black/10", styles.usagePadding)}>
+                  <p className={cn("text-center font-medium text-accent-foreground/80", styles.usageTitle)}>
                       Usage (Next 5 Working Days)
                   </p>
-                  <div className="space-y-1.5">
+                  <div className={cn(styles.usageDaySpacing)}>
                     {room.dailyUsage.map((day) => {
                       return (
                         <div key={day.date} className="flex items-center gap-2">
-                          <span className="text-lg font-mono font-bold text-accent-foreground/70 w-4 text-center">
+                          <span className={cn("font-mono font-bold text-accent-foreground/70 text-center", styles.dayLetter)}>
                             {format(new Date(day.date + 'T00:00:00'), 'EEEEE')}
                           </span>
                           <div className="flex gap-px flex-1">
@@ -84,7 +145,8 @@ export default async function HomePage() {
                                   key={slot.startTime}
                                   title={tooltipText}
                                   className={cn(
-                                    'h-5 flex-1 rounded-sm border border-accent-foreground/30',
+                                    'flex-1 rounded-sm border-2 border-accent-foreground/30',
+                                    styles.usageBar,
                                     slot.isBooked && slot.title
                                       ? colorPalette[stringToHash(slot.title) % colorPalette.length]
                                       : 'bg-transparent'

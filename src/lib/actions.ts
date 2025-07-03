@@ -237,6 +237,7 @@ const appConfigurationObjectSchema = z.object({
     .refine(val => val % 15 === 0, 'Duration must be in multiples of 15 minutes.'),
   startOfDay: timeStringSchema,
   endOfDay: timeStringSchema,
+  homePageScale: z.enum(['xs', 'sm', 'md', 'lg']).optional(),
 });
 
 const appConfigurationSchema = appConfigurationObjectSchema.refine(data => {
@@ -676,6 +677,7 @@ const exportedSettingsSchema = z.object({
     slotDurationMinutes: z.number(),
     startOfDay: z.string(),
     endOfDay: z.string(),
+    homePageScale: z.enum(['xs', 'sm', 'md', 'lg']).optional(),
   }),
   rooms: z.array(z.object({
     id: z.string(),

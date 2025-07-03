@@ -81,6 +81,7 @@ export interface AppConfiguration {
   slotDurationMinutes: number;
   startOfDay: string; // HH:MM format
   endOfDay: string;   // HH:MM format
+  homePageScale?: 'xs' | 'sm' | 'md' | 'lg';
 }
 
 export interface RoomFormData {

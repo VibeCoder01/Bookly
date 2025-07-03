@@ -20,6 +20,7 @@ const DEFAULT_CONFIG: AppConfiguration = {
   slotDurationMinutes: 60,
   startOfDay: '09:00',
   endOfDay: '17:00',
+  homePageScale: 'md',
 };
 
 const ensureDataDirectoryExists = () => {

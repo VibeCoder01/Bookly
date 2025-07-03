@@ -1,3 +1,4 @@
+
 {
   "appName": "Bookly",
   "appSubtitle": "Room booking system",
@@ -5,5 +6,6 @@
   "adminPasswordSalt": "f500b2fd2ee1bc737d340b1dadd60769",
   "slotDurationMinutes": 30,
   "startOfDay": "09:00",
-  "endOfDay": "17:00"
+  "endOfDay": "17:00",
+  "homePageScale": "md"
 }
