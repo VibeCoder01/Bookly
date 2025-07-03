@@ -31,20 +31,20 @@ export default async function HomePage() {
 
   return (
     <main className="flex-grow flex items-center justify-center p-6">
-      <div className="flex flex-wrap justify-center gap-8">
+      <div className="flex flex-wrap justify-center gap-10">
         {roomsWithUsage.length > 0 ? (
           roomsWithUsage.map((room) => (
             <Link
               key={room.id}
               href={`/book?roomId=${room.id}`}
-              className="w-64 rounded-xl shadow-lg flex flex-col bg-accent text-accent-foreground hover:bg-accent/90 transition-all duration-200 ease-in-out transform hover:-translate-y-1 overflow-hidden"
+              className="w-80 rounded-xl shadow-lg flex flex-col bg-accent text-accent-foreground hover:bg-accent/90 transition-all duration-200 ease-in-out transform hover:-translate-y-1 overflow-hidden"
             >
-              <div className="flex flex-col items-center p-6 flex-grow justify-center">
+              <div className="flex flex-col items-center p-10 flex-grow justify-center">
                   <div className="flex items-center gap-x-2">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
-                        width="40"
-                        height="40"
+                        width="56"
+                        height="56"
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
@@ -57,20 +57,20 @@ export default async function HomePage() {
                         <path d="M7 15v6" />
                         <path d="M17 15v6" />
                       </svg>
-                      <span className="text-2xl font-semibold">x {room.capacity}</span>
+                      <span className="text-4xl font-semibold">x {room.capacity}</span>
                   </div>
-                  <span className="mt-3 text-lg text-center font-bold">{room.name}</span>
+                  <span className="mt-3 text-2xl text-center font-bold">{room.name}</span>
               </div>
 
-              <div className="w-full pt-3 pb-4 px-4 bg-black/10">
-                  <p className="text-sm text-center font-medium text-accent-foreground/80 mb-2">
+              <div className="w-full pt-5 pb-6 px-6 bg-black/10">
+                  <p className="text-lg text-center font-medium text-accent-foreground/80 mb-2">
                       Usage (Next 5 Working Days)
                   </p>
                   <div className="space-y-1.5">
                     {room.dailyUsage.map((day) => {
                       return (
                         <div key={day.date} className="flex items-center gap-2">
-                          <span className="text-sm font-mono font-bold text-accent-foreground/70 w-4 text-center">
+                          <span className="text-lg font-mono font-bold text-accent-foreground/70 w-4 text-center">
                             {format(new Date(day.date + 'T00:00:00'), 'EEEEE')}
                           </span>
                           <div className="flex gap-px flex-1">
@@ -84,7 +84,7 @@ export default async function HomePage() {
                                   key={slot.startTime}
                                   title={tooltipText}
                                   className={cn(
-                                    'h-3 flex-1 rounded-sm border border-accent-foreground/30',
+                                    'h-5 flex-1 rounded-sm border border-accent-foreground/30',
                                     slot.isBooked && slot.title
                                       ? colorPalette[stringToHash(slot.title) % colorPalette.length]
                                       : 'bg-transparent'
