@@ -43,7 +43,6 @@ interface AdminConfigFormState {
   slotDuration: string;
   startOfDay: string;
   endOfDay: string;
-  adminPassword: string;
 }
 
 const convertMinutesToDurationString = (minutes: number): string => {
@@ -69,7 +68,7 @@ export default function AdminPage() {
   const [showBookingsTable, setShowBookingsTable] = useState(false);
 
   // Configuration state
-  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: '', adminPassword: '' });
+  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: '' });
   const [currentLogo, setCurrentLogo] = useState<string | undefined>(undefined);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
@@ -101,7 +100,6 @@ export default function AdminPage() {
         slotDuration: convertMinutesToDurationString(currentConfig.slotDurationMinutes),
         startOfDay: currentConfig.startOfDay,
         endOfDay: currentConfig.endOfDay,
-        adminPassword: '', // Always initialize as empty for the 'new password' field
       });
       setCurrentLogo(currentConfig.appLogo);
     } catch (err) {
@@ -111,7 +109,7 @@ export default function AdminPage() {
         title: 'Error Fetching Configuration',
         description: 'Could not load current settings. Displaying defaults.',
       });
-      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00', adminPassword: '' });
+      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00' });
       setCurrentLogo(undefined);
     } finally {
       setIsLoadingConfig(false);
@@ -187,17 +185,11 @@ export default function AdminPage() {
       startOfDay: config.startOfDay,
       endOfDay: config.endOfDay,
     };
-    
-    // Only include password in the update if a new one was actually entered.
-    if (config.adminPassword.trim()) {
-      updates.adminPassword = config.adminPassword.trim();
-    }
 
     const result = await serverUpdateAppConfiguration(updates);
 
     if (result.success) {
       toast({ title: 'Configuration Updated', description: 'Your application settings have been saved.' });
-      // Refresh config from server, which will also clear the password field in the UI state
       await fetchAdminConfiguration(); 
     } else {
       toast({ variant: 'destructive', title: 'Update Failed', description: result.error || 'An unexpected error occurred.' });
@@ -213,7 +205,6 @@ export default function AdminPage() {
     const fileInput = form.elements.namedItem('logo') as HTMLInputElement;
     const file = fileInput.files?.[0];
 
-    // --- CLIENT-SIDE VALIDATION ---
     if (!file) {
       toast({ variant: 'destructive', title: 'No File Selected', description: 'Please choose a logo file to upload.' });
       return;
@@ -232,7 +223,6 @@ export default function AdminPage() {
          toast({ variant: 'destructive', title: 'Invalid File Type', description: 'Please upload a PNG, JPG, SVG, or WEBP file.' });
         return;
     }
-    // --- END CLIENT-SIDE VALIDATION ---
 
     setIsUploadingLogo(true);
     const formData = new FormData(form);
@@ -267,7 +257,6 @@ export default function AdminPage() {
     switch(settingKey) {
       case 'appName': return <Text className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'appSubtitle': return <Text className="mr-2 h-4 w-4 text-muted-foreground" />;
-      case 'adminPassword': return <KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'slotDuration': return <Clock className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'startOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'endOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />;
@@ -554,14 +543,6 @@ export default function AdminPage() {
                           </TableRow>
                           <TableRow>
                               <TableCell className="font-medium pl-6 flex items-center">
-                                  {getIconForSetting('adminPassword')} New Admin Password
-                              </TableCell>
-                              <TableCell className="text-right pr-6">
-                                  <Input type="password" value={config.adminPassword} onChange={(e) => handleConfigChange('adminPassword', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="Leave blank to keep current" disabled={isApplyingChanges} />
-                              </TableCell>
-                          </TableRow>
-                          <TableRow>
-                              <TableCell className="font-medium pl-6 flex items-center">
                                   {getIconForSetting('slotDuration')} Booking Slot Duration
                               </TableCell>
                               <TableCell className="text-right pr-6">
@@ -604,6 +585,25 @@ export default function AdminPage() {
                   Apply Changes
                 </Button>
               </div>
+            </div>
+
+            {/* --- SECURITY --- */}
+            <div className="pt-6 border-t">
+              <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
+                <KeyRound className="mr-2 h-5 w-5" />
+                Security
+              </h3>
+              <Card className="bg-card">
+                <CardHeader>
+                  <CardTitle className="text-lg">Admin Password</CardTitle>
+                  <CardDescription>Manage the password used to access the admin dashboard.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Link href="/admin/change-password" passHref>
+                    <Button variant="outline">Change Password</Button>
+                  </Link>
+                </CardContent>
+              </Card>
             </div>
             
             {/* --- DATA MANAGEMENT --- */}

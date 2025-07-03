@@ -12,6 +12,7 @@ import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AUTH_COOKIE_NAME } from '@/middleware';
+import { verifyPassword, hashPassword } from './crypto';
 
 
 // --- Auth Actions ---
@@ -21,10 +22,20 @@ export async function verifyAdminPassword(formData: FormData) {
 
   if (!password) {
     redirect('/admin/login?error=Password%20cannot%20be%20empty.');
+    return;
   }
 
   const config = await readConfigurationFromFile();
-  if (password === config.adminPassword) {
+
+  if (!config.adminPasswordHash || !config.adminPasswordSalt) {
+      console.error("[Auth Error] Password hash or salt is missing from configuration.");
+      redirect('/admin/login?error=System%20misconfigured.%20Cannot%20log%20in.');
+      return;
+  }
+
+  const isValid = verifyPassword(password, config.adminPasswordHash, config.adminPasswordSalt);
+
+  if (isValid) {
     cookies().set(AUTH_COOKIE_NAME, 'true', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -35,6 +46,53 @@ export async function verifyAdminPassword(formData: FormData) {
     redirect('/admin');
   } else {
     redirect('/admin/login?error=The%20password%20you%20entered%20is%20incorrect.');
+  }
+}
+
+export async function changeAdminPassword(
+  formData: FormData
+): Promise<{ success: boolean; error?: string; message?: string }> {
+  const oldPassword = formData.get('oldPassword') as string;
+  const newPassword = formData.get('newPassword') as string;
+  const confirmPassword = formData.get('confirmPassword') as string;
+
+  if (!oldPassword || !newPassword || !confirmPassword) {
+    return { success: false, error: 'All fields are required.' };
+  }
+
+  if (newPassword !== confirmPassword) {
+    return { success: false, error: 'New passwords do not match.' };
+  }
+
+  if (newPassword.length < 8) {
+      return { success: false, error: 'New password must be at least 8 characters long.' };
+  }
+
+  const config = await readConfigurationFromFile();
+  if (!config.adminPasswordHash || !config.adminPasswordSalt) {
+    return { success: false, error: 'System configuration error. Cannot change password.' };
+  }
+
+  const isOldPasswordValid = verifyPassword(oldPassword, config.adminPasswordHash, config.adminPasswordSalt);
+  if (!isOldPasswordValid) {
+    return { success: false, error: 'The old password you entered is incorrect.' };
+  }
+
+  const { hash, salt } = hashPassword(newPassword);
+  
+  const newConfig: AppConfiguration = {
+    ...config,
+    adminPasswordHash: hash,
+    adminPasswordSalt: salt,
+  };
+  delete newConfig.adminPassword;
+
+  try {
+    await writeConfigurationToFile(newConfig);
+    return { success: true, message: 'Password updated successfully.' };
+  } catch (error) {
+    console.error('[Change Password Error]', error);
+    return { success: false, error: 'Failed to save the new password.' };
   }
 }
 
@@ -58,7 +116,6 @@ const readRoomsFromFile = async (): Promise<Room[]> => {
   } catch (error) {
     console.error(`[Bookly Rooms] Error reading or parsing ${ROOMS_FILE_PATH}:`, error);
   }
-  // Fallback to empty array if file doesn't exist or is invalid
   return [];
 };
 
@@ -78,7 +135,7 @@ const writeRoomsToFile = async (rooms: Room[]): Promise<void> => {
 
 // --- Room CRUD Actions ---
 export async function getRooms(): Promise<{ rooms: Room[] }> {
-    await new Promise(resolve => setTimeout(resolve, 100)); // Simulate delay
+    await new Promise(resolve => setTimeout(resolve, 100));
     const rooms = await readRoomsFromFile();
     return { rooms };
 }
@@ -142,7 +199,6 @@ export async function deleteRoom(roomId: string): Promise<{ success: boolean; er
         const allBookings = await getPersistedBookings();
         const updatedBookings = allBookings.filter(booking => booking.roomId !== roomId);
         
-        // Using Promise.all to run file writes concurrently. If one fails, the catch block will be triggered.
         await Promise.all([
             writeRoomsToFile(filteredRooms),
             writeAllBookings(updatedBookings)
@@ -167,7 +223,8 @@ const appConfigurationObjectSchema = z.object({
   appName: z.string().min(1, "App Name cannot be empty."),
   appSubtitle: z.string().min(1, "App Subtitle cannot be empty."),
   appLogo: z.string().optional(),
-  adminPassword: z.string().min(1, "Admin password cannot be empty."),
+  adminPasswordHash: z.string().optional(),
+  adminPasswordSalt: z.string().optional(),
   slotDurationMinutes: z.number()
     .min(MIN_SLOT_DURATION, `Duration must be at least ${MIN_SLOT_DURATION} minutes.`)
     .max(MAX_SLOT_DURATION, `Duration must be at most ${MAX_SLOT_DURATION} minutes.`)
@@ -196,14 +253,14 @@ export async function updateAppConfiguration(
 ): Promise<{ success: boolean; error?: string; fieldErrors?: Record<string, string[] | undefined> }> {
     await new Promise(resolve => setTimeout(resolve, 200));
 
-    // If a blank password is submitted, ignore it to keep the current one.
-    if (updates.adminPassword === '') {
-        delete updates.adminPassword;
-    }
+    const safeUpdates = { ...updates };
+    delete safeUpdates.adminPassword;
+    delete safeUpdates.adminPasswordHash;
+    delete safeUpdates.adminPasswordSalt;
 
     const currentConfig = await readConfigurationFromFile();
     
-    let processedUpdates = { ...updates };
+    let processedUpdates = { ...safeUpdates };
     if (processedUpdates.appName !== undefined && !processedUpdates.appName.trim()) {
       processedUpdates.appName = DEFAULT_APP_NAME;
     }
@@ -225,7 +282,6 @@ export async function updateAppConfiguration(
 
     try {
         await writeConfigurationToFile(finalValidation.data as AppConfiguration);
-        console.log(`[Bookly Config] System configuration updated and persisted.`);
         revalidatePath('/', 'layout');
         return { success: true };
     } catch (error) {
@@ -259,7 +315,7 @@ export async function updateAppLogo(
     const logoPath = path.join(publicDirectory, logoFileName);
     
     const config = await readConfigurationFromFile();
-    const oldLogoPath = config.appLogo; // Get old logo path before updating
+    const oldLogoPath = config.appLogo;
 
     await fs.promises.writeFile(logoPath, fileBuffer);
 
@@ -267,16 +323,13 @@ export async function updateAppLogo(
     config.appLogo = newLogoPublicPath;
     await writeConfigurationToFile(config);
     
-    // Clean up the old logo file if it exists and is one of our managed logos
     if (oldLogoPath && oldLogoPath.startsWith('/app-logo-')) {
         const oldLogoFilePath = path.join(publicDirectory, oldLogoPath.substring(1));
         try {
             if (fs.existsSync(oldLogoFilePath)) {
                 await fs.promises.unlink(oldLogoFilePath);
-                console.log(`[Logo Cleanup] Deleted old logo: ${oldLogoPath}`);
             }
         } catch (cleanupError) {
-            // Log error but don't fail the whole operation
             console.error(`[Logo Cleanup] Failed to delete old logo file ${oldLogoPath}:`, cleanupError);
         }
     }
@@ -296,33 +349,26 @@ export async function revertToDefaultLogo(): Promise<{ success: boolean; error?:
     const oldLogoPath = config.appLogo;
 
     if (!oldLogoPath) {
-      // No custom logo to remove, just return success.
       return { success: true };
     }
 
-    // Update config in memory first
     config.appLogo = undefined;
     
-    // Write new config to file
     await writeConfigurationToFile(config);
 
-    // After successfully updating the config, try to delete the old file
     if (oldLogoPath.startsWith('/app-logo-')) {
         const publicDirectory = path.join(process.cwd(), 'public');
         const oldLogoFilePath = path.join(publicDirectory, oldLogoPath.substring(1));
         try {
             if (fs.existsSync(oldLogoFilePath)) {
                 await fs.promises.unlink(oldLogoFilePath);
-                console.log(`[Logo Cleanup] Deleted old logo: ${oldLogoPath}`);
             }
         } catch (cleanupError) {
-            // This is not a critical failure, the main goal was to update the config.
-            // Log it for maintenance purposes.
             console.error(`[Logo Cleanup] Non-critical error: Failed to delete old logo file ${oldLogoPath}:`, cleanupError);
         }
     }
 
-    revalidatePath('/', 'layout'); // Revalidate all pages using the layout
+    revalidatePath('/', 'layout');
     return { success: true };
   } catch (error) {
     console.error('[Revert Logo Error]', error);
@@ -345,7 +391,6 @@ function parseBookingTime(timeStr: string, date: string): { start: Date; end: Da
     const endDate = parse(`${date} ${parts[1]}`, 'yyyy-MM-dd HH:mm', new Date());
     return { start: startDate, end: endDate };
   } catch (e) {
-    console.error("[Bookly Error] Error parsing booking time string:", timeStr, e);
     return null;
   }
 }
@@ -536,7 +581,6 @@ export async function getAllBookings(): Promise<{ bookings: Booking[]; error?: s
     const bStartTime = b.time.split(' - ')[0];
     return aStartTime.localeCompare(bStartTime);
   });
-  console.log(`[Bookly Debug] getAllBookings executed. Returning ${sortedBookings.length} bookings from in-memory (file-synced) store.`);
   return { bookings: sortedBookings };
 }
 
@@ -547,7 +591,8 @@ const exportedSettingsSchema = z.object({
     appName: z.string(),
     appSubtitle: z.string(),
     appLogo: z.string().optional(),
-    adminPassword: z.string().optional(),
+    adminPasswordHash: z.string().optional(),
+    adminPasswordSalt: z.string().optional(),
     slotDurationMinutes: z.number(),
     startOfDay: z.string(),
     endOfDay: z.string(),
@@ -617,7 +662,6 @@ export async function importAllSettings(jsonContent: string): Promise<{ success:
 
 // --- Usage Calculation Action ---
 export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
-    // 1. Fetch all data concurrently
     const [
         { rooms }, 
         allBookings, 
@@ -628,7 +672,6 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
         getCurrentConfiguration()
     ]);
 
-    // 2. Pre-calculate the next five working days
     const nextFiveWorkingDays: string[] = [];
     let currentDate = new Date(new Date().setHours(0, 0, 0, 0));
     while (nextFiveWorkingDays.length < 5) {
@@ -638,7 +681,6 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
         currentDate = addDays(currentDate, 1);
     }
     
-    // 3. Generate all possible time slots for a generic day once
     const generateDaySlots = () => {
         const [startHour, startMinute] = appConfig.startOfDay.split(':').map(Number);
         const [endHour, endMinute] = appConfig.endOfDay.split(':').map(Number);
@@ -663,7 +705,6 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
     };
     const allDaySlots = generateDaySlots();
 
-    // 4. Pre-process bookings into a more efficient structure for lookups
     const bookingsByRoomThenDay = allBookings.reduce((acc, booking) => {
         if (!acc[booking.roomId]) {
             acc[booking.roomId] = {};
@@ -675,26 +716,22 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
         return acc;
     }, {} as Record<string, Record<string, Booking[]>>);
 
-    // 5. Main logic to build the final data structure
     const roomsWithUsage = rooms.map(room => {
         const roomBookingsByDay = bookingsByRoomThenDay[room.id] || {};
         
         const dailyUsage = nextFiveWorkingDays.map(day => {
             const bookingsForThisDay = roomBookingsByDay[day] || [];
             
-            // Create a map of slots for the day, initialized as available
             const slotStatusMap: Record<string, SlotStatus> = {};
             for (const slot of allDaySlots) {
                 slotStatusMap[slot.startTime] = { ...slot, isBooked: false };
             }
 
-            // Mark slots as booked based on the day's bookings
             for (const booking of bookingsForThisDay) {
                 const bookingTimes = parseBookingTime(booking.time, booking.date);
                 if (!bookingTimes) continue;
 
                 let currentSlotTime = bookingTimes.start;
-                // Iterate from the booking's start time until its end time, marking each covered slot.
                 while (isBefore(currentSlotTime, bookingTimes.end)) {
                     const startTimeStr = format(currentSlotTime, 'HH:mm');
                     
@@ -710,7 +747,7 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
             
             return {
                 date: day,
-                slots: Object.values(slotStatusMap), // Convert map back to array
+                slots: Object.values(slotStatusMap),
             };
         });
 

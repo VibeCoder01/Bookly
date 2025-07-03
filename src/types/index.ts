@@ -1,6 +1,4 @@
 
-
-
 export interface Room {
   id: string;
   name: string;
@@ -76,7 +74,9 @@ export interface AppConfiguration {
   appName: string;
   appSubtitle: string;
   appLogo?: string;
-  adminPassword?: string;
+  adminPassword?: string; // Kept for migration from plaintext, but should not be actively used.
+  adminPasswordHash?: string;
+  adminPasswordSalt?: string;
   slotDurationMinutes: number;
   startOfDay: string; // HH:MM format
   endOfDay: string;   // HH:MM format
