@@ -745,6 +745,7 @@ export async function getRoomsWithDailyUsage(): Promise<RoomWithDailyUsage[]> {
                         slotStatusMap[startTimeStr].isBooked = true;
                         slotStatusMap[startTimeStr].title = booking.title;
                         slotStatusMap[startTimeStr].userName = booking.userName;
+                        slotStatusMap[startTimeStr].bookingId = booking.id;
                     }
                     
                     currentSlotTime = addMinutes(currentSlotTime, appConfig.slotDurationMinutes);

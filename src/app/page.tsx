@@ -32,30 +32,58 @@ export default async function HomePage() {
                       Usage (Next 5 Working Days)
                   </p>
                   <div className="space-y-1">
-                    {room.dailyUsage.map((day) => (
-                      <div key={day.date} className="flex items-center gap-1.5">
-                        <span className="text-xs font-mono font-bold text-accent-foreground/70 w-3 text-center">
-                          {format(new Date(day.date + 'T00:00:00'), 'EEEEE')}
-                        </span>
-                        <div className="flex gap-px flex-1">
-                          {day.slots.map((slot) => {
-                            const tooltipText = slot.isBooked
+                    {room.dailyUsage.map((day) => {
+                      // Map booking IDs to consistent colors for the day
+                      const bookingColors = new Map<string, string>();
+                      const colorPalette = [
+                        'bg-chart-1/80',
+                        'bg-chart-2/80',
+                        'bg-chart-3/80',
+                        'bg-chart-4/80',
+                        'bg-chart-5/80',
+                      ];
+                      let colorIndex = 0;
+                      
+                      // Get unique booking IDs in their order of appearance
+                      const uniqueBookingIds = [
+                        ...new Set(day.slots.map(s => s.bookingId).filter((id): id is string => !!id))
+                      ];
+
+                      uniqueBookingIds.forEach(id => {
+                        bookingColors.set(id, colorPalette[colorIndex % colorPalette.length]);
+                        colorIndex++;
+                      });
+
+                      return (
+                        <div key={day.date} className="flex items-center gap-1.5">
+                          <span className="text-xs font-mono font-bold text-accent-foreground/70 w-3 text-center">
+                            {format(new Date(day.date + 'T00:00:00'), 'EEEEE')}
+                          </span>
+                          <div className="flex gap-px flex-1">
+                            {day.slots.map((slot) => {
+                              const tooltipText = slot.isBooked
                                 ? `${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime}\nBooked: "${slot.title}" by ${slot.userName}`
                                 : `${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime} (Available)`;
-                            return (
+
+                              const slotColor = slot.isBooked && slot.bookingId
+                                ? bookingColors.get(slot.bookingId)
+                                : 'bg-white/30';
+
+                              return (
                                 <div
-                                key={slot.startTime}
-                                title={tooltipText}
-                                className={cn(
+                                  key={slot.startTime}
+                                  title={tooltipText}
+                                  className={cn(
                                     'h-2 flex-1 rounded-sm',
-                                    slot.isBooked ? 'bg-white/90' : 'bg-white/30'
-                                )}
+                                    slotColor || 'bg-white/90' // Fallback for safety
+                                  )}
                                 />
-                            );
-                          })}
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
               </div>
             </Link>
