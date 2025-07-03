@@ -33,22 +33,27 @@ export default async function HomePage() {
                   </p>
                   <div className="space-y-1">
                     {room.dailyUsage.map((day) => (
-                      <div key={day.date} className="flex gap-px">
-                        {day.slots.map((slot) => {
-                           const tooltipText = slot.isBooked
-                              ? `${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime}\nBooked: "${slot.title}" by ${slot.userName}`
-                              : `${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime} (Available)`;
-                          return (
-                              <div
-                              key={slot.startTime}
-                              title={tooltipText}
-                              className={cn(
-                                  'h-2 flex-1 rounded-sm',
-                                  slot.isBooked ? 'bg-white/90' : 'bg-white/30'
-                              )}
-                              />
-                          );
-                        })}
+                      <div key={day.date} className="flex items-center gap-1.5">
+                        <span className="text-xs font-mono font-bold text-accent-foreground/70 w-3 text-center">
+                          {format(new Date(day.date + 'T00:00:00'), 'EEEEE')}
+                        </span>
+                        <div className="flex gap-px flex-1">
+                          {day.slots.map((slot) => {
+                            const tooltipText = slot.isBooked
+                                ? `${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime}\nBooked: "${slot.title}" by ${slot.userName}`
+                                : `${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime} (Available)`;
+                            return (
+                                <div
+                                key={slot.startTime}
+                                title={tooltipText}
+                                className={cn(
+                                    'h-2 flex-1 rounded-sm',
+                                    slot.isBooked ? 'bg-white/90' : 'bg-white/30'
+                                )}
+                                />
+                            );
+                          })}
+                        </div>
                       </div>
                     ))}
                   </div>
