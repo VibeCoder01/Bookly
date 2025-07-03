@@ -62,29 +62,24 @@ export async function changeAdminPassword(formData: FormData) {
 
   if (!oldPassword || !newPassword || !confirmPassword) {
     redirect('/admin/change-password?error=' + encodeURIComponent('All fields are required.'));
-    return;
   }
 
   if (newPassword !== confirmPassword) {
     redirect('/admin/change-password?error=' + encodeURIComponent('New passwords do not match.'));
-    return;
   }
 
   if (newPassword.length < 8) {
     redirect('/admin/change-password?error=' + encodeURIComponent('New password must be at least 8 characters long.'));
-    return;
   }
 
   const config = await readConfigurationFromFile();
   if (!config.adminPasswordHash || !config.adminPasswordSalt) {
     redirect('/admin/change-password?error=' + encodeURIComponent('System configuration error. Cannot change password.'));
-    return;
   }
 
   const isOldPasswordValid = verifyPassword(oldPassword, config.adminPasswordHash, config.adminPasswordSalt);
   if (!isOldPasswordValid) {
     redirect('/admin/change-password?error=' + encodeURIComponent('The old password you entered is incorrect.'));
-    return;
   }
 
   const { hash, salt } = hashPassword(newPassword);
