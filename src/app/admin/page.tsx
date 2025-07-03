@@ -611,7 +611,7 @@ export default function AdminPage() {
                             <TableCell className="font-medium pl-6 flex items-center">
                                 {getIconForSetting('weekStartsOnMonday')} Week View Starts on Monday
                             </TableCell>
-                            <TableCell className="text-right pr-6 flex justify-end items-center">
+                            <TableCell className="text-right pr-6">
                                 <Switch
                                     checked={config.weekStartsOnMonday}
                                     onCheckedChange={(checked) => handleConfigChange('weekStartsOnMonday', checked)}
@@ -624,7 +624,7 @@ export default function AdminPage() {
                             <TableCell className="font-medium pl-6 flex items-center">
                                 {getIconForSetting('includeWeekends')} Include Weekends in Home View
                             </TableCell>
-                            <TableCell className="text-right pr-6 flex justify-end items-center">
+                            <TableCell className="text-right pr-6">
                                 <Switch
                                     checked={config.includeWeekends}
                                     onCheckedChange={(checked) => handleConfigChange('includeWeekends', checked)}
