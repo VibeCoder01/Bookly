@@ -11,7 +11,7 @@ import { getPersistedBookings, addMockBooking, writeAllBookings } from './mock-d
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { AUTH_COOKIE_NAME } from '@/middleware';
+import { AUTH_COOKIE_NAME } from '@/lib/auth';
 import { verifyPassword, hashPassword } from './crypto';
 
 
@@ -49,33 +49,36 @@ export async function verifyAdminPassword(formData: FormData) {
   }
 }
 
-export async function changeAdminPassword(
-  formData: FormData
-): Promise<{ success: boolean; error?: string; message?: string }> {
+export async function changeAdminPassword(formData: FormData) {
   const oldPassword = formData.get('oldPassword') as string;
   const newPassword = formData.get('newPassword') as string;
   const confirmPassword = formData.get('confirmPassword') as string;
 
   if (!oldPassword || !newPassword || !confirmPassword) {
-    return { success: false, error: 'All fields are required.' };
+    redirect('/admin/change-password?error=All%20fields%20are%20required.');
+    return;
   }
 
   if (newPassword !== confirmPassword) {
-    return { success: false, error: 'New passwords do not match.' };
+    redirect('/admin/change-password?error=New%20passwords%20do%20not%20match.');
+    return;
   }
 
   if (newPassword.length < 8) {
-      return { success: false, error: 'New password must be at least 8 characters long.' };
+    redirect('/admin/change-password?error=New%20password%20must%20be%20at%20least%208%20characters%20long.');
+    return;
   }
 
   const config = await readConfigurationFromFile();
   if (!config.adminPasswordHash || !config.adminPasswordSalt) {
-    return { success: false, error: 'System configuration error. Cannot change password.' };
+    redirect('/admin/change-password?error=System%20configuration%20error.%20Cannot%20change%20password.');
+    return;
   }
 
   const isOldPasswordValid = verifyPassword(oldPassword, config.adminPasswordHash, config.adminPasswordSalt);
   if (!isOldPasswordValid) {
-    return { success: false, error: 'The old password you entered is incorrect.' };
+    redirect('/admin/change-password?error=The%20old%20password%20you%20entered%20is%20incorrect.');
+    return;
   }
 
   const { hash, salt } = hashPassword(newPassword);
@@ -89,10 +92,10 @@ export async function changeAdminPassword(
 
   try {
     await writeConfigurationToFile(newConfig);
-    return { success: true, message: 'Password updated successfully.' };
+    redirect('/admin/change-password?success=Password%20updated%20successfully.');
   } catch (error) {
     console.error('[Change Password Error]', error);
-    return { success: false, error: 'Failed to save the new password.' };
+    redirect('/admin/change-password?error=Failed%20to%20save%20the%20new%20password.');
   }
 }
 
