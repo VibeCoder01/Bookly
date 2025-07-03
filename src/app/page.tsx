@@ -32,22 +32,10 @@ export default async function HomePage() {
     getCurrentConfiguration(),
   ]);
 
-  const scale = config.homePageScale || 'md';
+  const scale = config.homePageScale || 'sm';
 
   const scalingStyles = {
     xs: {
-      container: 'w-64',
-      iconPadding: 'p-6',
-      iconSize: 48,
-      capacityText: 'text-3xl',
-      nameText: 'mt-2 text-xl',
-      usagePadding: 'pt-4 pb-5 px-5',
-      usageTitle: 'text-base mb-2',
-      usageDaySpacing: 'space-y-1',
-      dayLetter: 'text-base w-4',
-      usageBar: 'h-4',
-    },
-    sm: {
       container: 'w-80',
       iconPadding: 'p-8',
       iconSize: 64,
@@ -59,7 +47,7 @@ export default async function HomePage() {
       dayLetter: 'text-lg w-5',
       usageBar: 'h-5',
     },
-    md: {
+    sm: {
       container: 'w-[28rem]',
       iconPadding: 'p-12',
       iconSize: 80,
@@ -71,7 +59,7 @@ export default async function HomePage() {
       dayLetter: 'text-2xl w-6',
       usageBar: 'h-7',
     },
-    lg: {
+    md: {
       container: 'w-[32rem]',
       iconPadding: 'p-14',
       iconSize: 96,

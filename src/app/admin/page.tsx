@@ -72,7 +72,7 @@ export default function AdminPage() {
   const [showBookingsTable, setShowBookingsTable] = useState(false);
 
   // Configuration state
-  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: '', homePageScale: 'md' });
+  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: '', homePageScale: 'sm' });
   const [currentLogo, setCurrentLogo] = useState<string | undefined>(undefined);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
@@ -104,7 +104,7 @@ export default function AdminPage() {
         slotDuration: convertMinutesToDurationString(currentConfig.slotDurationMinutes),
         startOfDay: currentConfig.startOfDay,
         endOfDay: currentConfig.endOfDay,
-        homePageScale: currentConfig.homePageScale || 'md',
+        homePageScale: currentConfig.homePageScale || 'sm',
       });
       setCurrentLogo(currentConfig.appLogo);
     } catch (err) {
@@ -114,7 +114,7 @@ export default function AdminPage() {
         title: 'Error Fetching Configuration',
         description: 'Could not load current settings. Displaying defaults.',
       });
-      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00', homePageScale: 'md' });
+      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00', homePageScale: 'sm' });
       setCurrentLogo(undefined);
     } finally {
       setIsLoadingConfig(false);
@@ -189,7 +189,7 @@ export default function AdminPage() {
       slotDurationMinutes: convertDurationValueToMinutes(config.slotDuration),
       startOfDay: config.startOfDay,
       endOfDay: config.endOfDay,
-      homePageScale: config.homePageScale as 'xs' | 'sm' | 'md' | 'lg',
+      homePageScale: config.homePageScale as 'xs' | 'sm' | 'md',
     };
 
     const result = await serverUpdateAppConfiguration(updates);
@@ -591,10 +591,9 @@ export default function AdminPage() {
                                           <SelectValue placeholder="Select scale" />
                                       </SelectTrigger>
                                       <SelectContent>
-                                          <SelectItem value="xs">Smallest</SelectItem>
-                                          <SelectItem value="sm">Small</SelectItem>
-                                          <SelectItem value="md">Default</SelectItem>
-                                          <SelectItem value="lg">Large</SelectItem>
+                                          <SelectItem value="xs">Small</SelectItem>
+                                          <SelectItem value="sm">Medium</SelectItem>
+                                          <SelectItem value="md">Large</SelectItem>
                                       </SelectContent>
                                   </Select>
                               </TableCell>
