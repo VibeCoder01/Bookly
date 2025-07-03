@@ -28,16 +28,21 @@ This project was bootstrapped with [Firebase Studio](https://firebase.google.com
 ## Screenshots
 
 **Home Page - Weekly Room Availability Grid**
-![image](https://github.com/user-attachments/assets/6f1b2992-5d37-423e-b7d1-ee5cbe04b489)
+![image](https://github.com/user-attachments/assets/38270cde-d2da-412d-be53-f0036b96de43)
+
 
 **Admin Dashboard - Room Management**
 ![image](https://github.com/user-attachments/assets/e9ecbce5-ca31-401b-8310-cde250e86538)
 
+
 **Admin Dashboard - Data Management (Import/Export)**
 ![image](https://github.com/user-attachments/assets/4c52f3fb-3510-40ea-9434-8659c4879ab1)
 
+
 **Admin Dashboard - Application Configuration**
-![image](https://github.com/user-attachments/assets/7c305326-3d92-478f-9cb8-167a88e8b31b)
+![image](https://github.com/user-attachments/assets/ddb2a921-d119-47c5-8bfa-824184a2368f)
+
+
 
 ## Tech Stack
 
