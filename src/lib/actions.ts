@@ -99,7 +99,7 @@ export async function changeAdminPassword(formData: FormData) {
     redirect(`/admin/change-password?error=${msg}`);
   }
 
-  redirect('/');
+  redirect('/admin/change-password?success=' + encodeURIComponent('Password changed successfully.'));
 }
 
 export async function logoutAdmin() {
