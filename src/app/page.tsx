@@ -83,36 +83,40 @@ export default async function HomePage() {
       <div className="flex flex-wrap justify-center gap-10">
         {roomsWithUsage.length > 0 ? (
           roomsWithUsage.map((room) => (
-            <Link
+            <div
               key={room.id}
-              href={`/book?roomId=${room.id}`}
               className={cn(
                 "rounded-xl shadow-lg flex flex-col bg-accent text-accent-foreground hover:bg-accent/90 transition-all duration-200 ease-in-out transform hover:-translate-y-1 overflow-hidden",
                 styles.container
               )}
             >
-              <div className={cn("flex flex-col items-center flex-grow justify-center", styles.iconPadding)}>
-                  <div className="flex items-center gap-x-2">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width={styles.iconSize}
-                        height={styles.iconSize}
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <rect x="5" y="3" width="14" height="8" rx="2" />
-                        <rect x="4" y="11" width="16" height="4" rx="2" />
-                        <path d="M7 15v6" />
-                        <path d="M17 15v6" />
-                      </svg>
-                      <span className={cn("font-semibold", styles.capacityText)}>x {room.capacity}</span>
-                  </div>
-                  <span className={cn("text-center font-bold", styles.nameText)}>{room.name}</span>
-              </div>
+              <Link
+                href={`/book?roomId=${room.id}`}
+                className="block"
+              >
+                <div className={cn("flex flex-col items-center flex-grow justify-center", styles.iconPadding)}>
+                    <div className="flex items-center gap-x-2">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width={styles.iconSize}
+                          height={styles.iconSize}
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <rect x="5" y="3" width="14" height="8" rx="2" />
+                          <rect x="4" y="11" width="16" height="4" rx="2" />
+                          <path d="M7 15v6" />
+                          <path d="M17 15v6" />
+                        </svg>
+                        <span className={cn("font-semibold", styles.capacityText)}>x {room.capacity}</span>
+                    </div>
+                    <span className={cn("text-center font-bold", styles.nameText)}>{room.name}</span>
+                </div>
+              </Link>
 
               <div className={cn("w-full bg-black/10", styles.usagePadding)}>
                   <p className={cn("text-center font-medium text-accent-foreground/80", styles.usageTitle)}>
@@ -151,7 +155,7 @@ export default async function HomePage() {
                     })}
                   </div>
               </div>
-            </Link>
+            </div>
           ))
         ) : (
            <p className="text-muted-foreground">No rooms have been configured. Please add a room in the admin panel.</p>
