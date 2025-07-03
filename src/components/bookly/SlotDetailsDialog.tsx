@@ -12,9 +12,31 @@ import {
   DialogClose,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, User, Bookmark, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, Clock, User, Bookmark } from 'lucide-react';
 import { format } from 'date-fns';
+import { cn } from "@/lib/utils";
+
+const colorPalette = [
+  'bg-chart-1/80',
+  'bg-chart-2/80',
+  'bg-chart-3/80',
+  'bg-chart-4/80',
+  'bg-chart-5/80',
+];
+
+const stringToHash = (str: string): number => {
+  let hash = 0;
+  if (str.length === 0) {
+    return hash;
+  }
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+};
+
 
 interface SlotDetailsDialogProps {
   isOpen: boolean;
@@ -52,14 +74,17 @@ export function SlotDetailsDialog({ isOpen, onOpenChange, details }: SlotDetails
                 <span className="font-medium">{slot.startTime} - {slot.endTime}</span>
             </div>
             <div className="flex items-center gap-3">
-                {slot.isBooked ? (
-                    <XCircle className="h-5 w-5 text-destructive flex-shrink-0" />
-                ) : (
-                    <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" />
-                )}
-                <Badge variant={slot.isBooked ? 'destructive' : 'secondary'} className="bg-opacity-80">
-                    {slot.isBooked ? 'Booked' : 'Available'}
-                </Badge>
+              <div
+                  className={cn(
+                      'h-5 w-5 shrink-0 rounded-sm border-2 border-accent-foreground/30',
+                      slot.isBooked && slot.title
+                      ? colorPalette[stringToHash(slot.title) % colorPalette.length]
+                      : 'bg-transparent'
+                  )}
+              />
+              <span className="font-medium">
+                  {slot.isBooked ? 'Booked' : 'Available'}
+              </span>
             </div>
             {slot.isBooked && (
                 <>
