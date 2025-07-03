@@ -46,6 +46,7 @@ export default async function HomePage() {
       usageDaySpacing: 'space-y-1',
       dayLetter: 'text-base w-4',
       usageBar: 'h-4',
+      slotGap: 'gap-1',
     },
     sm: {
       container: 'w-80',
@@ -58,6 +59,7 @@ export default async function HomePage() {
       usageDaySpacing: 'space-y-1.5',
       dayLetter: 'text-lg w-5',
       usageBar: 'h-5',
+      slotGap: 'gap-1.5',
     },
     md: {
       container: 'w-[28rem]',
@@ -70,6 +72,7 @@ export default async function HomePage() {
       usageDaySpacing: 'space-y-2',
       dayLetter: 'text-2xl w-6',
       usageBar: 'h-7',
+      slotGap: 'gap-2',
     },
   };
 
@@ -122,7 +125,7 @@ export default async function HomePage() {
                           <span className={cn("font-mono font-bold text-accent-foreground/70 text-center", styles.dayLetter)}>
                             {format(new Date(day.date + 'T00:00:00'), 'EEEEE')}
                           </span>
-                          <div className="flex gap-1.5 flex-1">
+                          <div className={cn("flex flex-1", styles.slotGap)}>
                             {day.slots.map((slot) => {
                               const tooltipText = slot.isBooked
                                 ? `${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime}\nBooked: "${slot.title}" by ${slot.userName}`
