@@ -2,7 +2,6 @@
 import Link from 'next/link';
 import { getRoomsWithDailyUsage } from '@/lib/actions';
 import type { RoomWithDailyUsage } from '@/types';
-import { Armchair } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
@@ -42,7 +41,22 @@ export default async function HomePage() {
             >
               <div className="flex flex-col items-center p-4 flex-grow justify-center">
                   <div className="flex items-center gap-x-2">
-                      <Armchair size={32} />
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="32"
+                        height="32"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M17 12v-2a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v2" />
+                        <path d="M7 12h10v5a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-5Z" />
+                        <path d="M12 19v3" />
+                        <path d="M15 22H9" />
+                      </svg>
                       <span className="text-xl font-semibold">x {room.capacity}</span>
                   </div>
                   <span className="mt-2 text-base text-center font-bold">{room.name}</span>
