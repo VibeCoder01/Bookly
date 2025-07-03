@@ -74,17 +74,17 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
           slotGap: 'gap-1.5',
         },
         md: {
-          container: 'w-[28rem]',
-          iconPadding: 'p-12',
-          iconSize: 80,
-          capacityText: 'text-6xl',
-          nameText: 'mt-4 text-4xl',
-          usagePadding: 'pt-6 pb-8 px-8',
-          usageTitle: 'text-2xl mb-3',
-          usageDaySpacing: 'space-y-2',
-          dayLetter: 'text-2xl w-6',
-          usageBar: 'h-7',
-          slotGap: 'gap-2',
+          container: 'w-96',
+          iconPadding: 'p-10',
+          iconSize: 72,
+          capacityText: 'text-5xl',
+          nameText: 'mt-4 text-3xl',
+          usagePadding: 'pt-6 pb-7 px-7',
+          usageTitle: 'text-xl mb-3',
+          usageDaySpacing: 'space-y-1.5',
+          dayLetter: 'text-xl w-6',
+          usageBar: 'h-6',
+          slotGap: 'gap-1.5',
         },
     };
 
@@ -118,11 +118,10 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
                                 >
-                                    <path d="M16.4 20a2 2 0 0 0 2-2V13a2 2 0 0 0-2-2H7.6a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2Z"/>
-                                    <path d="M7 11V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v7"/>
-                                    <path d="M12 20v2"/>
-                                    <path d="M6 11h12"/>
-                                    <path d="M10 22h4"/>
+                                    <path d="M5 11V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v6" />
+                                    <path d="M3 11h18v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3Z" />
+                                    <path d="M6 16v6" />
+                                    <path d="M18 16v6" />
                                 </svg>
                                 <span className={cn("font-semibold", styles.capacityText)}>x {room.capacity}</span>
                             </div>
