@@ -6,6 +6,27 @@ import { Armchair } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 
+const colorPalette = [
+  'bg-chart-1/80',
+  'bg-chart-2/80',
+  'bg-chart-3/80',
+  'bg-chart-4/80',
+  'bg-chart-5/80',
+];
+
+const stringToHash = (str: string): number => {
+  let hash = 0;
+  if (str.length === 0) {
+    return hash;
+  }
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+};
+
 export default async function HomePage() {
   const roomsWithUsage: RoomWithDailyUsage[] = await getRoomsWithDailyUsage();
 
@@ -33,27 +54,6 @@ export default async function HomePage() {
                   </p>
                   <div className="space-y-1">
                     {room.dailyUsage.map((day) => {
-                      // Map booking IDs to consistent colors for the day
-                      const bookingColors = new Map<string, string>();
-                      const colorPalette = [
-                        'bg-chart-1/80',
-                        'bg-chart-2/80',
-                        'bg-chart-3/80',
-                        'bg-chart-4/80',
-                        'bg-chart-5/80',
-                      ];
-                      let colorIndex = 0;
-                      
-                      // Get unique booking IDs in their order of appearance
-                      const uniqueBookingIds = [
-                        ...new Set(day.slots.map(s => s.bookingId).filter((id): id is string => !!id))
-                      ];
-
-                      uniqueBookingIds.forEach(id => {
-                        bookingColors.set(id, colorPalette[colorIndex % colorPalette.length]);
-                        colorIndex++;
-                      });
-
                       return (
                         <div key={day.date} className="flex items-center gap-1.5">
                           <span className="text-xs font-mono font-bold text-accent-foreground/70 w-3 text-center">
@@ -65,8 +65,8 @@ export default async function HomePage() {
                                 ? `${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime}\nBooked: "${slot.title}" by ${slot.userName}`
                                 : `${format(new Date(day.date + 'T00:00:00'), 'MMM d')}: ${slot.startTime} - ${slot.endTime} (Available)`;
 
-                              const slotColor = slot.isBooked && slot.bookingId
-                                ? bookingColors.get(slot.bookingId)
+                              const slotColor = slot.isBooked && slot.title
+                                ? colorPalette[stringToHash(slot.title) % colorPalette.length]
                                 : 'bg-transparent border border-accent-foreground/30';
 
                               return (
