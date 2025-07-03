@@ -118,15 +118,11 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                             >
-                                <path d="M12.22 18.06a2.5 2.5 0 0 1-4.44 0"/>
-                                <path d="M16.5 20a2 2 0 0 0 2-2v-3"/>
-                                <path d="M7.5 20a2 2 0 0 1-2-2v-3"/>
-                                <path d="M14.5 2a2 2 0 0 1 2 2v1H7.5V4a2 2 0 0 1 2-2h5Z"/>
-                                <path d="M5.5 15V8a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v7"/>
-                                <path d="M3.5 12a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h1"/>
-                                <path d="M22.5 14a2 2 0 0 0-2-2h-1"/>
-                                <path d="M9 11v2"/>
-                                <path d="M15 11v2"/>
+                                <path d="M20 9v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9" />
+                                <path d="M4 13h16" />
+                                <path d="M10 3h4" />
+                                <path d="M6 3v2" />
+                                <path d="M18 3v2" />
                             </svg>
                             <span className={cn("font-semibold", styles.capacityText)}>x {room.capacity}</span>
                         </div>
