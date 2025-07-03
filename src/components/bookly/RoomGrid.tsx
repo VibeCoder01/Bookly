@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -51,9 +50,9 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
         xs: {
           container: 'w-64',
           iconPadding: 'p-6',
-          iconSize: 48,
+          nameText: 'text-3xl mb-2',
+          chairText: 'text-xl',
           capacityText: 'text-3xl',
-          nameText: 'mt-2 text-xl',
           usagePadding: 'pt-4 pb-5 px-5',
           usageTitle: 'text-base mb-2',
           usageDaySpacing: 'space-y-1',
@@ -64,9 +63,9 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
         sm: {
           container: 'w-80',
           iconPadding: 'p-8',
-          iconSize: 64,
+          nameText: 'text-4xl mb-3',
+          chairText: 'text-2xl',
           capacityText: 'text-4xl',
-          nameText: 'mt-3 text-2xl',
           usagePadding: 'pt-5 pb-6 px-6',
           usageTitle: 'text-lg mb-2',
           usageDaySpacing: 'space-y-1.5',
@@ -77,9 +76,9 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
         md: {
           container: 'w-96',
           iconPadding: 'p-10',
-          iconSize: 72,
+          nameText: 'text-5xl mb-4',
+          chairText: 'text-3xl',
           capacityText: 'text-5xl',
-          nameText: 'mt-4 text-3xl',
           usagePadding: 'pt-6 pb-7 px-7',
           usageTitle: 'text-xl mb-3',
           usageDaySpacing: 'space-y-1.5',
@@ -106,27 +105,11 @@ export function RoomGrid({ roomsWithUsage, config }: RoomGridProps) {
                         href={`/book?roomId=${room.id}`}
                         className={cn("flex flex-col items-center flex-grow justify-center", styles.iconPadding)}
                     >
-                        <div className="flex items-center gap-x-2">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width={styles.iconSize}
-                                height={styles.iconSize}
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.5"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                            >
-                                <path d="M20 9v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V9" />
-                                <path d="M4 13h16" />
-                                <path d="M10 3h4" />
-                                <path d="M6 3v2" />
-                                <path d="M18 3v2" />
-                            </svg>
+                        <span className={cn("text-center font-bold", styles.nameText)}>{room.name}</span>
+                        <div className="flex items-baseline gap-x-2">
+                            <span className={cn("font-medium", styles.chairText)}>Chair</span>
                             <span className={cn("font-semibold", styles.capacityText)}>x {room.capacity}</span>
                         </div>
-                        <span className={cn("text-center font-bold", styles.nameText)}>{room.name}</span>
                     </Link>
 
                     <div className={cn("w-full bg-black/10", styles.usagePadding)}>
