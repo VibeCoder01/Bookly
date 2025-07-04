@@ -129,6 +129,25 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
         }
         return '...';
     }, [gridData]);
+    
+    const legendData = useMemo(() => {
+        const uniqueBookings = new Map<string, string>(); // Map<title, colorClass>
+
+        gridData.forEach(room => {
+            room.dailyUsage.forEach(day => {
+                day.slots.forEach(slot => {
+                    if (slot.isBooked && slot.title) {
+                        if (!uniqueBookings.has(slot.title)) {
+                            const colorClass = colorPalette[stringToHash(slot.title) % colorPalette.length];
+                            uniqueBookings.set(slot.title, colorClass);
+                        }
+                    }
+                });
+            });
+        });
+
+        return Array.from(uniqueBookings.entries()).map(([title, colorClass]) => ({ title, colorClass }));
+    }, [gridData]);
 
     return (
         <>
@@ -217,6 +236,28 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
                     </div>
                 ))}
             </div>
+            
+            {legendData.length > 0 && (
+                <div className="w-full max-w-4xl mx-auto mt-12 p-4 border rounded-lg bg-card">
+                    <h3 className="text-lg font-headline font-semibold mb-4 text-center text-primary">Slot Key</h3>
+                    <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-3">
+                        {legendData.map(({ title, colorClass }) => (
+                            <div key={title} className="flex items-center gap-2">
+                                <div className={cn('h-4 w-4 rounded-sm border-2 border-accent-foreground/30 relative', colorClass)}>
+                                    <div
+                                        className="absolute inset-0 bg-center bg-no-repeat bg-cover"
+                                        style={{
+                                            backgroundImage: `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3cline x1='0' y1='0' x2='100%25' y2='100%25' stroke='rgba(255,255,255,0.6)' stroke-width='1.5'/%3e%3c/svg%3e")`
+                                        }}
+                                    />
+                                </div>
+                                <span className="text-sm text-foreground">{title}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <SlotDetailsDialog 
                 isOpen={isSlotDetailsOpen} 
                 onOpenChange={setIsSlotDetailsOpen} 
