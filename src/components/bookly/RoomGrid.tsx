@@ -239,7 +239,7 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
             
             {legendData.length > 0 && (
                 <div className="w-full max-w-4xl mx-auto mt-12 p-4 border rounded-lg bg-card">
-                    <h3 className="text-lg font-headline font-semibold mb-4 text-center text-primary">Slot Key</h3>
+                    <h3 className="text-lg font-headline font-semibold mb-4 text-center text-primary">Key</h3>
                     <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-3">
                         {legendData.map(({ title, colorClass }) => (
                             <div key={title} className="flex items-center gap-2">
