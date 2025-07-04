@@ -8,5 +8,6 @@
   "endOfDay": "17:00",
   "homePageScale": "xs",
   "weekStartsOnMonday": false,
-  "includeWeekends": false
+  "includeWeekends": false,
+  "showHomePageKey": false
 }
