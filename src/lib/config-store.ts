@@ -23,6 +23,7 @@ const DEFAULT_CONFIG: AppConfiguration = {
   homePageScale: 'sm',
   weekStartsOnMonday: false,
   includeWeekends: false,
+  showHomePageKey: true,
 };
 
 const ensureDataDirectoryExists = () => {
@@ -98,5 +99,7 @@ export const writeConfigurationToFile = async (config: AppConfiguration): Promis
     throw new Error('Failed to write configuration to file. Check server logs and file permissions.');
   }
 };
+
+    
 
     

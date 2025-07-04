@@ -4,7 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text, ImageIcon, KeyRound, LogOut, Scaling, CalendarDays } from 'lucide-react';
+import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text, ImageIcon, KeyRound, LogOut, Scaling, CalendarDays, KeySquare, Palette } from 'lucide-react';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Booking, Room, AppConfiguration } from '@/types';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -48,6 +48,7 @@ interface AdminConfigFormState {
   homePageScale: string;
   weekStartsOnMonday: boolean;
   includeWeekends: boolean;
+  showHomePageKey: boolean;
 }
 
 const convertMinutesToDurationString = (minutes: number): string => {
@@ -75,7 +76,7 @@ export default function AdminPage() {
   const [showBookingsTable, setShowBookingsTable] = useState(false);
 
   // Configuration state
-  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: '', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false });
+  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: '', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false, showHomePageKey: true });
   const [currentLogo, setCurrentLogo] = useState<string | undefined>(undefined);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
@@ -110,6 +111,7 @@ export default function AdminPage() {
         homePageScale: currentConfig.homePageScale || 'sm',
         weekStartsOnMonday: !!currentConfig.weekStartsOnMonday,
         includeWeekends: !!currentConfig.includeWeekends,
+        showHomePageKey: !!currentConfig.showHomePageKey,
       });
       setCurrentLogo(currentConfig.appLogo);
     } catch (err) {
@@ -119,7 +121,7 @@ export default function AdminPage() {
         title: 'Error Fetching Configuration',
         description: 'Could not load current settings. Displaying defaults.',
       });
-      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false });
+      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false, showHomePageKey: true });
       setCurrentLogo(undefined);
     } finally {
       setIsLoadingConfig(false);
@@ -197,6 +199,7 @@ export default function AdminPage() {
       homePageScale: config.homePageScale as 'xs' | 'sm' | 'md',
       weekStartsOnMonday: config.weekStartsOnMonday,
       includeWeekends: config.includeWeekends,
+      showHomePageKey: config.showHomePageKey,
     };
 
     const result = await serverUpdateAppConfiguration(updates);
@@ -276,6 +279,7 @@ export default function AdminPage() {
       case 'homePageScale': return <Scaling className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'weekStartsOnMonday': return <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'includeWeekends': return <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />;
+      case 'showHomePageKey': return <KeySquare className="mr-2 h-4 w-4 text-muted-foreground" />;
       default: return null;
     }
   };
@@ -612,12 +616,14 @@ export default function AdminPage() {
                                 {getIconForSetting('weekStartsOnMonday')} Week View Starts on Monday
                             </TableCell>
                             <TableCell className="text-right pr-6">
+                              <div className="flex justify-end">
                                 <Switch
                                     checked={config.weekStartsOnMonday}
                                     onCheckedChange={(checked) => handleConfigChange('weekStartsOnMonday', checked)}
                                     disabled={isApplyingChanges}
                                     aria-label="Toggle week start day"
                                 />
+                              </div>
                             </TableCell>
                           </TableRow>
                           <TableRow>
@@ -625,12 +631,29 @@ export default function AdminPage() {
                                 {getIconForSetting('includeWeekends')} Include Weekends in Home View
                             </TableCell>
                             <TableCell className="text-right pr-6">
+                              <div className="flex justify-end">
                                 <Switch
                                     checked={config.includeWeekends}
                                     onCheckedChange={(checked) => handleConfigChange('includeWeekends', checked)}
                                     disabled={isApplyingChanges}
                                     aria-label="Toggle including weekends in the home page view"
                                 />
+                               </div>
+                            </TableCell>
+                          </TableRow>
+                           <TableRow>
+                            <TableCell className="font-medium pl-6 flex items-center">
+                                {getIconForSetting('showHomePageKey')} Show Home Page Key
+                            </TableCell>
+                            <TableCell className="text-right pr-6">
+                               <div className="flex justify-end">
+                                <Switch
+                                    checked={config.showHomePageKey}
+                                    onCheckedChange={(checked) => handleConfigChange('showHomePageKey', checked)}
+                                    disabled={isApplyingChanges}
+                                    aria-label="Toggle displaying the key on the home page"
+                                />
+                                </div>
                             </TableCell>
                           </TableRow>
                       </TableBody>
@@ -790,5 +813,7 @@ export default function AdminPage() {
     </>
   );
 }
+
+    
 
     

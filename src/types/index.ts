@@ -85,6 +85,7 @@ export interface AppConfiguration {
   homePageScale?: 'xs' | 'sm' | 'md';
   weekStartsOnMonday?: boolean;
   includeWeekends?: boolean;
+  showHomePageKey?: boolean;
 }
 
 export interface RoomFormData {
@@ -98,5 +99,7 @@ export interface ExportedSettings {
   rooms: Room[];
   bookings: Booking[];
 }
+
+    
 
     

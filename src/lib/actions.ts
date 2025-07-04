@@ -149,7 +149,7 @@ export async function getRooms(): Promise<{ rooms: Room[] }> {
 const roomFormSchema = z.object({
     id: z.string().optional(),
     name: z.string().min(3, 'Room name must be at least 3 characters.'),
-    capacity: z.coerce.number().int().positive('Capacity must be a positive number.'),
+    capacity: z.coerce.number().int().positive('Capacity must be a positive whole number.'),
 });
 
 type RoomActionResponse = {
@@ -240,6 +240,7 @@ const appConfigurationObjectSchema = z.object({
   homePageScale: z.enum(['xs', 'sm', 'md']).optional(),
   weekStartsOnMonday: z.boolean().optional(),
   includeWeekends: z.boolean().optional(),
+  showHomePageKey: z.boolean().optional(),
 });
 
 const appConfigurationSchema = appConfigurationObjectSchema.refine(data => {
@@ -682,6 +683,7 @@ const exportedSettingsSchema = z.object({
     homePageScale: z.enum(['xs', 'sm', 'md']).optional(),
     weekStartsOnMonday: z.boolean().optional(),
     includeWeekends: z.boolean().optional(),
+    showHomePageKey: z.boolean().optional(),
   }),
   rooms: z.array(z.object({
     id: z.string(),
@@ -862,5 +864,7 @@ export async function getRoomsWithDailyUsage(startDate?: string): Promise<RoomWi
 
     return roomsWithUsage;
 }
+
+    
 
     
