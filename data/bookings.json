@@ -125,7 +125,7 @@
     "roomName": "Delta - Auditorium",
     "date": "2025-07-04",
     "time": "09:00 - 13:00",
-    "title": "Ggg",
+    "title": "Some big long meeting title",
     "userName": "Jhfy",
     "userEmail": "vugh@hygu.com"
   },
@@ -145,7 +145,7 @@
     "roomName": "Beta - Pod",
     "date": "2025-07-09",
     "time": "10:00 - 14:00",
-    "title": "dddd",
+    "title": "A super duper long meeting name",
     "userName": "Shaun",
     "userEmail": "sdunmall@gmail.com"
   },
@@ -155,7 +155,7 @@
     "roomName": "Charlie - Duo Pod",
     "date": "2025-07-04",
     "time": "09:30 - 11:30",
-    "title": "dddd",
+    "title": "Yet another long meeting name",
     "userName": "Shaun",
     "userEmail": "sdunmall@gmail.com"
   }

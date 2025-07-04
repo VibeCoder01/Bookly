@@ -22,6 +22,11 @@ const colorPalette = [
   'bg-chart-3/80',
   'bg-chart-4/80',
   'bg-chart-5/80',
+  'bg-chart-6/80',
+  'bg-chart-7/80',
+  'bg-chart-8/80',
+  'bg-chart-9/80',
+  'bg-chart-10/80',
 ];
 
 const stringToHash = (str: string): number => {
