@@ -9,5 +9,6 @@
   "homePageScale": "xs",
   "weekStartsOnMonday": false,
   "includeWeekends": false,
-  "showHomePageKey": true
+  "showHomePageKey": true,
+  "showSlotStrike": false
 }
