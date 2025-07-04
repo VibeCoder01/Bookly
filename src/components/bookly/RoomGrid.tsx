@@ -29,23 +29,9 @@ const colorPalette = [
   'bg-chart-10/80',
 ];
 
-const stringToHash = (str: string): number => {
-  let hash = 0;
-  if (str.length === 0) {
-    return hash;
-  }
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return Math.abs(hash);
-};
-
-
 export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
     const [isSlotDetailsOpen, setIsSlotDetailsOpen] = useState(false);
-    const [selectedSlot, setSelectedSlot] = useState<{ date: string; slot: SlotStatus } | null>(null);
+    const [selectedSlot, setSelectedSlot] = useState<{ date: string; slot: SlotStatus; colorClass?: string; } | null>(null);
 
     const [gridData, setGridData] = useState<RoomWithDailyUsage[]>(initialRoomsWithUsage);
     const [viewDate, setViewDate] = useState(new Date());
@@ -73,8 +59,34 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
         fetchNewData();
     }, [viewDate]);
 
+    const { legendData, titleToColorMap } = useMemo(() => {
+        const uniqueTitles = new Set<string>();
+        gridData.forEach(room => {
+            room.dailyUsage.forEach(day => {
+                day.slots.forEach(slot => {
+                    if (slot.isBooked && slot.title) {
+                        uniqueTitles.add(slot.title);
+                    }
+                });
+            });
+        });
+
+        const sortedTitles = Array.from(uniqueTitles).sort();
+        const titleColorMap = new Map<string, string>();
+        const legendItems: { title: string; colorClass: string }[] = [];
+        
+        sortedTitles.forEach((title, index) => {
+            const colorClass = colorPalette[index % colorPalette.length];
+            titleColorMap.set(title, colorClass);
+            legendItems.push({ title, colorClass });
+        });
+
+        return { legendData: legendItems, titleToColorMap: titleColorMap };
+    }, [gridData]);
+
     const handleSlotClick = (date: string, slot: SlotStatus) => {
-        setSelectedSlot({ date, slot });
+        const colorClass = slot.isBooked && slot.title ? titleToColorMap.get(slot.title) : undefined;
+        setSelectedSlot({ date, slot, colorClass });
         setIsSlotDetailsOpen(true);
     };
     
@@ -133,25 +145,6 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
             return format(new Date(firstDate + 'T00:00:00'), 'PPP');
         }
         return '...';
-    }, [gridData]);
-    
-    const legendData = useMemo(() => {
-        const uniqueBookings = new Map<string, string>(); // Map<title, colorClass>
-
-        gridData.forEach(room => {
-            room.dailyUsage.forEach(day => {
-                day.slots.forEach(slot => {
-                    if (slot.isBooked && slot.title) {
-                        if (!uniqueBookings.has(slot.title)) {
-                            const colorClass = colorPalette[stringToHash(slot.title) % colorPalette.length];
-                            uniqueBookings.set(slot.title, colorClass);
-                        }
-                    }
-                });
-            });
-        });
-
-        return Array.from(uniqueBookings.entries()).map(([title, colorClass]) => ({ title, colorClass }));
     }, [gridData]);
 
     return (
@@ -217,7 +210,7 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
                                                 'flex-1 rounded-sm border-2 border-accent-foreground/30 cursor-pointer relative',
                                                 styles.usageBar,
                                                 slot.isBooked && slot.title
-                                                ? colorPalette[stringToHash(slot.title) % colorPalette.length]
+                                                ? titleToColorMap.get(slot.title)
                                                 : 'bg-transparent'
                                             )}
                                         >

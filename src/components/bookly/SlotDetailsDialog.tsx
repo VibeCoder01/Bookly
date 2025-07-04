@@ -16,32 +16,6 @@ import { Calendar, Clock, User, Bookmark } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from "@/lib/utils";
 
-const colorPalette = [
-  'bg-chart-1/80',
-  'bg-chart-2/80',
-  'bg-chart-3/80',
-  'bg-chart-4/80',
-  'bg-chart-5/80',
-  'bg-chart-6/80',
-  'bg-chart-7/80',
-  'bg-chart-8/80',
-  'bg-chart-9/80',
-  'bg-chart-10/80',
-];
-
-const stringToHash = (str: string): number => {
-  let hash = 0;
-  if (str.length === 0) {
-    return hash;
-  }
-  for (let i = 0; i < str.length; i++) {
-    const char = str.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return Math.abs(hash);
-};
-
 
 interface SlotDetailsDialogProps {
   isOpen: boolean;
@@ -49,6 +23,7 @@ interface SlotDetailsDialogProps {
   details: {
     date: string;
     slot: SlotStatus;
+    colorClass?: string;
   } | null;
 }
 
@@ -57,7 +32,7 @@ export function SlotDetailsDialog({ isOpen, onOpenChange, details }: SlotDetails
     return null;
   }
 
-  const { date, slot } = details;
+  const { date, slot, colorClass } = details;
   const formattedDate = format(new Date(date + 'T00:00:00'), 'PPP');
 
   return (
@@ -82,9 +57,7 @@ export function SlotDetailsDialog({ isOpen, onOpenChange, details }: SlotDetails
               <div
                   className={cn(
                       'h-5 w-5 shrink-0 rounded-sm border-2 border-accent-foreground/30 relative',
-                      slot.isBooked && slot.title
-                      ? colorPalette[stringToHash(slot.title) % colorPalette.length]
-                      : 'bg-transparent'
+                      colorClass || 'bg-transparent'
                   )}
               >
                 {slot.isBooked && slot.title && (
