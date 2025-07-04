@@ -24,6 +24,7 @@ const DEFAULT_CONFIG: AppConfiguration = {
   weekStartsOnMonday: false,
   includeWeekends: false,
   showHomePageKey: true,
+  showSlotStrike: true,
 };
 
 const ensureDataDirectoryExists = () => {

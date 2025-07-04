@@ -25,9 +25,10 @@ interface SlotDetailsDialogProps {
     slot: SlotStatus;
     colorClass?: string;
   } | null;
+  showStrike?: boolean;
 }
 
-export function SlotDetailsDialog({ isOpen, onOpenChange, details }: SlotDetailsDialogProps) {
+export function SlotDetailsDialog({ isOpen, onOpenChange, details, showStrike }: SlotDetailsDialogProps) {
   if (!details) {
     return null;
   }
@@ -60,7 +61,7 @@ export function SlotDetailsDialog({ isOpen, onOpenChange, details }: SlotDetails
                       colorClass || 'bg-transparent'
                   )}
               >
-                {slot.isBooked && slot.title && (
+                {showStrike && slot.isBooked && slot.title && (
                     <div
                         className="absolute inset-0 bg-center bg-no-repeat bg-cover"
                         style={{

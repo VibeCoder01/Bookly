@@ -86,6 +86,7 @@ export interface AppConfiguration {
   weekStartsOnMonday?: boolean;
   includeWeekends?: boolean;
   showHomePageKey?: boolean;
+  showSlotStrike?: boolean;
 }
 
 export interface RoomFormData {

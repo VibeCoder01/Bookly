@@ -4,7 +4,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text, ImageIcon, KeyRound, LogOut, Scaling, CalendarDays, KeySquare, Palette } from 'lucide-react';
+import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text, ImageIcon, KeyRound, LogOut, Scaling, CalendarDays, KeySquare, Palette, Slash } from 'lucide-react';
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import type { Booking, Room, AppConfiguration } from '@/types';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -49,6 +49,7 @@ interface AdminConfigFormState {
   weekStartsOnMonday: boolean;
   includeWeekends: boolean;
   showHomePageKey: boolean;
+  showSlotStrike: boolean;
 }
 
 const convertMinutesToDurationString = (minutes: number): string => {
@@ -76,7 +77,7 @@ export default function AdminPage() {
   const [showBookingsTable, setShowBookingsTable] = useState(false);
 
   // Configuration state
-  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: '', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false, showHomePageKey: true });
+  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: '', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false, showHomePageKey: true, showSlotStrike: true });
   const [currentLogo, setCurrentLogo] = useState<string | undefined>(undefined);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
@@ -112,6 +113,7 @@ export default function AdminPage() {
         weekStartsOnMonday: !!currentConfig.weekStartsOnMonday,
         includeWeekends: !!currentConfig.includeWeekends,
         showHomePageKey: !!currentConfig.showHomePageKey,
+        showSlotStrike: !!currentConfig.showSlotStrike,
       });
       setCurrentLogo(currentConfig.appLogo);
     } catch (err) {
@@ -121,7 +123,7 @@ export default function AdminPage() {
         title: 'Error Fetching Configuration',
         description: 'Could not load current settings. Displaying defaults.',
       });
-      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false, showHomePageKey: true });
+      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false, showHomePageKey: true, showSlotStrike: true });
       setCurrentLogo(undefined);
     } finally {
       setIsLoadingConfig(false);
@@ -200,6 +202,7 @@ export default function AdminPage() {
       weekStartsOnMonday: config.weekStartsOnMonday,
       includeWeekends: config.includeWeekends,
       showHomePageKey: config.showHomePageKey,
+      showSlotStrike: config.showSlotStrike,
     };
 
     const result = await serverUpdateAppConfiguration(updates);
@@ -280,6 +283,7 @@ export default function AdminPage() {
       case 'weekStartsOnMonday': return <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'includeWeekends': return <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'showHomePageKey': return <KeySquare className="mr-2 h-4 w-4 text-muted-foreground" />;
+      case 'showSlotStrike': return <Slash className="mr-2 h-4 w-4 text-muted-foreground" />;
       default: return null;
     }
   };
@@ -652,6 +656,21 @@ export default function AdminPage() {
                                     onCheckedChange={(checked) => handleConfigChange('showHomePageKey', checked)}
                                     disabled={isApplyingChanges}
                                     aria-label="Toggle displaying the key on the home page"
+                                />
+                                </div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium pl-6 flex items-center">
+                                {getIconForSetting('showSlotStrike')} Show Slot Strike-through
+                            </TableCell>
+                            <TableCell className="text-right pr-6">
+                               <div className="flex justify-end">
+                                <Switch
+                                    checked={config.showSlotStrike}
+                                    onCheckedChange={(checked) => handleConfigChange('showSlotStrike', checked)}
+                                    disabled={isApplyingChanges}
+                                    aria-label="Toggle displaying the strike-through on booked slots"
                                 />
                                 </div>
                             </TableCell>

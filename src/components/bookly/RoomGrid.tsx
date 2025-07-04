@@ -17,17 +17,18 @@ interface RoomGridProps {
 }
 
 const colorPalette = [
-  'bg-chart-1/80',
-  'bg-chart-2/80',
-  'bg-chart-3/80',
-  'bg-chart-4/80',
-  'bg-chart-5/80',
-  'bg-chart-6/80',
-  'bg-chart-7/80',
-  'bg-chart-8/80',
-  'bg-chart-9/80',
-  'bg-chart-10/80',
+  'bg-lime-500/80',      // Vibrant lime green
+  'bg-emerald-600/80',   // Deep emerald green
+  'bg-cyan-500/80',      // Bright cyan
+  'bg-sky-600/80',       // Strong sky blue
+  'bg-indigo-500/80',    // Rich indigo
+  'bg-fuchsia-600/80',   // Bright fuchsia
+  'bg-rose-500/80',      // Soft rose
+  'bg-amber-500/80',     // Warm amber
+  'bg-orange-600/80',    // Bold orange
+  'bg-slate-500/80',     // Neutral slate gray
 ];
+
 
 export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
     const [isSlotDetailsOpen, setIsSlotDetailsOpen] = useState(false);
@@ -214,7 +215,7 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
                                                 : 'bg-transparent'
                                             )}
                                         >
-                                            {slot.isBooked && slot.title && (
+                                            {config.showSlotStrike && slot.isBooked && slot.title && (
                                                 <div
                                                     className="absolute inset-0 bg-center bg-no-repeat bg-cover"
                                                     style={{
@@ -242,12 +243,14 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
                         {legendData.map(({ title, colorClass }) => (
                             <div key={title} className="flex items-center gap-2">
                                 <div className={cn('h-4 w-4 rounded-sm border-2 border-accent-foreground/30 relative', colorClass)}>
-                                    <div
-                                        className="absolute inset-0 bg-center bg-no-repeat bg-cover"
-                                        style={{
-                                            backgroundImage: `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3cline x1='0' y1='0' x2='100%25' y2='100%25' stroke='rgba(255,255,255,0.6)' stroke-width='1.5'/%3e%3c/svg%3e")`
-                                        }}
-                                    />
+                                    {config.showSlotStrike && (
+                                      <div
+                                          className="absolute inset-0 bg-center bg-no-repeat bg-cover"
+                                          style={{
+                                              backgroundImage: `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3cline x1='0' y1='0' x2='100%25' y2='100%25' stroke='rgba(255,255,255,0.6)' stroke-width='1.5'/%3e%3c/svg%3e")`
+                                          }}
+                                      />
+                                    )}
                                 </div>
                                 <span className="text-sm text-foreground">{title}</span>
                             </div>
@@ -260,6 +263,7 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
                 isOpen={isSlotDetailsOpen} 
                 onOpenChange={setIsSlotDetailsOpen} 
                 details={selectedSlot}
+                showStrike={config.showSlotStrike}
             />
         </>
     );
