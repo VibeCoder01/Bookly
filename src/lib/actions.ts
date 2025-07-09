@@ -686,7 +686,7 @@ const exportedSettingsSchema = z.object({
   appConfig: z.object({
     appName: z.string(),
     appSubtitle: z.string(),
-    appLogo: z.string().optional(),
+    appLogo: z.string().nullable().optional(),
     adminPasswordHash: z.string().optional(),
     adminPasswordSalt: z.string().optional(),
     slotDurationMinutes: z.number(),

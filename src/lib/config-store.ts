@@ -23,7 +23,12 @@ const DEFAULT_CONFIG: AppConfiguration = {
 };
 
 export const readConfigurationFromFile = async (): Promise<AppConfiguration> => {
-  return await readConfigFromDb(DEFAULT_CONFIG);
+  const cfg = await readConfigFromDb(DEFAULT_CONFIG);
+  const sanitized: Record<string, any> = {};
+  for (const [key, value] of Object.entries(cfg)) {
+    sanitized[key] = value === null ? undefined : value;
+  }
+  return sanitized as AppConfiguration;
 };
 
 export const writeConfigurationToFile = async (config: AppConfiguration): Promise<void> => {
