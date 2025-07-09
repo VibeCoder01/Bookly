@@ -209,7 +209,8 @@ export default function AdminPage() {
 
     if (result.success) {
       toast({ title: 'Configuration Updated', description: 'Your application settings have been saved.' });
-      await fetchAdminConfiguration(); 
+      await fetchAdminConfiguration();
+      router.push('/');
     } else {
       toast({ variant: 'destructive', title: 'Update Failed', description: result.error || 'An unexpected error occurred.' });
     }
