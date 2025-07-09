@@ -80,42 +80,8 @@ export function BookingForm({ rooms, onBookingAttemptCompleted, initialRoomId }:
   const watchedUserName = form.watch('userName');
   const watchedUserEmail = form.watch('userEmail');
 
-  // Load user details from localStorage on mount
-  useEffect(() => {
-    try {
-        const storedUserName = localStorage.getItem('booklyUserName');
-        const storedUserEmail = localStorage.getItem('booklyUserEmail');
-        if (storedUserName) {
-        form.setValue('userName', storedUserName);
-        }
-        if (storedUserEmail) {
-        form.setValue('userEmail', storedUserEmail);
-        }
-    } catch (error) {
-        console.warn("Could not access localStorage for user details:", error);
-    }
-  }, [form]);
-
-  // Save user details to localStorage on change
-  useEffect(() => {
-    try {
-        if (watchedUserName !== undefined) {
-            localStorage.setItem('booklyUserName', watchedUserName);
-        }
-    } catch (error) {
-        console.warn("Could not save userName to localStorage:", error);
-    }
-  }, [watchedUserName]);
-
-  useEffect(() => {
-    try {
-        if (watchedUserEmail !== undefined) {
-            localStorage.setItem('booklyUserEmail', watchedUserEmail);
-        }
-    } catch (error) {
-        console.warn("Could not save userEmail to localStorage:", error);
-    }
-  }, [watchedUserEmail]);
+  // Browser storage is no longer used for persisting user details.
+  // All booking data is stored centrally on the server via SQLite.
 
 
   const fetchIndividualSlots = useCallback(async (roomIdToFetch: string, dateToFetch: Date) => {
