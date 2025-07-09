@@ -289,8 +289,13 @@ export async function updateAppConfiguration(
     const finalValidation = appConfigurationSchema.safeParse(newConfig);
     if (!finalValidation.success) {
         const fieldErrors = finalValidation.error.flatten().fieldErrors;
-        const firstMessage = Object.values(fieldErrors).flat().find(Boolean);
-        const message = firstMessage ? `Invalid configuration: ${firstMessage}` : 'Merged configuration is invalid.';
+        const firstField = Object.keys(fieldErrors).find(
+            key => fieldErrors[key] && fieldErrors[key]!.length > 0
+        );
+        const firstMessage = firstField ? fieldErrors[firstField]![0] : undefined;
+        const message = firstMessage
+            ? `Invalid configuration for '${firstField}': ${firstMessage}`
+            : 'Merged configuration is invalid.';
         return { success: false, error: message, fieldErrors };
     }
 
