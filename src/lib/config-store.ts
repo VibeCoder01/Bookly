@@ -2,7 +2,7 @@
 
 import type { AppConfiguration } from '@/types';
 import { hashPassword } from './crypto';
-import { readConfigFromDb, writeConfigToDb, setSqliteCliPath } from './sqlite-db';
+import { readConfigFromDb, writeConfigToDb } from './sqlite-db';
 
 const { hash: defaultHash, salt: defaultSalt } = hashPassword('password');
 
@@ -20,7 +20,6 @@ const DEFAULT_CONFIG: AppConfiguration = {
   includeWeekends: false,
   showHomePageKey: true,
   showSlotStrike: true,
-  sqlitePath: 'sqlite3',
 };
 
 export const readConfigurationFromFile = async (): Promise<AppConfiguration> => {
@@ -29,21 +28,11 @@ export const readConfigurationFromFile = async (): Promise<AppConfiguration> => 
   for (const [key, value] of Object.entries(cfg)) {
     sanitized[key] = value === null ? undefined : value;
   }
-  if (sanitized.sqlitePath) {
-    await setSqliteCliPath(sanitized.sqlitePath);
-  } else {
-    await setSqliteCliPath('sqlite3');
-  }
   return sanitized as AppConfiguration;
 };
 
 export const writeConfigurationToFile = async (config: AppConfiguration): Promise<void> => {
   const configToWrite = { ...config };
   delete configToWrite.adminPassword;
-  if (configToWrite.sqlitePath) {
-    await setSqliteCliPath(configToWrite.sqlitePath);
-  } else {
-    await setSqliteCliPath('sqlite3');
-  }
   await writeConfigToDb(configToWrite as AppConfiguration);
 };

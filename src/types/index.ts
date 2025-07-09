@@ -87,7 +87,6 @@ export interface AppConfiguration {
   includeWeekends?: boolean;
   showHomePageKey?: boolean;
   showSlotStrike?: boolean;
-  sqlitePath?: string;
 }
 
 export interface RoomFormData {
