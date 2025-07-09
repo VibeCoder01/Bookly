@@ -6,7 +6,7 @@ import path from 'path';
 import type { Room, Booking, AppConfiguration } from '@/types';
 
 let SQLITE_CMD = 'sqlite3';
-export function setSqliteCliPath(path: string) {
+export async function setSqliteCliPath(path: string): Promise<void> {
   SQLITE_CMD = path || 'sqlite3';
 }
 
