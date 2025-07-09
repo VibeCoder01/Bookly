@@ -242,7 +242,6 @@ const appConfigurationObjectSchema = z.object({
   includeWeekends: z.boolean().optional(),
   showHomePageKey: z.boolean().optional(),
   showSlotStrike: z.boolean().optional(),
-  sqlitePath: z.string().optional(),
 });
 
 const appConfigurationSchema = appConfigurationObjectSchema.refine(data => {
@@ -698,7 +697,6 @@ const exportedSettingsSchema = z.object({
     includeWeekends: z.boolean().optional(),
     showHomePageKey: z.boolean().optional(),
     showSlotStrike: z.boolean().optional(),
-    sqlitePath: z.string().optional(),
   }),
   rooms: z.array(z.object({
     id: z.string(),
