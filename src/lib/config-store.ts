@@ -30,9 +30,9 @@ export const readConfigurationFromFile = async (): Promise<AppConfiguration> => 
     sanitized[key] = value === null ? undefined : value;
   }
   if (sanitized.sqlitePath) {
-    setSqliteCliPath(sanitized.sqlitePath);
+    await setSqliteCliPath(sanitized.sqlitePath);
   } else {
-    setSqliteCliPath('sqlite3');
+    await setSqliteCliPath('sqlite3');
   }
   return sanitized as AppConfiguration;
 };
@@ -41,9 +41,9 @@ export const writeConfigurationToFile = async (config: AppConfiguration): Promis
   const configToWrite = { ...config };
   delete configToWrite.adminPassword;
   if (configToWrite.sqlitePath) {
-    setSqliteCliPath(configToWrite.sqlitePath);
+    await setSqliteCliPath(configToWrite.sqlitePath);
   } else {
-    setSqliteCliPath('sqlite3');
+    await setSqliteCliPath('sqlite3');
   }
   await writeConfigToDb(configToWrite as AppConfiguration);
 };
