@@ -288,7 +288,10 @@ export async function updateAppConfiguration(
 
     const finalValidation = appConfigurationSchema.safeParse(newConfig);
     if (!finalValidation.success) {
-        return { success: false, error: 'Validation failed on merged configuration.', fieldErrors: finalValidation.error.flatten().fieldErrors };
+        const fieldErrors = finalValidation.error.flatten().fieldErrors;
+        const firstMessage = Object.values(fieldErrors).flat().find(Boolean);
+        const message = firstMessage ? `Invalid configuration: ${firstMessage}` : 'Merged configuration is invalid.';
+        return { success: false, error: message, fieldErrors };
     }
 
     try {
