@@ -270,8 +270,11 @@ export async function updateAppConfiguration(
     delete safeUpdates.adminPasswordSalt;
 
     const currentConfig = await readConfigurationFromFile();
-    
+
     let processedUpdates = { ...safeUpdates };
+    if (processedUpdates.appLogo === null) {
+      delete processedUpdates.appLogo;
+    }
     if (processedUpdates.appName !== undefined && !processedUpdates.appName.trim()) {
       processedUpdates.appName = DEFAULT_APP_NAME;
     }
