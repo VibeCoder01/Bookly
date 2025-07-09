@@ -208,11 +208,17 @@ export default function AdminPage() {
     const result = await serverUpdateAppConfiguration(updates);
 
     if (result.success) {
-      toast({ title: 'Configuration Updated', description: 'Your application settings have been saved.' });
-      await fetchAdminConfiguration();
+      toast({
+        title: 'Configuration Updated',
+        description: 'Your application settings have been saved.'
+      });
       router.push('/');
     } else {
-      toast({ variant: 'destructive', title: 'Update Failed', description: result.error || 'An unexpected error occurred.' });
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: result.error || 'An unexpected error occurred.'
+      });
     }
 
     setIsApplyingChanges(false);
