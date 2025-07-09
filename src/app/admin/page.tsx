@@ -50,6 +50,7 @@ interface AdminConfigFormState {
   includeWeekends: boolean;
   showHomePageKey: boolean;
   showSlotStrike: boolean;
+  sqlitePath: string;
 }
 
 const convertMinutesToDurationString = (minutes: number): string => {
@@ -77,7 +78,7 @@ export default function AdminPage() {
   const [showBookingsTable, setShowBookingsTable] = useState(false);
 
   // Configuration state
-  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: '', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false, showHomePageKey: true, showSlotStrike: true });
+  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: '', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false, showHomePageKey: true, showSlotStrike: true, sqlitePath: '' });
   const [currentLogo, setCurrentLogo] = useState<string | undefined>(undefined);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
@@ -114,6 +115,7 @@ export default function AdminPage() {
         includeWeekends: !!currentConfig.includeWeekends,
         showHomePageKey: !!currentConfig.showHomePageKey,
         showSlotStrike: !!currentConfig.showSlotStrike,
+        sqlitePath: currentConfig.sqlitePath || 'sqlite3',
       });
       setCurrentLogo(currentConfig.appLogo);
     } catch (err) {
@@ -123,7 +125,7 @@ export default function AdminPage() {
         title: 'Error Fetching Configuration',
         description: 'Could not load current settings. Displaying defaults.',
       });
-      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false, showHomePageKey: true, showSlotStrike: true });
+      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false, showHomePageKey: true, showSlotStrike: true, sqlitePath: 'sqlite3' });
       setCurrentLogo(undefined);
     } finally {
       setIsLoadingConfig(false);
@@ -203,6 +205,7 @@ export default function AdminPage() {
       includeWeekends: config.includeWeekends,
       showHomePageKey: config.showHomePageKey,
       showSlotStrike: config.showSlotStrike,
+      sqlitePath: config.sqlitePath,
     };
 
     const result = await serverUpdateAppConfiguration(updates);
@@ -291,6 +294,7 @@ export default function AdminPage() {
       case 'includeWeekends': return <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'showHomePageKey': return <KeySquare className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'showSlotStrike': return <Slash className="mr-2 h-4 w-4 text-muted-foreground" />;
+      case 'sqlitePath': return <Database className="mr-2 h-4 w-4 text-muted-foreground" />;
       default: return null;
     }
   };
@@ -680,6 +684,14 @@ export default function AdminPage() {
                                     aria-label="Toggle displaying the strike-through on booked slots"
                                 />
                                 </div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium pl-6 flex items-center">
+                                {getIconForSetting('sqlitePath')} SQLite Executable Path
+                            </TableCell>
+                            <TableCell className="text-right pr-6">
+                                <Input value={config.sqlitePath} onChange={(e) => handleConfigChange('sqlitePath', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="e.g., /usr/bin/sqlite3" disabled={isApplyingChanges} />
                             </TableCell>
                           </TableRow>
                       </TableBody>

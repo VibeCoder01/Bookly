@@ -5,6 +5,11 @@ import fs from 'fs';
 import path from 'path';
 import type { Room, Booking, AppConfiguration } from '@/types';
 
+let SQLITE_CMD = 'sqlite3';
+export function setSqliteCliPath(path: string) {
+  SQLITE_CMD = path || 'sqlite3';
+}
+
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DB_PATH = path.join(DATA_DIR, 'bookly.sqlite');
 
@@ -12,7 +17,7 @@ function ensureDb() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
-  execFileSync('sqlite3', [DB_PATH, `
+  execFileSync(SQLITE_CMD, [DB_PATH, `
     PRAGMA journal_mode=WAL;
     CREATE TABLE IF NOT EXISTS rooms (
       id TEXT PRIMARY KEY,
@@ -38,12 +43,12 @@ function ensureDb() {
 
 function run(sql: string) {
   ensureDb();
-  execFileSync('sqlite3', [DB_PATH, sql]);
+  execFileSync(SQLITE_CMD, [DB_PATH, sql]);
 }
 
 function query(sql: string) {
   ensureDb();
-  const result = execFileSync('sqlite3', ['-json', DB_PATH, sql], { encoding: 'utf8' }).trim();
+  const result = execFileSync(SQLITE_CMD, ['-json', DB_PATH, sql], { encoding: 'utf8' }).trim();
   return result ? JSON.parse(result) : [];
 }
 

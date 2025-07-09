@@ -22,6 +22,7 @@ This project was bootstrapped with [Firebase Studio](https://firebase.google.com
   - **Branding:** Change the application's name, subtitle, and upload a custom logo.
   - **Booking Logic:** Set the default booking slot duration (15, 30, or 60 minutes) and define the start and end of the workday to constrain booking times.
   - **Appearance:** Adjust the size of room cards on the home page (Small, Medium, Large) to suit your display needs.
+  - **Database:** Set the path to the SQLite executable used for data storage.
 - **Data Portability:** Export all application data (settings, rooms, and bookings) to a single JSON file for backup, or import from a backup file to instantly restore the application's state.
 - **Security:** Manage access by changing the admin password through a secure form.
 
