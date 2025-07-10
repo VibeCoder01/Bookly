@@ -101,6 +101,13 @@ export interface ExportedSettings {
   bookings: Booking[];
 }
 
+export interface AdminUser {
+  username: string;
+  passwordHash: string;
+  passwordSalt: string;
+  isPrimary?: boolean;
+}
+
     
 
     

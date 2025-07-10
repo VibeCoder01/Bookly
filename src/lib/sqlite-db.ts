@@ -39,6 +39,12 @@ function ensureDb() {
       key TEXT PRIMARY KEY,
       value TEXT
     );
+    CREATE TABLE IF NOT EXISTS admins (
+      username TEXT PRIMARY KEY,
+      passwordHash TEXT NOT NULL,
+      passwordSalt TEXT NOT NULL,
+      isPrimary INTEGER DEFAULT 0
+    );
   `]);
   } catch (err) {
     console.error('[SQLite] Failed to initialize database using command', SQLITE_CMD, err);
@@ -123,4 +129,24 @@ export async function writeConfigToDb(cfg: AppConfiguration): Promise<void> {
   }
   stmts.push('COMMIT;');
   run(stmts.join(' '));
+}
+
+// --- Admin Users ---
+import type { AdminUser } from '@/types';
+
+export async function readAdminUsersFromDb(): Promise<AdminUser[]> {
+  return query('SELECT username, passwordHash, passwordSalt, isPrimary FROM admins;');
+}
+
+export async function getAdminUser(username: string): Promise<AdminUser | undefined> {
+  const rows = query(`SELECT username, passwordHash, passwordSalt, isPrimary FROM admins WHERE username = ${esc(username)} LIMIT 1;`);
+  return rows[0] as AdminUser | undefined;
+}
+
+export async function addAdminUserToDb(user: AdminUser): Promise<void> {
+  run(`INSERT OR REPLACE INTO admins (username, passwordHash, passwordSalt, isPrimary) VALUES (${esc(user.username)}, ${esc(user.passwordHash)}, ${esc(user.passwordSalt)}, ${user.isPrimary ? 1 : 0});`);
+}
+
+export async function deleteAdminUser(username: string): Promise<void> {
+  run(`DELETE FROM admins WHERE username = ${esc(username)};`);
 }

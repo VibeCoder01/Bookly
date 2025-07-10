@@ -1,7 +1,7 @@
 
 'use server';
 
-import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings, RoomWithDailyUsage, SlotStatus } from '@/types';
+import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings, RoomWithDailyUsage, SlotStatus, AdminUser } from '@/types';
 import { readConfigurationFromFile, writeConfigurationToFile } from './config-store';
 import { z } from 'zod';
 import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes, isWeekend, addDays, startOfDay, startOfWeek } from 'date-fns';
@@ -13,11 +13,13 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AUTH_COOKIE_NAME } from '@/lib/auth';
 import { verifyPassword, hashPassword } from './crypto';
+import { getAdminUser, addAdminUserToDb, readAdminUsersFromDb } from './sqlite-db';
 
 
 // --- Auth Actions ---
 
 export async function verifyAdminPassword(formData: FormData) {
+  const username = (formData.get('username') as string | null)?.trim() || 'admin';
   const password = formData.get('password') as string;
   let from = (formData.get('from') as string) || '/admin';
 
@@ -38,7 +40,15 @@ export async function verifyAdminPassword(formData: FormData) {
     redirect(`/admin/login?error=${err}&from=${encodeURIComponent(from)}`);
   }
 
-  const isValid = verifyPassword(password, config.adminPasswordHash, config.adminPasswordSalt);
+  let isValid = false;
+  if (username === 'admin') {
+    isValid = verifyPassword(password, config.adminPasswordHash!, config.adminPasswordSalt!);
+  } else {
+    const user = await getAdminUser(username);
+    if (user) {
+      isValid = verifyPassword(password, user.passwordHash, user.passwordSalt);
+    }
+  }
 
   if (isValid) {
     // Set a short-lived cookie that will be cleared by the middleware after the
@@ -104,6 +114,42 @@ export async function changeAdminPassword(formData: FormData) {
   }
 
   redirect('/admin/change-password?success=' + encodeURIComponent('Password changed successfully.'));
+}
+
+export async function createSecondaryAdmin(formData: FormData) {
+  const username = (formData.get('username') as string || '').trim();
+  const password = formData.get('password') as string;
+  const confirm = formData.get('confirmPassword') as string;
+  const primaryPassword = formData.get('primaryPassword') as string;
+
+  if (!username || !password || !confirm || !primaryPassword) {
+    redirect('/admin/create-admin?error=' + encodeURIComponent('All fields are required.'));
+  }
+
+  if (password !== confirm) {
+    redirect('/admin/create-admin?error=' + encodeURIComponent('Passwords do not match.'));
+  }
+
+  const config = await readConfigurationFromFile();
+  const isPrimaryValid = verifyPassword(primaryPassword, config.adminPasswordHash!, config.adminPasswordSalt!);
+  if (!isPrimaryValid) {
+    redirect('/admin/create-admin?error=' + encodeURIComponent('Primary admin password incorrect.'));
+  }
+
+  const existing = await getAdminUser(username);
+  if (existing) {
+    redirect('/admin/create-admin?error=' + encodeURIComponent('Username already exists.'));
+  }
+
+  const { hash, salt } = hashPassword(password);
+  await addAdminUserToDb({ username, passwordHash: hash, passwordSalt: salt, isPrimary: false });
+
+  redirect('/admin/create-admin?success=' + encodeURIComponent('Admin account created.'));
+}
+
+export async function listSecondaryAdmins(): Promise<AdminUser[]> {
+  const users = await readAdminUsersFromDb();
+  return users.filter(u => !u.isPrimary);
 }
 
 export async function logoutAdmin() {
