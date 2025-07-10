@@ -68,14 +68,14 @@ export async function verifyAdminPassword(formData: FormData) {
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       sameSite: 'strict',
-      maxAge: 60,
+      maxAge: 1800,
     });
     cookieStore.set(ADMIN_USER_COOKIE, username, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       sameSite: 'strict',
-      maxAge: 60,
+      maxAge: 1800,
     });
     const isPrimary = username === 'admin' || (await getAdminUser(username))?.isPrimary;
     cookieStore.set(ADMIN_PRIMARY_COOKIE, isPrimary ? 'true' : 'false', {
@@ -83,7 +83,7 @@ export async function verifyAdminPassword(formData: FormData) {
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       sameSite: 'strict',
-      maxAge: 60,
+      maxAge: 1800,
     });
     redirect(from);
   } else {

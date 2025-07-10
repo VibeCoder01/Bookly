@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { AUTH_COOKIE_NAME } from '@/lib/auth'
+import { AUTH_COOKIE_NAME, ADMIN_USER_COOKIE, ADMIN_PRIMARY_COOKIE } from '@/lib/auth'
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -22,22 +22,51 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Otherwise, allow the request to proceed.
   const response = NextResponse.next()
 
+  if (isAuthenticated && !isAdminPage) {
+    // Leaving admin area - clear auth cookies
+    response.cookies.delete(AUTH_COOKIE_NAME)
+    response.cookies.delete(ADMIN_USER_COOKIE)
+    response.cookies.delete(ADMIN_PRIMARY_COOKIE)
+    return response
+  }
 
-  // Prior logic removed the authentication cookie after every admin request
-  // to force re-authentication on each page load. This caused issues when the
-  // admin dashboard performed additional background requests as those requests
-  // no longer carried the cookie and triggered a redirect loop back to the
-  // login page. By leaving the short‑lived cookie intact we avoid the loop
-  // while still limiting the session duration via the cookie's maxAge.
+  if (isAuthenticated && isAdminPage) {
+    // Refresh cookies to keep session alive while navigating within admin
+    const secure = process.env.NODE_ENV === 'production'
+    response.cookies.set(AUTH_COOKIE_NAME, 'true', {
+      httpOnly: true,
+      secure,
+      path: '/',
+      sameSite: 'strict',
+      maxAge: 1800,
+    })
+    const user = request.cookies.get(ADMIN_USER_COOKIE)?.value
+    if (user) {
+      response.cookies.set(ADMIN_USER_COOKIE, user, {
+        httpOnly: true,
+        secure,
+        path: '/',
+        sameSite: 'strict',
+        maxAge: 1800,
+      })
+    }
+    const primary = request.cookies.get(ADMIN_PRIMARY_COOKIE)?.value
+    if (primary) {
+      response.cookies.set(ADMIN_PRIMARY_COOKIE, primary, {
+        httpOnly: true,
+        secure,
+        path: '/',
+        sameSite: 'strict',
+        maxAge: 1800,
+      })
+    }
+  }
 
   return response
 }
 
-// Match all paths under /admin to ensure this logic runs for both the
-// login page and the protected admin area.
 export const config = {
-  matcher: '/admin/:path*',
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 }
