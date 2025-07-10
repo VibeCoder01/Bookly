@@ -8,6 +8,7 @@ import React, { useState, useEffect } from 'react';
 import type { AppConfiguration } from '@/types';
 import Image from 'next/image';
 import { useUser } from '@/context/UserContext';
+import { getCurrentAdmin } from '@/lib/actions';
 
 interface HeaderProps {
   config: AppConfiguration;
@@ -17,6 +18,7 @@ export function Header({ config }: HeaderProps) {
   const [ipAddress, setIpAddress] = useState<string | null>(null);
   const [isLoadingIp, setIsLoadingIp] = useState(true);
   const { userName } = useUser();
+  const [adminInfo, setAdminInfo] = useState<{ username: string; isPrimary: boolean } | null>(null);
 
   useEffect(() => {
     fetch('/api/ip')
@@ -29,6 +31,7 @@ export function Header({ config }: HeaderProps) {
         setIpAddress('Error fetching IP');
         setIsLoadingIp(false);
       });
+    getCurrentAdmin().then(setAdminInfo).catch(() => setAdminInfo(null));
   }, []);
 
   return (
@@ -61,6 +64,11 @@ export function Header({ config }: HeaderProps) {
           {userName && (
             <span className="text-foreground text-sm">
               Welcome, <span className="font-semibold text-primary">{userName}</span>!
+            </span>
+          )}
+          {adminInfo && (
+            <span className="text-xs text-muted-foreground">
+              {adminInfo.username} ({adminInfo.isPrimary ? 'Primary' : 'Secondary'} Admin)
             </span>
           )}
           <Link href="/admin" passHref>
