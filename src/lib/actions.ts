@@ -41,12 +41,15 @@ export async function verifyAdminPassword(formData: FormData) {
   const isValid = verifyPassword(password, config.adminPasswordHash, config.adminPasswordSalt);
 
   if (isValid) {
+    // Set a short-lived cookie that will be cleared by the middleware after the
+    // next request. This ensures the admin password is required for every page
+    // visit.
     cookies().set(AUTH_COOKIE_NAME, 'true', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       sameSite: 'strict',
-      maxAge: 60 * 60 * 24, // 1 day
+      maxAge: 60, // just long enough for the redirect
     });
     redirect(from);
   } else {

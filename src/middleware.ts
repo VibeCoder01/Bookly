@@ -23,7 +23,16 @@ export function middleware(request: NextRequest) {
   }
 
   // Otherwise, allow the request to proceed.
-  return NextResponse.next()
+  const response = NextResponse.next()
+
+  // Once an admin page is served, immediately clear the auth cookie so that the
+  // next visit requires the password again. This effectively forces password
+  // entry on every admin request.
+  if (isAuthenticated && isAdminPage && !isLoginPage) {
+    response.cookies.delete(AUTH_COOKIE_NAME)
+  }
+
+  return response
 }
 
 // Match all paths under /admin to ensure this logic runs for both the
