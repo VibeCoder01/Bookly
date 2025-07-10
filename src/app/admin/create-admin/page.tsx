@@ -7,12 +7,13 @@ import {
   listSecondaryAdmins,
   deleteSecondaryAdmin,
   updateSecondaryAdminPassword,
+  renameSecondaryAdmin,
   getCurrentAdmin,
 } from '@/lib/actions';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, CheckCircle, UserPlus, Loader2 } from 'lucide-react';
 import Link from 'next/link';
@@ -20,12 +21,12 @@ import { useFormStatus } from 'react-dom';
 import { useEffect, useState } from 'react';
 import type { AdminUser } from '@/types';
 
-function SubmitButton() {
+function SubmitButton({ label }: { label: string }) {
   const { pending } = useFormStatus();
   return (
     <Button type="submit" className="w-full" disabled={pending}>
       {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-      Create Admin
+      {label}
     </Button>
   );
 }
@@ -63,73 +64,80 @@ function CreateAdminForm() {
         <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit">
           <UserPlus className="h-8 w-8 text-primary" />
         </div>
-        <CardTitle className="font-headline text-2xl text-primary mt-2">Create Secondary Admin</CardTitle>
-        <CardDescription>Provide a username and password along with the primary admin password.</CardDescription>
+        <CardTitle className="font-headline text-2xl text-primary mt-2">Manage Secondary Admins</CardTitle>
+        <CardDescription>Rename, reset passwords or delete secondary admin accounts.</CardDescription>
       </CardHeader>
-      <form action={createSecondaryAdmin}>
-        <CardContent className="space-y-6">
-          {error && (
-            <Alert variant="destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          {success && (
-            <Alert variant="default" className="border-green-500 text-green-700">
-              <CheckCircle className="h-4 w-4 text-green-500" />
-              <AlertTitle>Success</AlertTitle>
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
-          )}
-          <div className="space-y-2">
-            <Label htmlFor="username">Username</Label>
-            <Input id="username" name="username" required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
-            <Input id="password" name="password" type="password" required minLength={8} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <Input id="confirmPassword" name="confirmPassword" type="password" required />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="primaryPassword">Primary Admin Password</Label>
-            <Input id="primaryPassword" name="primaryPassword" type="password" required />
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <SubmitButton />
-          <Button asChild variant="link" className="text-muted-foreground">
-            <Link href="/admin">Back to Admin Dashboard</Link>
-          </Button>
-        </CardFooter>
-      </form>
-      {admins.length > 0 && (
-        <CardContent>
-          <p className="text-sm font-medium mb-2">Existing Secondary Admins</p>
-          <ul className="space-y-4">
-            {admins.map(a => (
-              <li key={a.username} className="border rounded p-2">
-                <p className="font-medium mb-2">{a.username}</p>
-                <form action={updateSecondaryAdminPassword} className="space-y-2">
-                  <input type="hidden" name="username" value={a.username} />
-                  <Input name="password" type="password" placeholder="New Password" required minLength={8} />
-                  <Input name="confirmPassword" type="password" placeholder="Confirm Password" required />
-                  <Input name="primaryPassword" type="password" placeholder="Primary Admin Password" required />
-                  <Button type="submit" size="sm">Update Password</Button>
-                </form>
-                <form action={deleteSecondaryAdmin} className="mt-2 space-y-2">
-                  <input type="hidden" name="username" value={a.username} />
-                  <Input name="primaryPassword" type="password" placeholder="Primary Admin Password" required />
-                  <Button type="submit" size="sm" variant="destructive">Delete</Button>
-                </form>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      )}
+      <CardContent className="space-y-6">
+        {error && (
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        {success && (
+          <Alert variant="default" className="border-green-500 text-green-700">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <AlertTitle>Success</AlertTitle>
+            <AlertDescription>{success}</AlertDescription>
+          </Alert>
+        )}
+        {admins.length > 0 && (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Username</TableHead>
+                <TableHead>Rename</TableHead>
+                <TableHead>Reset Password</TableHead>
+                <TableHead>Delete</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {admins.map(a => (
+                <TableRow key={a.username}>
+                  <TableCell className="font-medium">{a.username}</TableCell>
+                  <TableCell>
+                    <form action={renameSecondaryAdmin} className="flex gap-2 items-center">
+                      <input type="hidden" name="oldUsername" value={a.username} />
+                      <Input name="newUsername" placeholder="New Username" className="w-40" required />
+                      <SubmitButton label="Rename" />
+                    </form>
+                  </TableCell>
+                  <TableCell>
+                    <form action={updateSecondaryAdminPassword} className="flex gap-2 items-center">
+                      <input type="hidden" name="username" value={a.username} />
+                      <Input name="password" type="password" placeholder="New Password" className="w-40" required minLength={8} />
+                      <Input name="confirmPassword" type="password" placeholder="Confirm" className="w-40" required />
+                      <SubmitButton label="Reset" />
+                    </form>
+                  </TableCell>
+                  <TableCell>
+                    <form action={deleteSecondaryAdmin}>
+                      <input type="hidden" name="username" value={a.username} />
+                      <Button type="submit" size="sm" variant="destructive">Delete</Button>
+                    </form>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+
+        <div className="space-y-4">
+          <h4 className="font-medium">Add Admin</h4>
+          <form action={createSecondaryAdmin} className="space-y-2">
+            <Input name="username" placeholder="Username" required />
+            <Input name="password" type="password" placeholder="Password" required minLength={8} />
+            <Input name="confirmPassword" type="password" placeholder="Confirm Password" required />
+            <SubmitButton label="Add Admin" />
+          </form>
+        </div>
+      </CardContent>
+      <CardFooter>
+        <Button asChild variant="link" className="text-muted-foreground">
+          <Link href="/admin">Back to Admin Dashboard</Link>
+        </Button>
+      </CardFooter>
     </Card>
   );
 }

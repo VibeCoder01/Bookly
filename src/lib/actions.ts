@@ -13,7 +13,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AUTH_COOKIE_NAME, ADMIN_USER_COOKIE, ADMIN_PRIMARY_COOKIE } from '@/lib/auth';
 import { verifyPassword, hashPassword } from './crypto';
-import { getAdminUser, addAdminUserToDb, readAdminUsersFromDb, deleteAdminUser } from './sqlite-db';
+import { getAdminUser, addAdminUserToDb, readAdminUsersFromDb, deleteAdminUser, renameAdminUser } from './sqlite-db';
 
 export async function getCurrentAdmin(): Promise<{ username: string; isPrimary: boolean } | null> {
   const cookieStore = await cookies();
@@ -143,9 +143,8 @@ export async function createSecondaryAdmin(formData: FormData) {
   const username = (formData.get('username') as string || '').trim();
   const password = formData.get('password') as string;
   const confirm = formData.get('confirmPassword') as string;
-  const primaryPassword = formData.get('primaryPassword') as string;
 
-  if (!username || !password || !confirm || !primaryPassword) {
+  if (!username || !password || !confirm) {
     redirect('/admin/create-admin?error=' + encodeURIComponent('All fields are required.'));
   }
 
@@ -153,11 +152,6 @@ export async function createSecondaryAdmin(formData: FormData) {
     redirect('/admin/create-admin?error=' + encodeURIComponent('Passwords do not match.'));
   }
 
-  const config = await readConfigurationFromFile();
-  const isPrimaryValid = verifyPassword(primaryPassword, config.adminPasswordHash!, config.adminPasswordSalt!);
-  if (!isPrimaryValid) {
-    redirect('/admin/create-admin?error=' + encodeURIComponent('Primary admin password incorrect.'));
-  }
 
   const existing = await getAdminUser(username);
   if (existing) {
@@ -177,20 +171,13 @@ export async function listSecondaryAdmins(): Promise<AdminUser[]> {
 
 export async function deleteSecondaryAdmin(formData: FormData) {
   const username = (formData.get('username') as string || '').trim();
-  const primaryPassword = formData.get('primaryPassword') as string;
 
-  if (!username || !primaryPassword) {
+  if (!username) {
     redirect('/admin/create-admin?error=' + encodeURIComponent('All fields are required.'));
   }
 
   if (username === 'admin') {
     redirect('/admin/create-admin?error=' + encodeURIComponent('Cannot delete primary admin.'));
-  }
-
-  const config = await readConfigurationFromFile();
-  const isPrimaryValid = verifyPassword(primaryPassword, config.adminPasswordHash!, config.adminPasswordSalt!);
-  if (!isPrimaryValid) {
-    redirect('/admin/create-admin?error=' + encodeURIComponent('Primary admin password incorrect.'));
   }
 
   await deleteAdminUser(username);
@@ -201,9 +188,8 @@ export async function updateSecondaryAdminPassword(formData: FormData) {
   const username = (formData.get('username') as string || '').trim();
   const password = formData.get('password') as string;
   const confirm = formData.get('confirmPassword') as string;
-  const primaryPassword = formData.get('primaryPassword') as string;
 
-  if (!username || !password || !confirm || !primaryPassword) {
+  if (!username || !password || !confirm) {
     redirect('/admin/create-admin?error=' + encodeURIComponent('All fields are required.'));
   }
 
@@ -211,16 +197,31 @@ export async function updateSecondaryAdminPassword(formData: FormData) {
     redirect('/admin/create-admin?error=' + encodeURIComponent('Passwords do not match.'));
   }
 
-  const config = await readConfigurationFromFile();
-  const isPrimaryValid = verifyPassword(primaryPassword, config.adminPasswordHash!, config.adminPasswordSalt!);
-  if (!isPrimaryValid) {
-    redirect('/admin/create-admin?error=' + encodeURIComponent('Primary admin password incorrect.'));
-  }
-
   const { hash, salt } = hashPassword(password);
   await addAdminUserToDb({ username, passwordHash: hash, passwordSalt: salt, isPrimary: false });
 
   redirect('/admin/create-admin?success=' + encodeURIComponent('Admin password updated.'));
+}
+
+export async function renameSecondaryAdmin(formData: FormData) {
+  const oldUsername = (formData.get('oldUsername') as string || '').trim();
+  const newUsername = (formData.get('newUsername') as string || '').trim();
+
+  if (!oldUsername || !newUsername) {
+    redirect('/admin/create-admin?error=' + encodeURIComponent('All fields are required.'));
+  }
+
+  if (newUsername === 'admin') {
+    redirect('/admin/create-admin?error=' + encodeURIComponent('Cannot use reserved username.'));
+  }
+
+  const existing = await getAdminUser(newUsername);
+  if (existing) {
+    redirect('/admin/create-admin?error=' + encodeURIComponent('Username already exists.'));
+  }
+
+  await renameAdminUser(oldUsername, newUsername);
+  redirect('/admin/create-admin?success=' + encodeURIComponent('Admin renamed.'));
 }
 
 export async function logoutAdmin() {
