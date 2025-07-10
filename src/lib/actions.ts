@@ -11,9 +11,17 @@ import { getPersistedBookings, addMockBooking, writeAllBookings } from './mock-d
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { AUTH_COOKIE_NAME } from '@/lib/auth';
+import { AUTH_COOKIE_NAME, ADMIN_USER_COOKIE, ADMIN_PRIMARY_COOKIE } from '@/lib/auth';
 import { verifyPassword, hashPassword } from './crypto';
-import { getAdminUser, addAdminUserToDb, readAdminUsersFromDb } from './sqlite-db';
+import { getAdminUser, addAdminUserToDb, readAdminUsersFromDb, deleteAdminUser } from './sqlite-db';
+
+export async function getCurrentAdmin(): Promise<{ username: string; isPrimary: boolean } | null> {
+  const cookieStore = await cookies();
+  const username = cookieStore.get(ADMIN_USER_COOKIE)?.value;
+  const isPrimary = cookieStore.get(ADMIN_PRIMARY_COOKIE)?.value === 'true';
+  if (!username) return null;
+  return { username, isPrimary };
+}
 
 
 // --- Auth Actions ---
@@ -51,16 +59,31 @@ export async function verifyAdminPassword(formData: FormData) {
   }
 
   if (isValid) {
-    // Set a short-lived cookie that will be cleared by the middleware after the
-    // next request. This ensures the admin password is required for every page
-    // visit.
+    // Set short-lived cookies that will be cleared by the middleware after the
+    // next request. These ensure the admin credentials are required for every
+    // page visit.
     const cookieStore = await cookies();
     cookieStore.set(AUTH_COOKIE_NAME, 'true', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       sameSite: 'strict',
-      maxAge: 60, // just long enough for the redirect
+      maxAge: 60,
+    });
+    cookieStore.set(ADMIN_USER_COOKIE, username, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'strict',
+      maxAge: 60,
+    });
+    const isPrimary = username === 'admin' || (await getAdminUser(username))?.isPrimary;
+    cookieStore.set(ADMIN_PRIMARY_COOKIE, isPrimary ? 'true' : 'false', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'strict',
+      maxAge: 60,
     });
     redirect(from);
   } else {
@@ -152,9 +175,59 @@ export async function listSecondaryAdmins(): Promise<AdminUser[]> {
   return users.filter(u => !u.isPrimary);
 }
 
+export async function deleteSecondaryAdmin(formData: FormData) {
+  const username = (formData.get('username') as string || '').trim();
+  const primaryPassword = formData.get('primaryPassword') as string;
+
+  if (!username || !primaryPassword) {
+    redirect('/admin/create-admin?error=' + encodeURIComponent('All fields are required.'));
+  }
+
+  if (username === 'admin') {
+    redirect('/admin/create-admin?error=' + encodeURIComponent('Cannot delete primary admin.'));
+  }
+
+  const config = await readConfigurationFromFile();
+  const isPrimaryValid = verifyPassword(primaryPassword, config.adminPasswordHash!, config.adminPasswordSalt!);
+  if (!isPrimaryValid) {
+    redirect('/admin/create-admin?error=' + encodeURIComponent('Primary admin password incorrect.'));
+  }
+
+  await deleteAdminUser(username);
+  redirect('/admin/create-admin?success=' + encodeURIComponent('Admin deleted.'));
+}
+
+export async function updateSecondaryAdminPassword(formData: FormData) {
+  const username = (formData.get('username') as string || '').trim();
+  const password = formData.get('password') as string;
+  const confirm = formData.get('confirmPassword') as string;
+  const primaryPassword = formData.get('primaryPassword') as string;
+
+  if (!username || !password || !confirm || !primaryPassword) {
+    redirect('/admin/create-admin?error=' + encodeURIComponent('All fields are required.'));
+  }
+
+  if (password !== confirm) {
+    redirect('/admin/create-admin?error=' + encodeURIComponent('Passwords do not match.'));
+  }
+
+  const config = await readConfigurationFromFile();
+  const isPrimaryValid = verifyPassword(primaryPassword, config.adminPasswordHash!, config.adminPasswordSalt!);
+  if (!isPrimaryValid) {
+    redirect('/admin/create-admin?error=' + encodeURIComponent('Primary admin password incorrect.'));
+  }
+
+  const { hash, salt } = hashPassword(password);
+  await addAdminUserToDb({ username, passwordHash: hash, passwordSalt: salt, isPrimary: false });
+
+  redirect('/admin/create-admin?success=' + encodeURIComponent('Admin password updated.'));
+}
+
 export async function logoutAdmin() {
   const cookieStore = await cookies();
   cookieStore.delete(AUTH_COOKIE_NAME);
+  cookieStore.delete(ADMIN_USER_COOKIE);
+  cookieStore.delete(ADMIN_PRIMARY_COOKIE);
   redirect('/admin/login');
 }
 
