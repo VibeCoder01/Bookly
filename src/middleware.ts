@@ -25,12 +25,13 @@ export function middleware(request: NextRequest) {
   // Otherwise, allow the request to proceed.
   const response = NextResponse.next()
 
-  // Once an admin page is served, immediately clear the auth cookie so that the
-  // next visit requires the password again. This effectively forces password
-  // entry on every admin request.
-  if (isAuthenticated && isAdminPage && !isLoginPage) {
-    response.cookies.delete(AUTH_COOKIE_NAME)
-  }
+
+  // Prior logic removed the authentication cookie after every admin request
+  // to force re-authentication on each page load. This caused issues when the
+  // admin dashboard performed additional background requests as those requests
+  // no longer carried the cookie and triggered a redirect loop back to the
+  // login page. By leaving the short‑lived cookie intact we avoid the loop
+  // while still limiting the session duration via the cookie's maxAge.
 
   return response
 }
