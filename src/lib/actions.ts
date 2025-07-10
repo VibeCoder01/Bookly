@@ -44,7 +44,8 @@ export async function verifyAdminPassword(formData: FormData) {
     // Set a short-lived cookie that will be cleared by the middleware after the
     // next request. This ensures the admin password is required for every page
     // visit.
-    cookies().set(AUTH_COOKIE_NAME, 'true', {
+    const cookieStore = await cookies();
+    cookieStore.set(AUTH_COOKIE_NAME, 'true', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       path: '/',
@@ -106,7 +107,8 @@ export async function changeAdminPassword(formData: FormData) {
 }
 
 export async function logoutAdmin() {
-  cookies().delete(AUTH_COOKIE_NAME);
+  const cookieStore = await cookies();
+  cookieStore.delete(AUTH_COOKIE_NAME);
   redirect('/admin/login');
 }
 
