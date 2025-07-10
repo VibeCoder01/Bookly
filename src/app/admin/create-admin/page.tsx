@@ -2,7 +2,13 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { createSecondaryAdmin, listSecondaryAdmins } from '@/lib/actions';
+import {
+  createSecondaryAdmin,
+  listSecondaryAdmins,
+  deleteSecondaryAdmin,
+  updateSecondaryAdminPassword,
+  getCurrentAdmin,
+} from '@/lib/actions';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -29,9 +35,27 @@ function CreateAdminForm() {
   const error = searchParams.get('error');
   const success = searchParams.get('success');
   const [admins, setAdmins] = useState<AdminUser[]>([]);
+  const [currentAdmin, setCurrentAdmin] = useState<{username: string; isPrimary: boolean} | null>(null);
   useEffect(() => {
     listSecondaryAdmins().then(setAdmins).catch(() => setAdmins([]));
+    getCurrentAdmin().then(setCurrentAdmin).catch(() => setCurrentAdmin(null));
   }, []);
+
+  if (currentAdmin && !currentAdmin.isPrimary) {
+    return (
+      <Card className="shadow-2xl rounded-xl">
+        <CardHeader>
+          <CardTitle>Access Denied</CardTitle>
+          <CardDescription>Only the primary admin can manage secondary admins.</CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <Button asChild variant="link">
+            <Link href="/admin">Back to Admin Dashboard</Link>
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  }
 
   return (
     <form action={createSecondaryAdmin}>
@@ -77,8 +101,24 @@ function CreateAdminForm() {
           {admins.length > 0 && (
             <div>
               <p className="text-sm font-medium mb-2">Existing Secondary Admins</p>
-              <ul className="list-disc list-inside text-sm">
-                {admins.map(a => (<li key={a.username}>{a.username}</li>))}
+              <ul className="space-y-4">
+                {admins.map(a => (
+                  <li key={a.username} className="border rounded p-2">
+                    <p className="font-medium mb-2">{a.username}</p>
+                    <form action={updateSecondaryAdminPassword} className="space-y-2">
+                      <input type="hidden" name="username" value={a.username} />
+                      <Input name="password" type="password" placeholder="New Password" required minLength={8} />
+                      <Input name="confirmPassword" type="password" placeholder="Confirm Password" required />
+                      <Input name="primaryPassword" type="password" placeholder="Primary Admin Password" required />
+                      <Button type="submit" size="sm">Update Password</Button>
+                    </form>
+                    <form action={deleteSecondaryAdmin} className="mt-2 space-y-2">
+                      <input type="hidden" name="username" value={a.username} />
+                      <Input name="primaryPassword" type="password" placeholder="Primary Admin Password" required />
+                      <Button type="submit" size="sm" variant="destructive">Delete</Button>
+                    </form>
+                  </li>
+                ))}
               </ul>
             </div>
           )}
