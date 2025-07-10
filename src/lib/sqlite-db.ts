@@ -17,7 +17,8 @@ function ensureDb() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
-  execFileSync(SQLITE_CMD, [DB_PATH, `
+  try {
+    execFileSync(SQLITE_CMD, [DB_PATH, `
     PRAGMA journal_mode=WAL;
     CREATE TABLE IF NOT EXISTS rooms (
       id TEXT PRIMARY KEY,
@@ -39,17 +40,31 @@ function ensureDb() {
       value TEXT
     );
   `]);
+  } catch (err) {
+    console.error('[SQLite] Failed to initialize database using command', SQLITE_CMD, err);
+    throw new Error('SQLite CLI not found or failed to run. Please install sqlite3 and ensure it is in your PATH.');
+  }
 }
 
 function run(sql: string) {
   ensureDb();
-  execFileSync(SQLITE_CMD, [DB_PATH, sql]);
+  try {
+    execFileSync(SQLITE_CMD, [DB_PATH, sql]);
+  } catch (err) {
+    console.error('[SQLite] Error executing SQL', err);
+    throw new Error('Failed to execute sqlite3 command. Make sure the sqlite3 CLI is installed and accessible.');
+  }
 }
 
 function query(sql: string) {
   ensureDb();
-  const result = execFileSync(SQLITE_CMD, ['-json', DB_PATH, sql], { encoding: 'utf8' }).trim();
-  return result ? JSON.parse(result) : [];
+  try {
+    const result = execFileSync(SQLITE_CMD, ['-json', DB_PATH, sql], { encoding: 'utf8' }).trim();
+    return result ? JSON.parse(result) : [];
+  } catch (err) {
+    console.error('[SQLite] Error querying database', err);
+    throw new Error('Failed to query sqlite database. Ensure sqlite3 CLI is installed.');
+  }
 }
 
 const esc = (v: any) => {

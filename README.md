@@ -61,6 +61,7 @@ To get the application running locally, follow these steps:
 ### Prerequisites
 
 Make sure you have [Node.js](https://nodejs.org/) (version 18 or higher) and npm installed on your machine.
+This project persists data using the `sqlite3` command line tool. Ensure `sqlite3` is installed and available in your `PATH` before running the app.
 
 ### Installation
 
