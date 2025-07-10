@@ -4,9 +4,13 @@ import { RoomGrid } from '@/components/bookly/RoomGrid';
 
 export const dynamic = 'force-dynamic';
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams?: { startDate?: string };
+}) {
   const [roomsWithUsage, config] = await Promise.all([
-    getRoomsWithDailyUsage(),
+    getRoomsWithDailyUsage(searchParams?.startDate),
     getCurrentConfiguration(),
   ]);
 
