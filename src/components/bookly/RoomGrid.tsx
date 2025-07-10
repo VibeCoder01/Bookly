@@ -6,6 +6,7 @@ import type { RoomWithDailyUsage, AppConfiguration, SlotStatus } from '@/types';
 import { cn } from '@/lib/utils';
 import { format, addDays, subDays } from 'date-fns';
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { SlotDetailsDialog } from '@/components/bookly/SlotDetailsDialog';
 import { getRoomsWithDailyUsage } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
@@ -31,11 +32,17 @@ const colorPalette = [
 
 
 export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
+    const searchParams = useSearchParams();
+    const router = useRouter();
+
     const [isSlotDetailsOpen, setIsSlotDetailsOpen] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState<{ date: string; slot: SlotStatus; colorClass?: string; } | null>(null);
 
     const [gridData, setGridData] = useState<RoomWithDailyUsage[]>(initialRoomsWithUsage);
-    const [viewDate, setViewDate] = useState(new Date());
+    const [viewDate, setViewDate] = useState(() => {
+        const param = searchParams.get('startDate');
+        return param ? new Date(param + 'T00:00:00') : new Date();
+    });
     const [isLoading, setIsLoading] = useState(false);
     const isInitialMount = useRef(true);
 
@@ -44,6 +51,10 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
             isInitialMount.current = false;
             return;
         }
+
+        const params = new URLSearchParams(Array.from(searchParams.entries()));
+        params.set('startDate', format(viewDate, 'yyyy-MM-dd'));
+        router.replace(`?${params.toString()}`);
 
         const fetchNewData = async () => {
             setIsLoading(true);
@@ -58,7 +69,7 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
         };
 
         fetchNewData();
-    }, [viewDate]);
+    }, [viewDate, router, searchParams]);
 
     const { legendData, titleToColorMap } = useMemo(() => {
         const uniqueTitles = new Set<string>();
