@@ -710,6 +710,9 @@ export default function AdminPage() {
                   <Button asChild variant="outline">
                     <Link href="/admin/change-password">Change Password</Link>
                   </Button>
+                  <Button asChild variant="outline" className="ml-2 mt-2 sm:mt-0">
+                    <Link href="/admin/create-admin">Add Admin</Link>
+                  </Button>
                 </CardContent>
               </Card>
             </div>

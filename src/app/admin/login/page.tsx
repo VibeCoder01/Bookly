@@ -27,9 +27,13 @@ export default function AdminLoginPage() {
                            <KeyRound className="h-8 w-8 text-primary" />
                         </div>
                         <CardTitle className="font-headline text-2xl text-primary mt-2">Admin Access</CardTitle>
-                        <CardDescription>Please enter the admin password to continue.</CardDescription>
+                        <CardDescription>Please enter your admin username and password.</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="username">Username</Label>
+                            <Input id="username" name="username" placeholder="admin" required />
+                        </div>
                         <div className="space-y-2">
                             <Label htmlFor="password">Password</Label>
                             <Input
