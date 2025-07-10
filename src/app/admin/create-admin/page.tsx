@@ -145,7 +145,7 @@ function CreateAdminForm() {
 export default function CreateAdminPage() {
   return (
     <main className="container mx-auto py-20 flex justify-center items-center">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-4xl">
         <Suspense>
           <CreateAdminForm />
         </Suspense>
