@@ -150,3 +150,7 @@ export async function addAdminUserToDb(user: AdminUser): Promise<void> {
 export async function deleteAdminUser(username: string): Promise<void> {
   run(`DELETE FROM admins WHERE username = ${esc(username)};`);
 }
+
+export async function renameAdminUser(oldUsername: string, newUsername: string): Promise<void> {
+  run(`UPDATE admins SET username = ${esc(newUsername)} WHERE username = ${esc(oldUsername)};`);
+}
