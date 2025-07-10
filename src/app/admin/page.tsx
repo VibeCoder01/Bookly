@@ -18,7 +18,8 @@ import {
     deleteRoom,
     exportAllSettings,
     importAllSettings,
-    logoutAdmin
+    logoutAdmin,
+    getCurrentAdmin
 } from '@/lib/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -83,6 +84,7 @@ export default function AdminPage() {
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isRevertingLogo, setIsRevertingLogo] = useState(false);
+  const [adminInfo, setAdminInfo] = useState<{ username: string; isPrimary: boolean } | null>(null);
 
 
   // Rooms state
@@ -165,6 +167,7 @@ export default function AdminPage() {
   useEffect(() => {
     fetchAdminConfiguration();
     fetchRooms();
+    getCurrentAdmin().then(setAdminInfo).catch(() => setAdminInfo(null));
   }, [fetchAdminConfiguration, fetchRooms]);
 
   const roomMap = useMemo(() => new Map<string, Room>(rooms.map(room => [room.id, room])), [rooms]);
@@ -710,9 +713,11 @@ export default function AdminPage() {
                   <Button asChild variant="outline">
                     <Link href="/admin/change-password">Change Password</Link>
                   </Button>
-                  <Button asChild variant="outline" className="ml-2 mt-2 sm:mt-0">
-                    <Link href="/admin/create-admin">Manage Admins</Link>
-                  </Button>
+                  {adminInfo?.isPrimary && (
+                    <Button asChild variant="outline" className="ml-2 mt-2 sm:mt-0">
+                      <Link href="/admin/create-admin">Manage Admins</Link>
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             </div>

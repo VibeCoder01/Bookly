@@ -67,8 +67,11 @@ export function Header({ config }: HeaderProps) {
             </span>
           )}
           {adminInfo && (
-            <span className="text-xs text-muted-foreground">
-              {adminInfo.username} ({adminInfo.isPrimary ? 'Primary' : 'Secondary'} Admin)
+            <span className="text-xs text-muted-foreground flex items-center">
+              {adminInfo.username}
+              <span className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-muted text-foreground text-[10px] font-semibold">
+                {adminInfo.isPrimary ? '1' : '2'}
+              </span>
             </span>
           )}
           <Link href="/admin" passHref>
