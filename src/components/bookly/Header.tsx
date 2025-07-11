@@ -74,12 +74,6 @@ export function Header({ config }: HeaderProps) {
               </span>
             </span>
           )}
-          <Link href="/admin" passHref>
-            <Button variant="ghost" size="sm">
-              <UserCog className="mr-2 h-5 w-5" />
-              Admin
-            </Button>
-          </Link>
         </div>
       </div>
     </header>
