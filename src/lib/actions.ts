@@ -18,8 +18,32 @@ import { getAdminUser, addAdminUserToDb, readAdminUsersFromDb, deleteAdminUser, 
 export async function getCurrentAdmin(): Promise<{ username: string; isPrimary: boolean } | null> {
   const cookieStore = await cookies();
   const username = cookieStore.get(ADMIN_USER_COOKIE)?.value;
-  const isPrimary = cookieStore.get(ADMIN_PRIMARY_COOKIE)?.value === 'true';
-  if (!username) return null;
+  if (!username) {
+    return null;
+  }
+
+  let isPrimary = cookieStore.get(ADMIN_PRIMARY_COOKIE)?.value === 'true';
+
+  if (!isPrimary) {
+    if (username === 'admin') {
+      isPrimary = true;
+    } else {
+      const adminRecord = await getAdminUser(username);
+      isPrimary = !!adminRecord?.isPrimary;
+    }
+  }
+
+  const existingPrimaryCookie = cookieStore.get(ADMIN_PRIMARY_COOKIE)?.value === 'true';
+  if (existingPrimaryCookie !== isPrimary) {
+    cookieStore.set(ADMIN_PRIMARY_COOKIE, isPrimary ? 'true' : 'false', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      sameSite: 'strict',
+      maxAge: 1800,
+    });
+  }
+
   return { username, isPrimary };
 }
 
