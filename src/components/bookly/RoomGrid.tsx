@@ -10,11 +10,13 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { SlotDetailsDialog } from '@/components/bookly/SlotDetailsDialog';
 import { getRoomsWithDailyUsage } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 interface RoomGridProps {
     initialRoomsWithUsage: RoomWithDailyUsage[];
     config: AppConfiguration;
+    currentUser: { username: string } | null;
 }
 
 const colorPalette = [
@@ -31,7 +33,7 @@ const colorPalette = [
 ];
 
 
-export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
+export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGridProps) {
     const searchParams = useSearchParams();
     const router = useRouter();
 
@@ -96,7 +98,26 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
         return { legendData: legendItems, titleToColorMap: titleColorMap };
     }, [gridData]);
 
-    const handleSlotClick = (date: string, slot: SlotStatus) => {
+    const allowAnonymousUsers = config.allowAnonymousUsers ?? true;
+    const isUserLoggedIn = Boolean(currentUser);
+
+    const handleSlotClick = (room: RoomWithDailyUsage, date: string, slot: SlotStatus) => {
+        if (!slot.isBooked) {
+            const params = new URLSearchParams({
+                roomId: room.id,
+                date,
+                startTime: slot.startTime,
+            });
+            const targetPath = `/book?${params.toString()}`;
+
+            if (allowAnonymousUsers || isUserLoggedIn) {
+                router.push(targetPath);
+            } else {
+                router.push(`/user/login?from=${encodeURIComponent(targetPath)}`);
+            }
+            return;
+        }
+
         const colorClass = slot.isBooked && slot.title ? titleToColorMap.get(slot.title) : undefined;
         setSelectedSlot({ date, slot, colorClass });
         setIsSlotDetailsOpen(true);
@@ -150,6 +171,15 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
     };
 
     const styles = scalingStyles[scale];
+    const getSlotTooltipDetails = (date: string, slotInfo: SlotStatus) => {
+        const slotDate = new Date(`${date}T00:00:00`);
+        const slotStart = new Date(`${date}T${slotInfo.startTime}:00`);
+        const slotEnd = new Date(`${date}T${slotInfo.endTime}:00`);
+        return {
+            dateLabel: format(slotDate, 'PPP'),
+            timeLabel: `${format(slotStart, 'p')} - ${format(slotEnd, 'p')}`,
+        };
+    };
     
     const firstDayInView = useMemo(() => {
         if (gridData.length > 0 && gridData[0].dailyUsage.length > 0) {
@@ -160,7 +190,7 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
     }, [gridData]);
 
     return (
-        <>
+        <TooltipProvider delayDuration={100}>
             <div className="w-full max-w-7xl mx-auto mb-6">
                  <div className="flex items-center justify-center gap-4">
                     <Button variant="outline" size="icon" onClick={handlePrevWeek} disabled={isLoading}>
@@ -214,28 +244,37 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
                                 </span>
                                 <div className={cn("flex flex-1", styles.slotGap)}>
                                     {day.slots.map((slot) => {
-                                    return (
-                                        <div
-                                            key={slot.startTime}
-                                            onClick={() => handleSlotClick(day.date, slot)}
-                                            className={cn(
-                                                'flex-1 rounded-sm border-2 border-accent-foreground/30 cursor-pointer relative',
-                                                styles.usageBar,
-                                                slot.isBooked && slot.title
-                                                ? titleToColorMap.get(slot.title)
-                                                : 'bg-transparent'
-                                            )}
-                                        >
-                                            {config.showSlotStrike && slot.isBooked && slot.title && (
-                                                <div
-                                                    className="absolute inset-0 bg-center bg-no-repeat bg-cover"
-                                                    style={{
-                                                        backgroundImage: `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3cline x1='0' y1='0' x2='100%25' y2='100%25' stroke='rgba(255,255,255,0.6)' stroke-width='1.5'/%3e%3c/svg%3e")`
-                                                    }}
-                                                />
-                                            )}
-                                        </div>
-                                    );
+                                        const { dateLabel, timeLabel } = getSlotTooltipDetails(day.date, slot);
+                                        return (
+                                            <Tooltip key={`${day.date}-${slot.startTime}`}>
+                                                <TooltipTrigger asChild>
+                                                    <div
+                                                        onClick={() => handleSlotClick(room, day.date, slot)}
+                                                        className={cn(
+                                                            'flex-1 rounded-sm border-2 border-accent-foreground/30 cursor-pointer relative',
+                                                            styles.usageBar,
+                                                            slot.isBooked && slot.title
+                                                                ? titleToColorMap.get(slot.title)
+                                                                : 'bg-transparent'
+                                                        )}
+                                                        aria-label={`${dateLabel} ${timeLabel}`}
+                                                    >
+                                                        {config.showSlotStrike && slot.isBooked && slot.title && (
+                                                            <div
+                                                                className="absolute inset-0 bg-center bg-no-repeat bg-cover"
+                                                                style={{
+                                                                    backgroundImage: `url("data:image/svg+xml,%3csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3e%3cline x1='0' y1='0' x2='100%25' y2='100%25' stroke='rgba(255,255,255,0.6)' stroke-width='1.5'/%3e%3c/svg%3e")`
+                                                                }}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </TooltipTrigger>
+                                                <TooltipContent>
+                                                    <p className="font-semibold">{dateLabel}</p>
+                                                    <p className="text-xs text-muted-foreground">{timeLabel}</p>
+                                                </TooltipContent>
+                                            </Tooltip>
+                                        );
                                     })}
                                 </div>
                                 </div>
@@ -276,7 +315,7 @@ export function RoomGrid({ initialRoomsWithUsage, config }: RoomGridProps) {
                 details={selectedSlot}
                 showStrike={config.showSlotStrike}
             />
-        </>
+        </TooltipProvider>
     );
 }
 

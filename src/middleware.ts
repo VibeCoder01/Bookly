@@ -1,72 +1,100 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { AUTH_COOKIE_NAME, ADMIN_USER_COOKIE, ADMIN_PRIMARY_COOKIE } from '@/lib/auth'
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import {
+  AUTH_COOKIE_NAME,
+  ADMIN_USER_COOKIE,
+  ADMIN_PRIMARY_COOKIE,
+  USER_AUTH_COOKIE,
+  USER_NAME_COOKIE,
+} from '@/lib/auth';
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
-  const authCookie = request.cookies.get(AUTH_COOKIE_NAME)
-  const isAuthenticated = authCookie?.value === 'true'
+  const { pathname } = request.nextUrl;
 
-  const isLoginPage = pathname.startsWith('/admin/login')
-  const isAdminPage = pathname.startsWith('/admin')
+  const adminAuthCookie = request.cookies.get(AUTH_COOKIE_NAME);
+  const userAuthCookie = request.cookies.get(USER_AUTH_COOKIE);
 
-  // If authenticated and on the login page, redirect to the admin dashboard.
-  if (isAuthenticated && isLoginPage) {
-    return NextResponse.redirect(new URL('/admin', request.url))
+  const isAdminAuthenticated = adminAuthCookie?.value === 'true';
+  const isUserAuthenticated = userAuthCookie?.value === 'true';
+
+  const isAdminPage = pathname.startsWith('/admin');
+  const isAdminLoginPage = pathname.startsWith('/admin/login');
+  const isUserLoginPage = pathname.startsWith('/user/login');
+
+  if (isAdminAuthenticated && isAdminLoginPage) {
+    return NextResponse.redirect(new URL('/admin', request.url));
   }
 
-  // If not authenticated and on a protected admin page, redirect to the login page.
-  if (!isAuthenticated && isAdminPage && !isLoginPage) {
-    const loginUrl = new URL('/admin/login', request.url)
-    loginUrl.searchParams.set('from', pathname)
-    return NextResponse.redirect(loginUrl)
+  if (isUserAuthenticated && isUserLoginPage) {
+    return NextResponse.redirect(new URL('/book', request.url));
   }
 
-  const response = NextResponse.next()
-
-  if (isAuthenticated && !isAdminPage) {
-    // Leaving admin area - clear auth cookies
-    response.cookies.delete(AUTH_COOKIE_NAME)
-    response.cookies.delete(ADMIN_USER_COOKIE)
-    response.cookies.delete(ADMIN_PRIMARY_COOKIE)
-    return response
+  if (!isAdminAuthenticated && !isUserAuthenticated && isAdminPage && !isAdminLoginPage) {
+    const loginUrl = new URL('/admin/login', request.url);
+    loginUrl.searchParams.set('from', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  if (isAuthenticated && isAdminPage) {
-    // Refresh cookies to keep session alive while navigating within admin
-    const secure = process.env.NODE_ENV === 'production'
+  const response = NextResponse.next();
+  const secure = process.env.NODE_ENV === 'production';
+
+  if (isAdminAuthenticated && !isAdminPage) {
+    response.cookies.delete(AUTH_COOKIE_NAME);
+    response.cookies.delete(ADMIN_USER_COOKIE);
+    response.cookies.delete(ADMIN_PRIMARY_COOKIE);
+  } else if (isAdminAuthenticated && isAdminPage) {
     response.cookies.set(AUTH_COOKIE_NAME, 'true', {
       httpOnly: true,
       secure,
       path: '/',
       sameSite: 'strict',
       maxAge: 1800,
-    })
-    const user = request.cookies.get(ADMIN_USER_COOKIE)?.value
-    if (user) {
-      response.cookies.set(ADMIN_USER_COOKIE, user, {
+    });
+    const adminUsername = request.cookies.get(ADMIN_USER_COOKIE)?.value;
+    if (adminUsername) {
+      response.cookies.set(ADMIN_USER_COOKIE, adminUsername, {
         httpOnly: true,
         secure,
         path: '/',
         sameSite: 'strict',
         maxAge: 1800,
-      })
+      });
     }
-    const primary = request.cookies.get(ADMIN_PRIMARY_COOKIE)?.value
-    if (primary) {
-      response.cookies.set(ADMIN_PRIMARY_COOKIE, primary, {
+    const isPrimary = request.cookies.get(ADMIN_PRIMARY_COOKIE)?.value;
+    if (isPrimary) {
+      response.cookies.set(ADMIN_PRIMARY_COOKIE, isPrimary, {
         httpOnly: true,
         secure,
         path: '/',
         sameSite: 'strict',
         maxAge: 1800,
-      })
+      });
     }
   }
 
-  return response
+  if (isUserAuthenticated) {
+    response.cookies.set(USER_AUTH_COOKIE, 'true', {
+      httpOnly: true,
+      secure,
+      path: '/',
+      sameSite: 'strict',
+      maxAge: 1800,
+    });
+    const username = request.cookies.get(USER_NAME_COOKIE)?.value;
+    if (username) {
+      response.cookies.set(USER_NAME_COOKIE, username, {
+        httpOnly: true,
+        secure,
+        path: '/',
+        sameSite: 'strict',
+        maxAge: 1800,
+      });
+    }
+  }
+
+  return response;
 }
 
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
-}
+};

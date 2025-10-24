@@ -1,38 +1,86 @@
 
 'use client';
 
-import { CalendarCheck, UserCog, Wifi } from 'lucide-react';
+import { CalendarCheck, Wifi } from 'lucide-react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
 import React, { useState, useEffect } from 'react';
 import type { AppConfiguration } from '@/types';
 import Image from 'next/image';
 import { useUser } from '@/context/UserContext';
-import { getCurrentAdmin } from '@/lib/actions';
+import { getCurrentAdmin, getCurrentUser } from '@/lib/actions';
+import { usePathname } from 'next/navigation';
 
 interface HeaderProps {
   config: AppConfiguration;
+  initialAdminInfo: { username: string; isPrimary: boolean } | null;
+  initialUserInfo: { username: string } | null;
 }
 
-export function Header({ config }: HeaderProps) {
+export function Header({ config, initialAdminInfo, initialUserInfo }: HeaderProps) {
   const [ipAddress, setIpAddress] = useState<string | null>(null);
   const [isLoadingIp, setIsLoadingIp] = useState(true);
   const { userName } = useUser();
-  const [adminInfo, setAdminInfo] = useState<{ username: string; isPrimary: boolean } | null>(null);
+  const pathname = usePathname();
+  const [adminInfo, setAdminInfo] = useState<{ username: string; isPrimary: boolean } | null>(initialAdminInfo);
+  const [userInfo, setUserInfo] = useState<{ username: string } | null>(initialUserInfo);
 
   useEffect(() => {
+    let cancelled = false;
     fetch('/api/ip')
       .then((res) => res.json())
       .then((data) => {
-        setIpAddress(data.ip || 'N/A');
-        setIsLoadingIp(false);
+        if (!cancelled) {
+          setIpAddress(data.ip || 'N/A');
+          setIsLoadingIp(false);
+        }
       })
       .catch(() => {
-        setIpAddress('Error fetching IP');
-        setIsLoadingIp(false);
+        if (!cancelled) {
+          setIpAddress('Error fetching IP');
+          setIsLoadingIp(false);
+        }
       });
-    getCurrentAdmin().then(setAdminInfo).catch(() => setAdminInfo(null));
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  useEffect(() => {
+    setAdminInfo(initialAdminInfo);
+  }, [initialAdminInfo]);
+
+  useEffect(() => {
+    setUserInfo(initialUserInfo);
+  }, [initialUserInfo]);
+
+  useEffect(() => {
+    let active = true;
+    getCurrentAdmin()
+      .then((info) => {
+        if (active) {
+          setAdminInfo(info);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setAdminInfo(null);
+        }
+      });
+    getCurrentUser()
+      .then((info) => {
+        if (active) {
+          setUserInfo(info);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setUserInfo(null);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [pathname]);
 
   return (
     <header className="py-6 border-b border-border">
@@ -61,18 +109,33 @@ export function Header({ config }: HeaderProps) {
               </div>
             )
           )}
-          {userName && (
-            <span className="text-foreground text-sm">
-              Welcome, <span className="font-semibold text-primary">{userName}</span>!
-            </span>
-          )}
-          {adminInfo && (
-            <span className="text-xs text-muted-foreground flex items-center">
-              {adminInfo.username}
-              <span className="ml-1 inline-flex items-center justify-center w-4 h-4 rounded-full bg-muted text-foreground text-[10px] font-semibold">
-                {adminInfo.isPrimary ? '1' : '2'}
+          {adminInfo ? (
+            <span
+              className="text-foreground text-sm flex items-center gap-2"
+              title={adminInfo.isPrimary ? 'Primary admin' : 'Secondary admin'}
+            >
+              Admin:
+              <span className="font-semibold text-primary">{adminInfo.username}</span>
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-muted text-foreground text-[10px] font-semibold">
+                {adminInfo.isPrimary ? 'P' : 'S'}
               </span>
             </span>
+          ) : userInfo ? (
+            <span className="text-foreground text-sm flex items-center gap-2" title="Authenticated user">
+              User:
+              <span className="font-semibold text-primary">{userInfo.username}</span>
+            </span>
+          ) : (
+            userName && (
+              <span className="text-foreground text-sm">
+                Welcome, <span className="font-semibold text-primary">{userName}</span>!
+              </span>
+            )
+          )}
+          {!adminInfo && !userInfo && (
+            <Link href="/user/login" className="text-sm text-primary hover:underline">
+              User Login
+            </Link>
           )}
         </div>
       </div>

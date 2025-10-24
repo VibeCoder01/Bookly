@@ -45,6 +45,11 @@ function ensureDb() {
       passwordSalt TEXT NOT NULL,
       isPrimary INTEGER DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS users (
+      username TEXT PRIMARY KEY,
+      passwordHash TEXT NOT NULL,
+      passwordSalt TEXT NOT NULL
+    );
   `]);
   } catch (err) {
     console.error('[SQLite] Failed to initialize database using command', SQLITE_CMD, err);
@@ -132,7 +137,7 @@ export async function writeConfigToDb(cfg: AppConfiguration): Promise<void> {
 }
 
 // --- Admin Users ---
-import type { AdminUser } from '@/types';
+import type { AdminUser, AppUser } from '@/types';
 
 export async function readAdminUsersFromDb(): Promise<AdminUser[]> {
   return query('SELECT username, passwordHash, passwordSalt, isPrimary FROM admins;');
@@ -153,4 +158,27 @@ export async function deleteAdminUser(username: string): Promise<void> {
 
 export async function renameAdminUser(oldUsername: string, newUsername: string): Promise<void> {
   run(`UPDATE admins SET username = ${esc(newUsername)} WHERE username = ${esc(oldUsername)};`);
+}
+
+// --- App Users ---
+
+export async function readAppUsersFromDb(): Promise<AppUser[]> {
+  return query('SELECT username, passwordHash, passwordSalt FROM users;');
+}
+
+export async function getAppUser(username: string): Promise<AppUser | undefined> {
+  const rows = query(`SELECT username, passwordHash, passwordSalt FROM users WHERE username = ${esc(username)} LIMIT 1;`);
+  return rows[0] as AppUser | undefined;
+}
+
+export async function addAppUserToDb(user: AppUser): Promise<void> {
+  run(`INSERT OR REPLACE INTO users (username, passwordHash, passwordSalt) VALUES (${esc(user.username)}, ${esc(user.passwordHash)}, ${esc(user.passwordSalt)});`);
+}
+
+export async function deleteAppUser(username: string): Promise<void> {
+  run(`DELETE FROM users WHERE username = ${esc(username)};`);
+}
+
+export async function renameAppUser(oldUsername: string, newUsername: string): Promise<void> {
+  run(`UPDATE users SET username = ${esc(newUsername)} WHERE username = ${esc(oldUsername)};`);
 }

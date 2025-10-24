@@ -1,7 +1,7 @@
 
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { changeAdminPassword } from '@/lib/actions';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle, CheckCircle, KeyRound, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useFormStatus } from 'react-dom';
+import { getCurrentAdmin } from '@/lib/actions';
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -28,6 +29,20 @@ function ChangePasswordForm() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
   const success = searchParams.get('success');
+  const [adminInfo, setAdminInfo] = useState<{ username: string; isPrimary: boolean } | null>(null);
+
+  useEffect(() => {
+    getCurrentAdmin()
+      .then(setAdminInfo)
+      .catch(() => setAdminInfo(null));
+  }, []);
+
+  const title = adminInfo?.isPrimary ? 'Change Primary Admin Password' : 'Change Your Password';
+  const description = adminInfo?.isPrimary
+    ? 'Update credentials for the primary admin account.'
+    : adminInfo
+      ? `Update the password for ${adminInfo.username}.`
+      : 'Enter your old password and a new one.';
 
   return (
     <form action={changeAdminPassword}>
@@ -36,8 +51,8 @@ function ChangePasswordForm() {
           <div className="mx-auto bg-primary/10 p-3 rounded-full w-fit">
             <KeyRound className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="font-headline text-2xl text-primary mt-2">Change Admin Password</CardTitle>
-          <CardDescription>Enter your old password and a new one.</CardDescription>
+          <CardTitle className="font-headline text-2xl text-primary mt-2">{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {error && (

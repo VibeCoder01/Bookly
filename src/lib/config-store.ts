@@ -20,6 +20,9 @@ const DEFAULT_CONFIG: AppConfiguration = {
   includeWeekends: false,
   showHomePageKey: true,
   showSlotStrike: true,
+  allowAnonymousUsers: true,
+  allowAnonymousBookingDeletion: true,
+  allowAnonymousBookingEditing: true,
 };
 
 export const readConfigurationFromFile = async (): Promise<AppConfiguration> => {
@@ -27,6 +30,15 @@ export const readConfigurationFromFile = async (): Promise<AppConfiguration> => 
   const sanitized: Record<string, any> = {};
   for (const [key, value] of Object.entries(cfg)) {
     sanitized[key] = value === null ? undefined : value;
+  }
+  if (sanitized.allowAnonymousUsers === undefined) {
+    sanitized.allowAnonymousUsers = true;
+  }
+  if (sanitized.allowAnonymousBookingDeletion === undefined) {
+    sanitized.allowAnonymousBookingDeletion = true;
+  }
+  if (sanitized.allowAnonymousBookingEditing === undefined) {
+    sanitized.allowAnonymousBookingEditing = true;
   }
   return sanitized as AppConfiguration;
 };

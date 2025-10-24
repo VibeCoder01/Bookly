@@ -4,8 +4,8 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text, ImageIcon, KeyRound, LogOut, Scaling, CalendarDays, KeySquare, Palette, Slash } from 'lucide-react';
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text, ImageIcon, KeyRound, LogOut, Scaling, CalendarDays, KeySquare, Slash, UserCog } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useCallback, useRef, useTransition } from 'react';
 import type { Booking, Room, AppConfiguration } from '@/types';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
@@ -19,7 +19,15 @@ import {
     exportAllSettings,
     importAllSettings,
     logoutAdmin,
-    getCurrentAdmin
+    getCurrentAdmin,
+    listAppUsers,
+    createAppUserAccount,
+    resetAppUserPassword,
+    deleteAppUserAccount,
+    renameAppUserAccount,
+    getCurrentUser,
+    changeCurrentUserPassword,
+    logoutUser
 } from '@/lib/actions';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -51,6 +59,9 @@ interface AdminConfigFormState {
   includeWeekends: boolean;
   showHomePageKey: boolean;
   showSlotStrike: boolean;
+  allowAnonymousUsers: boolean;
+  allowAnonymousBookingDeletion: boolean;
+  allowAnonymousBookingEditing: boolean;
 }
 
 const convertMinutesToDurationString = (minutes: number): string => {
@@ -78,13 +89,31 @@ export default function AdminPage() {
   const [showBookingsTable, setShowBookingsTable] = useState(false);
 
   // Configuration state
-  const [config, setConfig] = useState<AdminConfigFormState>({ appName: '', appSubtitle: '', slotDuration: '', startOfDay: '', endOfDay: '', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false, showHomePageKey: true, showSlotStrike: true });
+  const [config, setConfig] = useState<AdminConfigFormState>({
+    appName: '',
+    appSubtitle: '',
+    slotDuration: '',
+    startOfDay: '',
+    endOfDay: '',
+    homePageScale: 'sm',
+    weekStartsOnMonday: false,
+    includeWeekends: false,
+    showHomePageKey: true,
+    showSlotStrike: true,
+    allowAnonymousUsers: true,
+    allowAnonymousBookingDeletion: true,
+    allowAnonymousBookingEditing: true,
+  });
   const [currentLogo, setCurrentLogo] = useState<string | undefined>(undefined);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
   const [isApplyingChanges, setIsApplyingChanges] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
   const [isRevertingLogo, setIsRevertingLogo] = useState(false);
   const [adminInfo, setAdminInfo] = useState<{ username: string; isPrimary: boolean } | null>(null);
+  const [appUsers, setAppUsers] = useState<{ username: string }[]>([]);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+  const [isUserActionPending, setIsUserActionPending] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ username: string } | null>(null);
 
 
   // Rooms state
@@ -98,6 +127,11 @@ export default function AdminPage() {
   const [fileToImport, setFileToImport] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isAdmin = !!adminInfo;
+  const isPrimaryAdmin = adminInfo?.isPrimary ?? false;
+  const canManageBranding = isPrimaryAdmin;
+  const isUserOnly = !isAdmin && !!currentUser;
 
 
   const fetchAdminConfiguration = useCallback(async () => {
@@ -116,6 +150,9 @@ export default function AdminPage() {
         includeWeekends: !!currentConfig.includeWeekends,
         showHomePageKey: !!currentConfig.showHomePageKey,
         showSlotStrike: !!currentConfig.showSlotStrike,
+        allowAnonymousUsers: currentConfig.allowAnonymousUsers ?? true,
+        allowAnonymousBookingDeletion: currentConfig.allowAnonymousBookingDeletion ?? true,
+        allowAnonymousBookingEditing: currentConfig.allowAnonymousBookingEditing ?? true,
       });
       setCurrentLogo(currentConfig.appLogo);
     } catch (err) {
@@ -125,7 +162,21 @@ export default function AdminPage() {
         title: 'Error Fetching Configuration',
         description: 'Could not load current settings. Displaying defaults.',
       });
-      setConfig({ appName: 'Bookly', appSubtitle: 'Room booking system', slotDuration: '1 hour', startOfDay: '09:00', endOfDay: '17:00', homePageScale: 'sm', weekStartsOnMonday: false, includeWeekends: false, showHomePageKey: true, showSlotStrike: true });
+      setConfig({
+        appName: 'Bookly',
+        appSubtitle: 'Room booking system',
+        slotDuration: '1 hour',
+        startOfDay: '09:00',
+        endOfDay: '17:00',
+        homePageScale: 'sm',
+        weekStartsOnMonday: false,
+        includeWeekends: false,
+        showHomePageKey: true,
+        showSlotStrike: true,
+        allowAnonymousUsers: true,
+        allowAnonymousBookingDeletion: true,
+        allowAnonymousBookingEditing: true,
+      });
       setCurrentLogo(undefined);
     } finally {
       setIsLoadingConfig(false);
@@ -164,11 +215,40 @@ export default function AdminPage() {
     }
   }, []);
 
+  const fetchAppUsers = useCallback(async () => {
+    setIsLoadingUsers(true);
+    try {
+      const result = await listAppUsers();
+      if (result.error) {
+        toast({ variant: 'destructive', title: 'Error Fetching Users', description: result.error });
+        setAppUsers([]);
+      } else {
+        setAppUsers(result.users);
+      }
+    } catch (err) {
+      console.error('Failed to fetch users:', err);
+      toast({ variant: 'destructive', title: 'Error Fetching Users', description: 'Could not load user accounts.' });
+      setAppUsers([]);
+    } finally {
+      setIsLoadingUsers(false);
+    }
+  }, [toast]);
+
   useEffect(() => {
     fetchAdminConfiguration();
     fetchRooms();
     getCurrentAdmin().then(setAdminInfo).catch(() => setAdminInfo(null));
+    getCurrentUser().then(setCurrentUser).catch(() => setCurrentUser(null));
   }, [fetchAdminConfiguration, fetchRooms]);
+
+  useEffect(() => {
+    if (adminInfo) {
+      fetchAppUsers();
+    } else {
+      setAppUsers([]);
+      setIsLoadingUsers(false);
+    }
+  }, [adminInfo, fetchAppUsers]);
 
   const roomMap = useMemo(() => new Map<string, Room>(rooms.map(room => [room.id, room])), [rooms]);
 
@@ -206,7 +286,15 @@ export default function AdminPage() {
       includeWeekends: config.includeWeekends,
       showHomePageKey: config.showHomePageKey,
       showSlotStrike: config.showSlotStrike,
+      allowAnonymousUsers: config.allowAnonymousUsers,
+      allowAnonymousBookingDeletion: config.allowAnonymousBookingDeletion,
+      allowAnonymousBookingEditing: config.allowAnonymousBookingEditing,
     };
+
+    if (!canManageBranding) {
+      delete updates.appName;
+      delete updates.appSubtitle;
+    }
 
     const result = await serverUpdateAppConfiguration(updates);
 
@@ -229,6 +317,11 @@ export default function AdminPage() {
   
   const handleLogoUpload = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (!canManageBranding) {
+      toast({ variant: 'destructive', title: 'Not Allowed', description: 'Only the primary admin can update the application logo.' });
+      return;
+    }
 
     const form = event.currentTarget;
     const fileInput = form.elements.namedItem('logo') as HTMLInputElement;
@@ -269,6 +362,11 @@ export default function AdminPage() {
   };
 
   const handleRevertLogo = async () => {
+    if (!canManageBranding) {
+      toast({ variant: 'destructive', title: 'Not Allowed', description: 'Only the primary admin can change the application logo.' });
+      return;
+    }
+
     setIsRevertingLogo(true);
     const result = await revertToDefaultLogo();
 
@@ -294,6 +392,9 @@ export default function AdminPage() {
       case 'includeWeekends': return <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'showHomePageKey': return <KeySquare className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'showSlotStrike': return <Slash className="mr-2 h-4 w-4 text-muted-foreground" />;
+      case 'allowAnonymousUsers': return <UserCog className="mr-2 h-4 w-4 text-muted-foreground" />;
+      case 'allowAnonymousBookingDeletion': return <Trash2 className="mr-2 h-4 w-4 text-muted-foreground" />;
+      case 'allowAnonymousBookingEditing': return <Pencil className="mr-2 h-4 w-4 text-muted-foreground" />;
       default: return null;
     }
   };
@@ -322,6 +423,136 @@ export default function AdminPage() {
       }
       setRoomToDelete(null);
   }
+
+  const performUserAction = useCallback(
+    async (
+      action: () => Promise<{ success: boolean; error?: string }>,
+      successDescription: string,
+      onSuccess?: () => void
+    ) => {
+      setIsUserActionPending(true);
+      try {
+        const result = await action();
+        if (result.success) {
+          onSuccess?.();
+          toast({ title: 'Success', description: successDescription });
+          await fetchAppUsers();
+        } else {
+          toast({
+            variant: 'destructive',
+            title: 'Action Failed',
+            description: result.error || 'An unexpected error occurred.',
+          });
+        }
+      } catch (error) {
+        console.error('[User Management Error]', error);
+        toast({
+          variant: 'destructive',
+          title: 'Action Failed',
+          description: 'An unexpected error occurred.',
+        });
+      } finally {
+        setIsUserActionPending(false);
+      }
+    },
+    [fetchAppUsers, toast]
+  );
+
+  const handleCreateUser = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const username = (formData.get('username') as string | null)?.trim() || '';
+    const password = (formData.get('password') as string | null) || '';
+    const confirmPassword = (formData.get('confirmPassword') as string | null) || '';
+
+    if (!username || !password || !confirmPassword) {
+      toast({ variant: 'destructive', title: 'Invalid Input', description: 'All fields are required.' });
+      return;
+    }
+
+    await performUserAction(
+      () => createAppUserAccount({ username, password, confirmPassword }),
+      'User account created.',
+      () => form.reset()
+    );
+  };
+
+  const handleRenameUser = async (event: React.FormEvent<HTMLFormElement>, currentUsername: string) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const newUsername = (formData.get('newUsername') as string | null)?.trim() || '';
+
+    if (!newUsername) {
+      toast({ variant: 'destructive', title: 'Invalid Input', description: 'New username is required.' });
+      return;
+    }
+
+    await performUserAction(
+      () => renameAppUserAccount({ currentUsername, newUsername }),
+      'User renamed.',
+      () => form.reset()
+    );
+  };
+
+  const handleResetUserPassword = async (event: React.FormEvent<HTMLFormElement>, username: string) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const newPassword = (formData.get('newPassword') as string | null) || '';
+    const confirmPassword = (formData.get('confirmPassword') as string | null) || '';
+
+    if (!newPassword || !confirmPassword) {
+      toast({ variant: 'destructive', title: 'Invalid Input', description: 'Password fields are required.' });
+      return;
+    }
+
+    await performUserAction(
+      () => resetAppUserPassword({ username, newPassword, confirmPassword }),
+      'User password updated.',
+      () => form.reset()
+    );
+  };
+
+  const handleDeleteUser = async (username: string) => {
+    const confirmed = window.confirm(`Delete user "${username}"? This action cannot be undone.`);
+    if (!confirmed) return;
+    await performUserAction(() => deleteAppUserAccount(username), 'User deleted.');
+  };
+
+  const handleUserPasswordChange = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const formData = new FormData(form);
+    const oldPassword = (formData.get('oldPassword') as string | null) || '';
+    const newPassword = (formData.get('newPassword') as string | null) || '';
+    const confirmPassword = (formData.get('confirmPassword') as string | null) || '';
+
+    setIsUserActionPending(true);
+    try {
+      const result = await changeCurrentUserPassword({ oldPassword, newPassword, confirmPassword });
+      if (result.success) {
+        toast({ title: 'Success', description: 'Password updated successfully.' });
+        form.reset();
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Update Failed',
+          description: result.error || 'Failed to update password.',
+        });
+      }
+    } catch (error) {
+      console.error('[User Password Change Error]', error);
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: 'An unexpected error occurred.',
+      });
+    } finally {
+      setIsUserActionPending(false);
+    }
+  };
 
   const handleExport = async () => {
     const result = await exportAllSettings();
@@ -368,7 +599,67 @@ export default function AdminPage() {
   };
 
   const handleLogout = async () => {
+    if (adminInfo) {
       await logoutAdmin();
+    } else {
+      await logoutUser();
+    }
+  };
+
+  if (isUserOnly) {
+    return (
+      <main className="container mx-auto py-12 px-4">
+        <div className="max-w-lg mx-auto space-y-6">
+          <Card className="shadow-xl rounded-xl">
+            <CardHeader>
+              <CardTitle className="font-headline text-2xl text-primary">Update Your Password</CardTitle>
+              <CardDescription>
+                Signed in as <span className="font-semibold">{currentUser?.username}</span>. Change your password below.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleUserPasswordChange} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="oldPassword">Current Password</Label>
+                  <Input id="oldPassword" name="oldPassword" type="password" required disabled={isUserActionPending} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="newPassword">New Password</Label>
+                  <Input id="newPassword" name="newPassword" type="password" required minLength={8} disabled={isUserActionPending} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                  <Input id="confirmPassword" name="confirmPassword" type="password" required disabled={isUserActionPending} />
+                </div>
+                <Button type="submit" className="w-full" disabled={isUserActionPending}>
+                  {isUserActionPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Change Password
+                </Button>
+              </form>
+            </CardContent>
+            <CardFooter className="flex flex-col sm:flex-row gap-2 sm:justify-between">
+              <Button variant="outline" onClick={handleLogout} disabled={isUserActionPending}>
+                Logout
+              </Button>
+              <Button asChild variant="secondary">
+                <Link href="/">Back to Home</Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </main>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <main className="container mx-auto py-20 flex justify-center items-center">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Loading...</span>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -559,22 +850,38 @@ export default function AdminPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                          <TableRow>
-                              <TableCell className="font-medium pl-6 flex items-center">
+                          {canManageBranding && (
+                            <>
+                              <TableRow>
+                                <TableCell className="font-medium pl-6 flex items-center">
                                   {getIconForSetting('appName')} App Name
-                              </TableCell>
-                              <TableCell className="text-right pr-6">
-                                  <Input value={config.appName} onChange={(e) => handleConfigChange('appName', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="e.g., Bookly" disabled={isApplyingChanges} />
-                              </TableCell>
-                          </TableRow>
-                          <TableRow>
-                              <TableCell className="font-medium pl-6 flex items-center">
+                                </TableCell>
+                                <TableCell className="text-right pr-6">
+                                  <Input
+                                    value={config.appName}
+                                    onChange={(e) => handleConfigChange('appName', e.target.value)}
+                                    className="text-right sm:w-[220px] ml-auto"
+                                    placeholder="e.g., Bookly"
+                                    disabled={isApplyingChanges}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                              <TableRow>
+                                <TableCell className="font-medium pl-6 flex items-center">
                                   {getIconForSetting('appSubtitle')} App Subtitle
-                              </TableCell>
-                              <TableCell className="text-right pr-6">
-                                  <Input value={config.appSubtitle} onChange={(e) => handleConfigChange('appSubtitle', e.target.value)} className="text-right sm:w-[220px] ml-auto" placeholder="e.g., Room booking system" disabled={isApplyingChanges} />
-                              </TableCell>
-                          </TableRow>
+                                </TableCell>
+                                <TableCell className="text-right pr-6">
+                                  <Input
+                                    value={config.appSubtitle}
+                                    onChange={(e) => handleConfigChange('appSubtitle', e.target.value)}
+                                    className="text-right sm:w-[220px] ml-auto"
+                                    placeholder="e.g., Room booking system"
+                                    disabled={isApplyingChanges}
+                                  />
+                                </TableCell>
+                              </TableRow>
+                            </>
+                          )}
                           <TableRow>
                               <TableCell className="font-medium pl-6 flex items-center">
                                   {getIconForSetting('slotDuration')} Booking Slot Duration
@@ -624,6 +931,51 @@ export default function AdminPage() {
                                       </SelectContent>
                                   </Select>
                               </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium pl-6 flex items-center">
+                                {getIconForSetting('allowAnonymousUsers')} Allow Anonymous Bookings
+                            </TableCell>
+                            <TableCell className="text-right pr-6">
+                              <div className="flex justify-end">
+                                <Switch
+                                    checked={config.allowAnonymousUsers}
+                                    onCheckedChange={(checked) => handleConfigChange('allowAnonymousUsers', checked)}
+                                    disabled={isApplyingChanges}
+                                    aria-label="Toggle requiring user login before booking"
+                                />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium pl-6 flex items-center">
+                                {getIconForSetting('allowAnonymousBookingDeletion')} Allow Anonymous to Delete Bookings
+                            </TableCell>
+                            <TableCell className="text-right pr-6">
+                              <div className="flex justify-end">
+                                <Switch
+                                    checked={config.allowAnonymousBookingDeletion}
+                                    onCheckedChange={(checked) => handleConfigChange('allowAnonymousBookingDeletion', checked)}
+                                    disabled={isApplyingChanges}
+                                    aria-label="Toggle anonymous booking deletion"
+                                />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium pl-6 flex items-center">
+                                {getIconForSetting('allowAnonymousBookingEditing')} Allow Anonymous to Edit Bookings
+                            </TableCell>
+                            <TableCell className="text-right pr-6">
+                              <div className="flex justify-end">
+                                <Switch
+                                    checked={config.allowAnonymousBookingEditing}
+                                    onCheckedChange={(checked) => handleConfigChange('allowAnonymousBookingEditing', checked)}
+                                    disabled={isApplyingChanges}
+                                    aria-label="Toggle anonymous booking editing"
+                                />
+                              </div>
+                            </TableCell>
                           </TableRow>
                           <TableRow>
                             <TableCell className="font-medium pl-6 flex items-center">
@@ -721,6 +1073,137 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </div>
+            {/* --- USER MANAGEMENT --- */}
+            <div className="pt-6 border-t">
+              <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
+                <UserCog className="mr-2 h-5 w-5" />
+                User Accounts
+              </h3>
+              <Card className="bg-card">
+                <CardHeader>
+                  <CardTitle className="text-lg">Booking Users</CardTitle>
+                  <CardDescription>Create, rename, reset passwords, or delete booking user accounts.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {isLoadingUsers ? (
+                    <div className="flex items-center justify-center text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <span>Loading users...</span>
+                    </div>
+                  ) : appUsers.length > 0 ? (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Username</TableHead>
+                          <TableHead>Rename</TableHead>
+                          <TableHead>Reset Password</TableHead>
+                          <TableHead className="text-right">Delete</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {appUsers.map((user) => (
+                          <TableRow key={user.username}>
+                            <TableCell className="font-medium">{user.username}</TableCell>
+                            <TableCell>
+                              <form
+                                onSubmit={(event) => handleRenameUser(event, user.username)}
+                                className="flex flex-col sm:flex-row gap-2 sm:items-center"
+                              >
+                                <Input
+                                  name="newUsername"
+                                  placeholder="New username"
+                                  className="w-full sm:w-44"
+                                  required
+                                  disabled={isUserActionPending}
+                                />
+                                <Button type="submit" size="sm" disabled={isUserActionPending}>
+                                  {isUserActionPending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                                  Rename
+                                </Button>
+                              </form>
+                            </TableCell>
+                            <TableCell>
+                              <form
+                                onSubmit={(event) => handleResetUserPassword(event, user.username)}
+                                className="flex flex-col sm:flex-row gap-2 sm:items-center"
+                              >
+                                <Input
+                                  name="newPassword"
+                                  type="password"
+                                  placeholder="New password"
+                                  className="w-full sm:w-40"
+                                  required
+                                  minLength={8}
+                                  disabled={isUserActionPending}
+                                />
+                                <Input
+                                  name="confirmPassword"
+                                  type="password"
+                                  placeholder="Confirm"
+                                  className="w-full sm:w-36"
+                                  required
+                                  disabled={isUserActionPending}
+                                />
+                                <Button type="submit" size="sm" variant="secondary" disabled={isUserActionPending}>
+                                  {isUserActionPending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+                                  Reset
+                                </Button>
+                              </form>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="destructive"
+                                onClick={() => handleDeleteUser(user.username)}
+                                disabled={isUserActionPending}
+                              >
+                                Delete
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No user accounts found. Add a user below.</p>
+                  )}
+                  <div className="space-y-2">
+                    <h4 className="font-medium">Add User</h4>
+                    <form onSubmit={handleCreateUser} className="flex flex-col sm:flex-row gap-2 sm:items-center">
+                      <Input
+                        name="username"
+                        placeholder="Username"
+                        required
+                        disabled={isUserActionPending}
+                        className="w-full sm:w-40"
+                      />
+                      <Input
+                        name="password"
+                        type="password"
+                        placeholder="Password"
+                        required
+                        minLength={8}
+                        disabled={isUserActionPending}
+                        className="w-full sm:w-48"
+                      />
+                      <Input
+                        name="confirmPassword"
+                        type="password"
+                        placeholder="Confirm"
+                        required
+                        disabled={isUserActionPending}
+                        className="w-full sm:w-48"
+                      />
+                      <Button type="submit" disabled={isUserActionPending}>
+                        {isUserActionPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        {isUserActionPending ? 'Saving...' : 'Add User'}
+                      </Button>
+                    </form>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
             
             {/* --- DATA MANAGEMENT --- */}
             <div className="pt-6 border-t">
@@ -753,55 +1236,62 @@ export default function AdminPage() {
             </div>
 
             {/* --- LOGO MANAGEMENT --- */}
-            <div className="pt-6 border-t">
-              <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
-                <ImageIcon className="mr-2 h-5 w-5" />
-                Application Logo
-              </h3>
-              <Card className="bg-card">
-                <CardHeader>
-                  <CardTitle className="text-lg">Upload Logo</CardTitle>
-                  <CardDescription>Replace the default icon with your own logo. Recommended size: 40x40 pixels.</CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col sm:flex-row items-start gap-6">
-                  <div className="flex-shrink-0">
-                    <p className="text-sm font-medium mb-2">Current Logo</p>
-                    <div className="h-12 w-12 rounded-md border border-dashed flex items-center justify-center bg-muted">
-                      {isLoadingConfig ? (
-                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                      ) : currentLogo ? (
-                        <Image src={currentLogo} alt="Current App Logo" width={40} height={40} className="object-contain" unoptimized />
-                      ) : (
-                        <CalendarCheck className="h-8 w-8 text-muted-foreground" />
-                      )}
+            {canManageBranding && (
+              <div className="pt-6 border-t">
+                <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
+                  <ImageIcon className="mr-2 h-5 w-5" />
+                  Application Logo
+                </h3>
+                <Card className="bg-card">
+                  <CardHeader>
+                    <CardTitle className="text-lg">Upload Logo</CardTitle>
+                    <CardDescription>Replace the default icon with your own logo. Recommended size: 40x40 pixels.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col sm:flex-row items-start gap-6">
+                    <div className="flex-shrink-0">
+                      <p className="text-sm font-medium mb-2">Current Logo</p>
+                      <div className="h-12 w-12 rounded-md border border-dashed flex items-center justify-center bg-muted">
+                        {isLoadingConfig ? (
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        ) : currentLogo ? (
+                          <Image src={currentLogo} alt="Current App Logo" width={40} height={40} className="object-contain" unoptimized />
+                        ) : (
+                          <CalendarCheck className="h-8 w-8 text-muted-foreground" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <form onSubmit={handleLogoUpload} className="flex-grow">
-                    <Label htmlFor="logo-upload" className="mb-2 block">Upload New Logo</Label>
-                    <div className="flex flex-wrap items-center gap-2">
-                        <Input 
-                          id="logo-upload" 
-                          name="logo" 
-                          type="file" 
-                          required 
-                          accept="image/png, image/jpeg, image/svg+xml, image/webp" 
-                          className="flex-grow"
-                          disabled={isUploadingLogo || isLoadingConfig || isRevertingLogo} 
-                        />
-                        <Button type="submit" disabled={isUploadingLogo || isLoadingConfig || isRevertingLogo}>
-                            {isUploadingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                            Save
-                        </Button>
-                        <Button type="button" variant="outline" onClick={handleRevertLogo} disabled={!currentLogo || isUploadingLogo || isLoadingConfig || isRevertingLogo}>
-                            {isRevertingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                            Use Default
-                        </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">Maximum file size: 1MB. The logo will be displayed at 40x40px.</p>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
+                    <form onSubmit={handleLogoUpload} className="flex-grow">
+                      <Label htmlFor="logo-upload" className="mb-2 block">Upload New Logo</Label>
+                      <div className="flex flex-wrap items-center gap-2">
+                          <Input 
+                            id="logo-upload" 
+                            name="logo" 
+                            type="file" 
+                            required 
+                            accept="image/png, image/jpeg, image/svg+xml, image/webp" 
+                            className="flex-grow"
+                            disabled={isUploadingLogo || isLoadingConfig || isRevertingLogo} 
+                          />
+                          <Button type="submit" disabled={isUploadingLogo || isLoadingConfig || isRevertingLogo}>
+                              {isUploadingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                              Save
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleRevertLogo}
+                            disabled={!currentLogo || isUploadingLogo || isLoadingConfig || isRevertingLogo}
+                          >
+                              {isRevertingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                              Use Default
+                          </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">Maximum file size: 1MB. The logo will be displayed at 40x40px.</p>
+                    </form>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
           </CardContent>
         </Card>

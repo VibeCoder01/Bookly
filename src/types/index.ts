@@ -39,6 +39,10 @@ export interface RoomBookingsDialogProps {
   roomName: string;
   date: string;
   bookings: Booking[];
+  canDeleteBookings: boolean;
+  requiresAuthForDeletion: boolean;
+  canEditBookings: boolean;
+  requiresAuthForEditing: boolean;
 }
 
 export interface AIResponse {
@@ -87,6 +91,9 @@ export interface AppConfiguration {
   includeWeekends?: boolean;
   showHomePageKey?: boolean;
   showSlotStrike?: boolean;
+  allowAnonymousUsers?: boolean;
+  allowAnonymousBookingDeletion?: boolean;
+  allowAnonymousBookingEditing?: boolean;
 }
 
 export interface RoomFormData {
@@ -106,6 +113,12 @@ export interface AdminUser {
   passwordHash: string;
   passwordSalt: string;
   isPrimary?: boolean;
+}
+
+export interface AppUser {
+  username: string;
+  passwordHash: string;
+  passwordSalt: string;
 }
 
     

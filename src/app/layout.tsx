@@ -2,7 +2,7 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
-import { getCurrentConfiguration } from '@/lib/actions';
+import { getCurrentConfiguration, getCurrentAdmin, getCurrentUser } from '@/lib/actions';
 import { Header } from '@/components/bookly/Header';
 import { UserProvider } from '@/context/UserContext';
 
@@ -16,7 +16,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const config = await getCurrentConfiguration();
+  const [config, adminInfo, userInfo] = await Promise.all([
+    getCurrentConfiguration(),
+    getCurrentAdmin(),
+    getCurrentUser(),
+  ]);
 
   return (
     <html lang="en">
@@ -28,7 +32,7 @@ export default async function RootLayout({
       </head>
       <body className="font-body antialiased bg-background text-foreground min-h-screen flex flex-col">
         <UserProvider>
-          <Header config={config} />
+          <Header config={config} initialAdminInfo={adminInfo} initialUserInfo={userInfo} />
           {children}
         </UserProvider>
         <Toaster />

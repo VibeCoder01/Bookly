@@ -13,9 +13,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 import { CalendarIcon, Clock, Building2, User, Mail, Loader2, AlertTriangle, Eye, ArrowRight, Bookmark } from 'lucide-react';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { getAvailableTimeSlots, submitBooking, getBookingsForRoomAndDate } from '@/lib/actions';
 import { RoomBookingsDialog } from './RoomBookingsDialog';
 import { useRouter } from 'next/navigation';
@@ -24,6 +24,12 @@ interface BookingFormProps {
   rooms: Room[];
   onBookingAttemptCompleted: (booking: Booking | null) => void;
   initialRoomId?: string | null;
+  initialDate?: string | null;
+  initialStartTime?: string | null;
+  canDeleteBookings?: boolean;
+  requiresAuthForDeletion?: boolean;
+  canEditBookings?: boolean;
+  requiresAuthForEditing?: boolean;
 }
 
 const formSchema = z.object({
@@ -47,7 +53,17 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function BookingForm({ rooms, onBookingAttemptCompleted, initialRoomId }: BookingFormProps) {
+export function BookingForm({
+  rooms,
+  onBookingAttemptCompleted,
+  initialRoomId,
+  initialDate,
+  initialStartTime,
+  canDeleteBookings = false,
+  requiresAuthForDeletion = false,
+  canEditBookings = false,
+  requiresAuthForEditing = false,
+}: BookingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [allAvailableIndividualSlots, setAllAvailableIndividualSlots] = useState<TimeSlot[]>([]);
@@ -60,11 +76,21 @@ export function BookingForm({ rooms, onBookingAttemptCompleted, initialRoomId }:
   const [isLoadingRoomBookings, setIsLoadingRoomBookings] = useState(false);
   const [roomDetailsForDialog, setRoomDetailsForDialog] = useState<{ roomName: string; date: string } | null>(null);
 
+  const parsedInitialDate = useMemo(() => {
+    if (!initialDate) return undefined;
+    const parsed = parseISO(initialDate);
+    return isValid(parsed) ? parsed : undefined;
+  }, [initialDate]);
+
+  const normalizedInitialDate = parsedInitialDate ? initialDate ?? undefined : undefined;
+  const normalizedInitialStartTime =
+    initialStartTime && initialStartTime.trim() !== '' ? initialStartTime : undefined;
+
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      roomId: initialRoomId || '',
-      date: undefined,
+      roomId: initialRoomId ?? '',
+      date: parsedInitialDate,
       startTime: '',
       endTime: '',
       title: '',
@@ -72,6 +98,30 @@ export function BookingForm({ rooms, onBookingAttemptCompleted, initialRoomId }:
       userEmail: '',
     },
   });
+
+  const initialSelectionRef = useRef<{
+    roomId?: string;
+    date?: string;
+    startTime?: string;
+    applied: boolean;
+    notifiedUnavailable: boolean;
+  }>({
+    roomId: initialRoomId ?? undefined,
+    date: normalizedInitialDate,
+    startTime: normalizedInitialStartTime,
+    applied: normalizedInitialStartTime ? false : true,
+    notifiedUnavailable: false,
+  });
+
+  useEffect(() => {
+    initialSelectionRef.current = {
+      roomId: initialRoomId ?? undefined,
+      date: normalizedInitialDate,
+      startTime: normalizedInitialStartTime,
+      applied: normalizedInitialStartTime ? false : true,
+      notifiedUnavailable: false,
+    };
+  }, [initialRoomId, normalizedInitialDate, normalizedInitialStartTime]);
 
   const selectedRoomId = form.watch('roomId');
   const selectedDate = form.watch('date');
@@ -90,11 +140,35 @@ export function BookingForm({ rooms, onBookingAttemptCompleted, initialRoomId }:
     form.resetField('startTime');
     form.resetField('endTime');
     try {
-      const result = await getAvailableTimeSlots(roomIdToFetch, format(dateToFetch, 'yyyy-MM-dd'));
+      const formattedDate = format(dateToFetch, 'yyyy-MM-dd');
+      const result = await getAvailableTimeSlots(roomIdToFetch, formattedDate);
       if (result.error) {
         toast({ variant: 'destructive', title: 'Error fetching slots', description: result.error });
       } else {
         setAllAvailableIndividualSlots(result.slots);
+        const pendingSelection = initialSelectionRef.current;
+        if (pendingSelection && !pendingSelection.applied) {
+          const matchesRoom = !pendingSelection.roomId || pendingSelection.roomId === roomIdToFetch;
+          const matchesDate = !pendingSelection.date || pendingSelection.date === formattedDate;
+          const desiredStartTime = pendingSelection.startTime;
+          if (matchesRoom && matchesDate && desiredStartTime) {
+            const slotExists = result.slots.some(slot => slot.startTime === desiredStartTime);
+            if (slotExists) {
+              form.setValue('startTime', desiredStartTime);
+              pendingSelection.applied = true;
+            } else if (!pendingSelection.notifiedUnavailable) {
+              toast({
+                variant: 'destructive',
+                title: 'Selected time unavailable',
+                description: 'The chosen start time is no longer available. Please choose another time.',
+              });
+              pendingSelection.notifiedUnavailable = true;
+              pendingSelection.applied = true;
+            }
+          } else if (matchesRoom && matchesDate) {
+            pendingSelection.applied = true;
+          }
+        }
       }
     } catch (error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch time slots.' });
@@ -167,7 +241,9 @@ export function BookingForm({ rooms, onBookingAttemptCompleted, initialRoomId }:
         });
         if (result.fieldErrors) {
             Object.entries(result.fieldErrors).forEach(([field, errors]) => {
-                form.setError(field as keyof FormValues, { type: 'server', message: errors.join(', ') });
+                if (errors && errors.length > 0) {
+                    form.setError(field as keyof FormValues, { type: 'server', message: errors.join(', ') });
+                }
             });
         }
         if (result.error.toLowerCase().includes("slot") || result.error.toLowerCase().includes("unavailable") || result.error.toLowerCase().includes("range")) {
@@ -481,6 +557,10 @@ export function BookingForm({ rooms, onBookingAttemptCompleted, initialRoomId }:
           date={roomDetailsForDialog.date}
           bookings={bookingsForSelectedRoomDate}
           onDataModified={handleDataModified}
+          canDeleteBookings={canDeleteBookings}
+          requiresAuthForDeletion={requiresAuthForDeletion}
+          canEditBookings={canEditBookings}
+          requiresAuthForEditing={requiresAuthForEditing}
         />
       )}
     </>

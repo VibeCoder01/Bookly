@@ -39,9 +39,24 @@ interface RoomBookingsDialogProps {
   date: string; // Formatted date string (e.g., PPP from date-fns)
   bookings: Booking[];
   onDataModified: () => void;
+  canDeleteBookings: boolean;
+  requiresAuthForDeletion: boolean;
+  canEditBookings: boolean;
+  requiresAuthForEditing: boolean;
 }
 
-export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, bookings, onDataModified }: RoomBookingsDialogProps) {
+export function RoomBookingsDialog({
+  isOpen,
+  onOpenChange,
+  roomName,
+  date,
+  bookings,
+  onDataModified,
+  canDeleteBookings,
+  requiresAuthForDeletion,
+  canEditBookings,
+  requiresAuthForEditing,
+}: RoomBookingsDialogProps) {
   const { toast } = useToast();
   const [localBookings, setLocalBookings] = useState<Booking[]>(bookings);
   const [bookingToDelete, setBookingToDelete] = useState<Booking | null>(null);
@@ -56,8 +71,39 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
     }
   }, [bookings, isOpen]);
   
+  useEffect(() => {
+    if (!canEditBookings && isEditDialogOpen) {
+      setIsEditDialogOpen(false);
+      setBookingToEdit(null);
+    }
+  }, [canEditBookings, isEditDialogOpen]);
+  
+  const showDeletionAuthNotice = requiresAuthForDeletion && !canDeleteBookings;
+  const showEditAuthNotice = requiresAuthForEditing && !canEditBookings;
+  const deleteButtonTitle = !canDeleteBookings
+    ? requiresAuthForDeletion
+      ? 'Log in to delete bookings'
+      : 'You do not have permission to delete bookings'
+    : undefined;
+  const editButtonTitle = !canEditBookings
+    ? requiresAuthForEditing
+      ? 'Log in to edit bookings'
+      : 'You do not have permission to edit bookings'
+    : undefined;
+  
   const handleDelete = async () => {
     if (!bookingToDelete) return;
+    if (!canDeleteBookings) {
+      setBookingToDelete(null);
+      toast({
+        variant: 'destructive',
+        title: 'Login Required',
+        description: requiresAuthForDeletion
+          ? 'Please sign in to delete bookings.'
+          : 'You do not have permission to delete bookings.',
+      });
+      return;
+    }
 
     setIsDeleting(true);
     const result = await deleteBooking(bookingToDelete.id);
@@ -75,12 +121,36 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
   };
 
   const handleEditClick = (booking: Booking) => {
+    if (!canEditBookings) {
+      toast({
+        variant: 'destructive',
+        title: 'Login Required',
+        description: requiresAuthForEditing
+          ? 'Please sign in to edit bookings.'
+          : 'You do not have permission to edit bookings.',
+      });
+      return;
+    }
     setBookingToEdit(booking);
     setIsEditDialogOpen(true);
   };
 
   const handleEditSuccess = () => {
     onDataModified();
+  };
+
+  const effectiveEditDialogOpen = canEditBookings && isEditDialogOpen;
+
+  const handleEditDialogOpenChange = (open: boolean) => {
+    if (!canEditBookings) {
+      setIsEditDialogOpen(false);
+      setBookingToEdit(null);
+      return;
+    }
+    setIsEditDialogOpen(open);
+    if (!open) {
+      setBookingToEdit(null);
+    }
   };
 
   return (
@@ -126,11 +196,23 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
                       </TableCell>
                       <TableCell className="text-right">
                          <div className="flex items-center justify-end space-x-1">
-                            <Button variant="ghost" size="icon" onClick={() => handleEditClick(booking)} disabled={isDeleting}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditClick(booking)}
+                              disabled={isDeleting || !canEditBookings}
+                              title={editButtonTitle}
+                            >
                                 <Pencil className="h-4 w-4 text-primary" />
                                 <span className="sr-only">Edit booking</span>
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => setBookingToDelete(booking)} disabled={isDeleting}>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => canDeleteBookings && setBookingToDelete(booking)}
+                                disabled={isDeleting || !canDeleteBookings}
+                                title={deleteButtonTitle}
+                            >
                                 <Trash2 className="h-4 w-4 text-destructive" />
                                 <span className="sr-only">Delete booking</span>
                             </Button>
@@ -147,6 +229,13 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
             </div>
           )}
 
+          {(showDeletionAuthNotice || showEditAuthNotice) && (
+            <div className="my-4 space-y-1 text-sm text-muted-foreground">
+              {showDeletionAuthNotice && <div>Log in to delete bookings.</div>}
+              {showEditAuthNotice && <div>Log in to edit bookings.</div>}
+            </div>
+          )}
+
           <DialogFooter className="mt-2">
             <DialogClose asChild>
               <Button type="button" variant="outline">
@@ -157,7 +246,7 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={!!bookingToDelete} onOpenChange={(isOpen) => !isOpen && setBookingToDelete(null)}>
+      <AlertDialog open={canDeleteBookings && !!bookingToDelete} onOpenChange={(isOpen) => !isOpen && setBookingToDelete(null)}>
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
@@ -167,7 +256,7 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel onClick={() => setBookingToDelete(null)}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className={cn(buttonVariants({ variant: "destructive" }))} disabled={isDeleting}>
+                <AlertDialogAction onClick={handleDelete} className={cn(buttonVariants({ variant: "destructive" }))} disabled={isDeleting || !canDeleteBookings}>
                   {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Delete
                 </AlertDialogAction>
@@ -176,8 +265,8 @@ export function RoomBookingsDialog({ isOpen, onOpenChange, roomName, date, booki
       </AlertDialog>
 
       <BookingEditDialog 
-        isOpen={isEditDialogOpen}
-        onOpenChange={setIsEditDialogOpen}
+        isOpen={effectiveEditDialogOpen}
+        onOpenChange={handleEditDialogOpenChange}
         onSuccess={handleEditSuccess}
         booking={bookingToEdit}
       />

@@ -1,7 +1,7 @@
 
 'use server';
 
-import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings, RoomWithDailyUsage, SlotStatus, AdminUser } from '@/types';
+import type { Booking, Room, TimeSlot, AppConfiguration, RoomFormData, ExportedSettings, RoomWithDailyUsage, SlotStatus, AdminUser, AppUser } from '@/types';
 import { readConfigurationFromFile, writeConfigurationToFile } from './config-store';
 import { z } from 'zod';
 import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes, isWeekend, addDays, startOfDay, startOfWeek } from 'date-fns';
@@ -11,9 +11,9 @@ import { getPersistedBookings, addMockBooking, writeAllBookings } from './mock-d
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { AUTH_COOKIE_NAME, ADMIN_USER_COOKIE, ADMIN_PRIMARY_COOKIE } from '@/lib/auth';
+import { AUTH_COOKIE_NAME, ADMIN_USER_COOKIE, ADMIN_PRIMARY_COOKIE, USER_AUTH_COOKIE, USER_NAME_COOKIE } from '@/lib/auth';
 import { verifyPassword, hashPassword } from './crypto';
-import { getAdminUser, addAdminUserToDb, readAdminUsersFromDb, deleteAdminUser, renameAdminUser } from './sqlite-db';
+import { getAdminUser, addAdminUserToDb, readAdminUsersFromDb, deleteAdminUser, renameAdminUser, readAppUsersFromDb, getAppUser, addAppUserToDb, deleteAppUser, renameAppUser } from './sqlite-db';
 
 export async function getCurrentAdmin(): Promise<{ username: string; isPrimary: boolean } | null> {
   const cookieStore = await cookies();
@@ -21,6 +21,14 @@ export async function getCurrentAdmin(): Promise<{ username: string; isPrimary: 
   const isPrimary = cookieStore.get(ADMIN_PRIMARY_COOKIE)?.value === 'true';
   if (!username) return null;
   return { username, isPrimary };
+}
+
+export async function getCurrentUser(): Promise<{ username: string } | null> {
+  const cookieStore = await cookies();
+  const username = cookieStore.get(USER_NAME_COOKIE)?.value;
+  const isAuthenticated = cookieStore.get(USER_AUTH_COOKIE)?.value === 'true';
+  if (!isAuthenticated || !username) return null;
+  return { username };
 }
 
 
@@ -109,31 +117,66 @@ export async function changeAdminPassword(formData: FormData) {
     redirect('/admin/change-password?error=' + encodeURIComponent('New password must be at least 8 characters long.'));
   }
 
-  const config = await readConfigurationFromFile();
-  if (!config.adminPasswordHash || !config.adminPasswordSalt) {
-    redirect('/admin/change-password?error=' + encodeURIComponent('System configuration error. Cannot change password.'));
+  const admin = await getCurrentAdmin();
+  if (!admin) {
+    redirect('/admin/login?error=' + encodeURIComponent('Please log in to change your password.'));
   }
 
-  const isOldPasswordValid = verifyPassword(oldPassword, config.adminPasswordHash, config.adminPasswordSalt);
-  if (!isOldPasswordValid) {
-    redirect('/admin/change-password?error=' + encodeURIComponent('The old password you entered is incorrect.'));
-  }
+  if (admin.isPrimary) {
+    const config = await readConfigurationFromFile();
+    if (!config.adminPasswordHash || !config.adminPasswordSalt) {
+      redirect('/admin/change-password?error=' + encodeURIComponent('System configuration error. Cannot change password.'));
+    }
 
-  const { hash, salt } = hashPassword(newPassword);
-  
-  const newConfig: AppConfiguration = {
-    ...config,
-    adminPasswordHash: hash,
-    adminPasswordSalt: salt,
-  };
-  delete newConfig.adminPassword;
+    const isOldPasswordValid = verifyPassword(oldPassword, config.adminPasswordHash, config.adminPasswordSalt);
+    if (!isOldPasswordValid) {
+      redirect('/admin/change-password?error=' + encodeURIComponent('The old password you entered is incorrect.'));
+    }
 
-  try {
-    await writeConfigurationToFile(newConfig);
-  } catch (error: any) {
-    console.error('[Change Password Error]', error);
-    const msg = encodeURIComponent(error.message ?? 'Failed to save the new password.');
-    redirect(`/admin/change-password?error=${msg}`);
+    const { hash, salt } = hashPassword(newPassword);
+    
+    const newConfig: AppConfiguration = {
+      ...config,
+      adminPasswordHash: hash,
+      adminPasswordSalt: salt,
+    };
+    delete newConfig.adminPassword;
+
+    try {
+      await writeConfigurationToFile(newConfig);
+    } catch (error: any) {
+      console.error('[Change Password Error]', error);
+      const msg = encodeURIComponent(error.message ?? 'Failed to save the new password.');
+      redirect(`/admin/change-password?error=${msg}`);
+    }
+  } else {
+    const user = await getAdminUser(admin.username);
+    if (!user) {
+      redirect('/admin/change-password?error=' + encodeURIComponent('Unable to load your admin account.'));
+    }
+
+    const isOldPasswordValid = verifyPassword(
+      oldPassword,
+      user.passwordHash,
+      user.passwordSalt
+    );
+    if (!isOldPasswordValid) {
+      redirect('/admin/change-password?error=' + encodeURIComponent('The old password you entered is incorrect.'));
+    }
+
+    const { hash, salt } = hashPassword(newPassword);
+    try {
+      await addAdminUserToDb({
+        username: user.username,
+        passwordHash: hash,
+        passwordSalt: salt,
+        isPrimary: !!user.isPrimary,
+      });
+    } catch (error: any) {
+      console.error('[Change Password Error]', error);
+      const msg = encodeURIComponent(error.message ?? 'Failed to save the new password.');
+      redirect(`/admin/change-password?error=${msg}`);
+    }
   }
 
   redirect('/admin/change-password?success=' + encodeURIComponent('Password changed successfully.'));
@@ -230,6 +273,212 @@ export async function logoutAdmin() {
   cookieStore.delete(ADMIN_USER_COOKIE);
   cookieStore.delete(ADMIN_PRIMARY_COOKIE);
   redirect('/admin/login');
+}
+
+// --- User Authentication ---
+
+export async function verifyUserLogin(formData: FormData) {
+  const rawUsername = formData.get('username');
+  const username = typeof rawUsername === 'string' ? rawUsername.trim() : '';
+  const password = formData.get('password') as string | null;
+  let from = (formData.get('from') as string) || '/book';
+
+  if (!from.startsWith('/')) {
+    from = '/book';
+  }
+
+  if (!username || !password) {
+    const err = encodeURIComponent('Username and password are required.');
+    redirect(`/user/login?error=${err}&from=${encodeURIComponent(from)}`);
+  }
+
+  const user = await getAppUser(username);
+  if (!user) {
+    const err = encodeURIComponent('Invalid username or password.');
+    redirect(`/user/login?error=${err}&from=${encodeURIComponent(from)}`);
+  }
+
+  const isValid = verifyPassword(password, user!.passwordHash, user!.passwordSalt);
+  if (!isValid) {
+    const err = encodeURIComponent('Invalid username or password.');
+    redirect(`/user/login?error=${err}&from=${encodeURIComponent(from)}`);
+  }
+
+  const cookieStore = await cookies();
+  cookieStore.set(USER_AUTH_COOKIE, 'true', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    sameSite: 'strict',
+    maxAge: 1800,
+  });
+  cookieStore.set(USER_NAME_COOKIE, username, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    sameSite: 'strict',
+    maxAge: 1800,
+  });
+
+  redirect(from);
+}
+
+export async function logoutUser(redirectTo: string = '/user/login') {
+  const cookieStore = await cookies();
+  cookieStore.delete(USER_AUTH_COOKIE);
+  cookieStore.delete(USER_NAME_COOKIE);
+  redirect(redirectTo);
+}
+
+// --- App User Management ---
+
+export async function listAppUsers(): Promise<{ users: { username: string }[]; error?: string }> {
+  const admin = await getCurrentAdmin();
+  if (!admin) {
+    return { users: [], error: 'Unauthorized' };
+  }
+  const users = await readAppUsersFromDb();
+  return { users: users.map(({ username }) => ({ username })) };
+}
+
+export async function createAppUserAccount(params: { username: string; password: string; confirmPassword: string }): Promise<{ success: boolean; error?: string }> {
+  const admin = await getCurrentAdmin();
+  if (!admin) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  const username = params.username.trim();
+  if (!username) {
+    return { success: false, error: 'Username is required.' };
+  }
+  if (params.password !== params.confirmPassword) {
+    return { success: false, error: 'Passwords do not match.' };
+  }
+  if (params.password.length < 8) {
+    return { success: false, error: 'Password must be at least 8 characters long.' };
+  }
+
+  const existing = await getAppUser(username);
+  if (existing) {
+    return { success: false, error: 'Username already exists.' };
+  }
+
+  const { hash, salt } = hashPassword(params.password);
+  await addAppUserToDb({ username, passwordHash: hash, passwordSalt: salt });
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+export async function resetAppUserPassword(params: { username: string; newPassword: string; confirmPassword: string }): Promise<{ success: boolean; error?: string }> {
+  const admin = await getCurrentAdmin();
+  if (!admin) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  const username = params.username.trim();
+  if (!username) {
+    return { success: false, error: 'Username is required.' };
+  }
+
+  if (params.newPassword !== params.confirmPassword) {
+    return { success: false, error: 'Passwords do not match.' };
+  }
+
+  if (params.newPassword.length < 8) {
+    return { success: false, error: 'Password must be at least 8 characters long.' };
+  }
+
+  const existing = await getAppUser(username);
+  if (!existing) {
+    return { success: false, error: 'User not found.' };
+  }
+
+  const { hash, salt } = hashPassword(params.newPassword);
+  await addAppUserToDb({ username, passwordHash: hash, passwordSalt: salt });
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+export async function deleteAppUserAccount(username: string): Promise<{ success: boolean; error?: string }> {
+  const admin = await getCurrentAdmin();
+  if (!admin) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  const formatted = username.trim();
+  if (!formatted) {
+    return { success: false, error: 'Username is required.' };
+  }
+
+  await deleteAppUser(formatted);
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+export async function renameAppUserAccount(params: { currentUsername: string; newUsername: string }): Promise<{ success: boolean; error?: string }> {
+  const admin = await getCurrentAdmin();
+  if (!admin) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  const currentUsername = params.currentUsername.trim();
+  const newUsername = params.newUsername.trim();
+
+  if (!currentUsername || !newUsername) {
+    return { success: false, error: 'Both current and new usernames are required.' };
+  }
+
+  if (currentUsername === newUsername) {
+    return { success: false, error: 'New username must be different.' };
+  }
+
+  const user = await getAppUser(currentUsername);
+  if (!user) {
+    return { success: false, error: 'User not found.' };
+  }
+
+  const existing = await getAppUser(newUsername);
+  if (existing) {
+    return { success: false, error: 'New username is already taken.' };
+  }
+
+  await renameAppUser(currentUsername, newUsername);
+  revalidatePath('/admin');
+  return { success: true };
+}
+
+export async function changeCurrentUserPassword(params: { oldPassword: string; newPassword: string; confirmPassword: string }): Promise<{ success: boolean; error?: string }> {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) {
+    return { success: false, error: 'Not authenticated.' };
+  }
+
+  if (!params.oldPassword || !params.newPassword || !params.confirmPassword) {
+    return { success: false, error: 'All fields are required.' };
+  }
+
+  if (params.newPassword !== params.confirmPassword) {
+    return { success: false, error: 'New passwords do not match.' };
+  }
+
+  if (params.newPassword.length < 8) {
+    return { success: false, error: 'Password must be at least 8 characters long.' };
+  }
+
+  const user = await getAppUser(currentUser.username);
+  if (!user) {
+    return { success: false, error: 'User account not found.' };
+  }
+
+  const isOldPasswordValid = verifyPassword(params.oldPassword, user.passwordHash, user.passwordSalt);
+  if (!isOldPasswordValid) {
+    return { success: false, error: 'Old password is incorrect.' };
+  }
+
+  const { hash, salt } = hashPassword(params.newPassword);
+  await addAppUserToDb({ username: currentUser.username, passwordHash: hash, passwordSalt: salt });
+  revalidatePath('/admin');
+  return { success: true };
 }
 
 
@@ -367,6 +616,9 @@ const appConfigurationObjectSchema = z.object({
   includeWeekends: z.boolean().optional(),
   showHomePageKey: z.boolean().optional(),
   showSlotStrike: z.boolean().optional(),
+  allowAnonymousUsers: z.boolean().optional(),
+  allowAnonymousBookingDeletion: z.boolean().optional(),
+  allowAnonymousBookingEditing: z.boolean().optional(),
 });
 
 const appConfigurationSchema = appConfigurationObjectSchema.refine(data => {
@@ -394,7 +646,32 @@ export async function updateAppConfiguration(
     delete safeUpdates.adminPasswordHash;
     delete safeUpdates.adminPasswordSalt;
 
+    const admin = await getCurrentAdmin();
+    if (!admin) {
+        return { success: false, error: 'You must be signed in to update configuration.' };
+    }
+
     const currentConfig = await readConfigurationFromFile();
+
+    if (!admin.isPrimary) {
+        const sanitizedAppName = typeof safeUpdates.appName === 'string' ? safeUpdates.appName.trim() : undefined;
+        const sanitizedAppSubtitle = typeof safeUpdates.appSubtitle === 'string' ? safeUpdates.appSubtitle.trim() : undefined;
+
+        const attemptingAppNameChange =
+            sanitizedAppName !== undefined && sanitizedAppName !== currentConfig.appName;
+        const attemptingAppSubtitleChange =
+            sanitizedAppSubtitle !== undefined && sanitizedAppSubtitle !== currentConfig.appSubtitle;
+        const attemptingAppLogoChange =
+            safeUpdates.appLogo !== undefined && safeUpdates.appLogo !== currentConfig.appLogo;
+
+        if (attemptingAppNameChange || attemptingAppSubtitleChange || attemptingAppLogoChange) {
+            return { success: false, error: 'Only the primary admin can update branding settings.' };
+        }
+
+        delete safeUpdates.appName;
+        delete safeUpdates.appSubtitle;
+        delete safeUpdates.appLogo;
+    }
 
     let processedUpdates = { ...safeUpdates };
     if (processedUpdates.appLogo === null) {
@@ -440,6 +717,11 @@ export async function updateAppConfiguration(
 export async function updateAppLogo(
   formData: FormData
 ): Promise<{ success: boolean; error?: string; logoPath?: string }> {
+  const admin = await getCurrentAdmin();
+  if (!admin || !admin.isPrimary) {
+    return { success: false, error: 'Only the primary admin can update the application logo.' };
+  }
+
   const file = formData.get('logo') as File | null;
 
   if (!file || file.size === 0) {
@@ -491,6 +773,11 @@ export async function updateAppLogo(
 }
 
 export async function revertToDefaultLogo(): Promise<{ success: boolean; error?: string }> {
+  const admin = await getCurrentAdmin();
+  if (!admin || !admin.isPrimary) {
+    return { success: false, error: 'Only the primary admin can modify the application logo.' };
+  }
+
   try {
     const config = await readConfigurationFromFile();
     const oldLogoPath = config.appLogo;
@@ -633,6 +920,15 @@ export async function submitBooking(
   if (!validationResult.success) {
     return { error: "Validation failed. Check your inputs.", fieldErrors: validationResult.error.flatten().fieldErrors };
   }
+
+  const config = await readConfigurationFromFile();
+  const allowAnonymous = config.allowAnonymousUsers ?? true;
+  if (!allowAnonymous) {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { error: 'You must be logged in to book a room.' };
+    }
+  }
   
   const { roomId, date, startTime, endTime, title, userName, userEmail } = validationResult.data;
   
@@ -705,6 +1001,19 @@ export async function updateBooking(
     const { id, title, userName, userEmail } = validationResult.data;
 
     try {
+        const [config, admin, user] = await Promise.all([
+            getCurrentConfiguration(),
+            getCurrentAdmin(),
+            getCurrentUser(),
+        ]);
+
+        const allowAnonymousEditing = config.allowAnonymousBookingEditing ?? true;
+        const isAuthenticated = Boolean(admin || user);
+
+        if (!allowAnonymousEditing && !isAuthenticated) {
+            return { success: false, error: 'You must be signed in to edit bookings.' };
+        }
+
         const allBookings = await getPersistedBookings();
         const bookingIndex = allBookings.findIndex(b => b.id === id);
 
@@ -783,6 +1092,19 @@ export async function deleteBooking(bookingId: string): Promise<{ success: boole
     }
     
     try {
+        const [config, admin, user] = await Promise.all([
+            getCurrentConfiguration(),
+            getCurrentAdmin(),
+            getCurrentUser(),
+        ]);
+
+        const allowAnonymousDeletion = config.allowAnonymousBookingDeletion ?? true;
+        const isAuthenticated = Boolean(admin || user);
+
+        if (!allowAnonymousDeletion && !isAuthenticated) {
+            return { success: false, error: 'You must be signed in to delete bookings.' };
+        }
+
         const allBookings = await getPersistedBookings();
         const bookingsCount = allBookings.length;
         const updatedBookings = allBookings.filter(booking => booking.id !== bookingId);
@@ -822,6 +1144,9 @@ const exportedSettingsSchema = z.object({
     includeWeekends: z.boolean().optional(),
     showHomePageKey: z.boolean().optional(),
     showSlotStrike: z.boolean().optional(),
+    allowAnonymousUsers: z.boolean().optional(),
+    allowAnonymousBookingDeletion: z.boolean().optional(),
+    allowAnonymousBookingEditing: z.boolean().optional(),
   }),
   rooms: z.array(z.object({
     id: z.string(),
