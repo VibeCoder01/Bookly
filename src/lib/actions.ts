@@ -688,16 +688,12 @@ export async function updateAppConfiguration(
             sanitizedAppName !== undefined && sanitizedAppName !== currentConfig.appName;
         const attemptingAppSubtitleChange =
             sanitizedAppSubtitle !== undefined && sanitizedAppSubtitle !== currentConfig.appSubtitle;
-        const attemptingAppLogoChange =
-            safeUpdates.appLogo !== undefined && safeUpdates.appLogo !== currentConfig.appLogo;
-
-        if (attemptingAppNameChange || attemptingAppSubtitleChange || attemptingAppLogoChange) {
+        if (attemptingAppNameChange || attemptingAppSubtitleChange) {
             return { success: false, error: 'Only the primary admin can update branding settings.' };
         }
 
         delete safeUpdates.appName;
         delete safeUpdates.appSubtitle;
-        delete safeUpdates.appLogo;
     }
 
     let processedUpdates = { ...safeUpdates };
@@ -745,8 +741,8 @@ export async function updateAppLogo(
   formData: FormData
 ): Promise<{ success: boolean; error?: string; logoPath?: string }> {
   const admin = await getCurrentAdmin();
-  if (!admin || !admin.isPrimary) {
-    return { success: false, error: 'Only the primary admin can update the application logo.' };
+  if (!admin) {
+    return { success: false, error: 'You must be signed in to update the application logo.' };
   }
 
   const file = formData.get('logo') as File | null;
@@ -801,8 +797,8 @@ export async function updateAppLogo(
 
 export async function revertToDefaultLogo(): Promise<{ success: boolean; error?: string }> {
   const admin = await getCurrentAdmin();
-  if (!admin || !admin.isPrimary) {
-    return { success: false, error: 'Only the primary admin can modify the application logo.' };
+  if (!admin) {
+    return { success: false, error: 'You must be signed in to modify the application logo.' };
   }
 
   try {

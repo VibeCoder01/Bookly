@@ -318,11 +318,6 @@ export default function AdminPage() {
   const handleLogoUpload = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!canManageBranding) {
-      toast({ variant: 'destructive', title: 'Not Allowed', description: 'Only the primary admin can update the application logo.' });
-      return;
-    }
-
     const form = event.currentTarget;
     const fileInput = form.elements.namedItem('logo') as HTMLInputElement;
     const file = fileInput.files?.[0];
@@ -362,11 +357,6 @@ export default function AdminPage() {
   };
 
   const handleRevertLogo = async () => {
-    if (!canManageBranding) {
-      toast({ variant: 'destructive', title: 'Not Allowed', description: 'Only the primary admin can change the application logo.' });
-      return;
-    }
-
     setIsRevertingLogo(true);
     const result = await revertToDefaultLogo();
 
@@ -1236,8 +1226,7 @@ export default function AdminPage() {
             </div>
 
             {/* --- LOGO MANAGEMENT --- */}
-            {canManageBranding && (
-              <div className="pt-6 border-t">
+            <div className="pt-6 border-t">
                 <h3 className="text-xl font-semibold mb-4 font-headline text-primary flex items-center">
                   <ImageIcon className="mr-2 h-5 w-5" />
                   Application Logo
@@ -1291,7 +1280,6 @@ export default function AdminPage() {
                   </CardContent>
                 </Card>
               </div>
-            )}
 
           </CardContent>
         </Card>
