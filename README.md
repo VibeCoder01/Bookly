@@ -9,22 +9,27 @@ This project was bootstrapped with [Firebase Studio](https://firebase.google.com
 ### User-Facing Features
 - **Interactive Room Grid:** A dynamic home page that provides a visual overview of room availability at a glance for the entire week.
 - **Detailed Slot Information:** Click on any time slot on the home page grid to instantly view its status (Available/Booked) and booking details in a pop-up dialog.
+- **Color-Coded Legend:** Quickly distinguish overlapping meetings with a configurable legend and optional strike overlay that highlight booked slots by title.
 - **Flexible Weekly View:** Easily navigate between weeks using arrow buttons. The grid can be configured by an admin to show either a 5-day work week or a full 7-day week.
 - **Customizable Start of Week:** The weekly view can be configured to start on either Sunday or Monday to match user preferences.
 - **Streamlined Booking Process:** A dedicated `/book` page allows users to select a room, date, and time from a list of real-time available slots.
-- **Persistent User Details:** The booking form conveniently remembers the user's name and email via local storage, speeding up future bookings.
+- **Booking Insights:** Review the current day's reservations for any room directly from the booking form before submitting a new request.
+- **Account-Aware Actions:** Optional sign-in requirements ensure booking, editing, and deletion flows respect the authentication rules configured by administrators.
 
 ### Comprehensive Admin Dashboard
 - **Centralized Management:** A secure, password-protected dashboard at `/admin` for all administrative functions.
 - **Full Bookings Overview:** View a comprehensive list of all bookings across all rooms, sorted by date and time.
 - **Room Configuration:** Easily add, edit, or delete meeting rooms and their capacities.
+- **Account Management:** Create, rename, reset, or delete end-user accounts from the dashboard, and provide a self-service password change view for signed-in users.
+- **Secondary Admin Controls:** Primary administrators can provision, rename, reset, or remove secondary admin accounts without leaving the app.
 - **Application Customization:**
   - **Branding:** Change the application's name, subtitle, and upload a custom logo.
   - **Booking Logic:** Set the default booking slot duration (15, 30, or 60 minutes) and define the start and end of the workday to constrain booking times.
-  - **Appearance:** Adjust the size of room cards on the home page (Small, Medium, Large) to suit your display needs.
+  - **Appearance:** Adjust the size of room cards on the home page (Small, Medium, Large) to suit your display needs, and toggle the booking legend or strike overlay.
+  - **Access Rules:** Decide whether anonymous visitors can book, edit, or delete reservations before authentication is required.
   - **Database:** Set the path to the SQLite executable used for data storage.
 - **Data Portability:** Export all application data (settings, rooms, and bookings) to a single JSON file for backup, or import from a backup file to instantly restore the application's state.
-- **Security:** Manage access by changing the admin password through a secure form.
+- **Security:** Manage access by changing the primary admin password or rotating secondary admin credentials through dedicated workflows.
 
 ## Screenshots
 
@@ -53,6 +58,7 @@ This project was bootstrapped with [Firebase Studio](https://firebase.google.com
 - **Component Library:** [ShadCN UI](https://ui.shadcn.com/)
 - **Language:** [TypeScript](https://www.typescriptlang.org/)
 - **Backend Logic:** Next.js Server Actions for all data mutations and queries.
+- **Database:** SQLite (via the `sqlite3` CLI) for bookings, configuration, and user credential storage.
 
 ## Getting Started
 
@@ -95,12 +101,12 @@ Open [http://localhost:9002](http://localhost:9002) in your browser to view the 
   - `src/components/ui/`: Auto-generated UI components from ShadCN.
   - `src/components/bookly/`: Custom components specific to the Bookly application.
 - `src/lib/`: Core logic and utilities.
-  - `actions.ts`: Contains all the Next.js Server Actions that interact with the data layer.
-  - `config-store.ts`, `mock-data.ts`: Handles reading from and writing to the JSON data files.
-- `data/`: The flat-file database for the application.
-  - `rooms.json`: A list of all available rooms.
-  - `bookings.json`: A record of all bookings.
-  - `app-config.json`: Global application settings.
+  - `actions.ts`: Contains all the Next.js Server Actions that interact with the data layer and enforce authentication rules.
+  - `config-store.ts`, `sqlite-db.ts`, `mock-data.ts`: Persist configuration, bookings, and credentials to SQLite while exposing helper functions for rooms and backups.
+- `src/context/`: Shared React context such as the `UserProvider` that keeps lightweight client state in sync with authentication cookies.
+- `data/`: Persisted application data.
+  - `bookly.sqlite`: SQLite database storing bookings, configuration, admin accounts, and app user credentials.
+  - `rooms.json`: JSON definition for available rooms used by the booking grid and import/export flows.
 - `public/`: Static assets, including the uploaded application logo.
 
 ## License
