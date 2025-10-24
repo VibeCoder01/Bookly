@@ -18,6 +18,8 @@ export function middleware(request: NextRequest) {
   const isUserAuthenticated = userAuthCookie?.value === 'true';
 
   const isAdminPage = pathname.startsWith('/admin');
+  const isAdminServerAction = pathname === '/_next/server-actions';
+  const isAdminRelatedRequest = isAdminPage || isAdminServerAction;
   const isAdminLoginPage = pathname.startsWith('/admin/login');
   const isUserLoginPage = pathname.startsWith('/user/login');
 
@@ -38,11 +40,11 @@ export function middleware(request: NextRequest) {
   const response = NextResponse.next();
   const secure = process.env.NODE_ENV === 'production';
 
-  if (isAdminAuthenticated && !isAdminPage) {
+  if (isAdminAuthenticated && !isAdminRelatedRequest) {
     response.cookies.delete(AUTH_COOKIE_NAME);
     response.cookies.delete(ADMIN_USER_COOKIE);
     response.cookies.delete(ADMIN_PRIMARY_COOKIE);
-  } else if (isAdminAuthenticated && isAdminPage) {
+  } else if (isAdminAuthenticated && isAdminRelatedRequest) {
     response.cookies.set(AUTH_COOKIE_NAME, 'true', {
       httpOnly: true,
       secure,
