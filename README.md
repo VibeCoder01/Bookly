@@ -109,6 +109,14 @@ Open [http://localhost:9002](http://localhost:9002) in your browser to view the 
   - `rooms.json`: JSON definition for available rooms used by the booking grid and import/export flows.
 - `public/`: Static assets, including the uploaded application logo.
 
+## Data Storage Overview
+
+Bookly divides its persisted data between a lightweight JSON file and a structured SQLite database so that each store handles the tasks it is best suited for:
+
+- **Room definitions (`data/rooms.json`):** All room metadata—IDs, display names, and capacities—is kept in a JSON file. The room server actions (`getRooms`, `addRoom`, `updateRoom`, `deleteRoom`) exclusively read from and write to this file, ensuring room changes are quick to load and easy to export.
+- **Bookings, configuration, and accounts (`data/bookly.sqlite`):** The SQLite database contains tables for bookings, application configuration, and both admin and end-user credentials. Helper modules (`config-store`, `sqlite-db`, `mock-data`) wrap all access to these tables so that CRUD operations, import/export routines, and authentication flows operate against the database as the source of truth.
+- **Import/export bridge:** Backup routines gather configuration (from SQLite), rooms (from `rooms.json`), and bookings (from SQLite) into one JSON payload. Restores perform the inverse, pushing each dataset back into its native store to keep the JSON file and database synchronized.
+
 ## License
 
 This project is licensed under the MIT License. See the `LICENSE` file for more details.
