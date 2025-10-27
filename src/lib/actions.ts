@@ -919,26 +919,66 @@ export async function getAvailableTimeSlots(
   return { slots: availableSlots };
 }
 
-const bookingSubmissionSchema = z.object({
-  roomId: z.string().min(1, 'Room selection is required.'),
-  date: z.string().min(1, 'Date is required.'),
-  startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
-  endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
-  title: z.string().min(3, 'Title must be at least 3 characters.').max(100, 'Title must be 100 characters or less.'),
-  userName: z.string().min(2, 'Name must be at least 2 characters.'),
-  userEmail: z.string().email('Invalid email address.'),
-}).refine(data => {
-    return data.startTime < data.endTime;
-}, {
-    message: "End time must be after start time.",
-    path: ["endTime"],
-});
+const bookingSubmissionSchema = z
+  .object({
+    roomId: z.string().min(1, 'Room selection is required.'),
+    date: z.string().min(1, 'Date is required.'),
+    startTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+    endTime: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/),
+    title: z
+      .string()
+      .min(3, 'Title must be at least 3 characters.')
+      .max(100, 'Title must be 100 characters or less.'),
+    userName: z.string().min(2, 'Name must be at least 2 characters.'),
+    userEmail: z.string().email('Invalid email address.'),
+    repeatFrequency: z.enum(['none', 'daily', 'weekly']).default('none'),
+    repeatCount: z.coerce
+      .number()
+      .int('Repeat count must be a whole number.')
+      .min(1, 'Repeat count must be at least 1.')
+      .max(20, 'Repeat count cannot exceed 20.'),
+  })
+  .superRefine((data, ctx) => {
+    if (data.startTime >= data.endTime) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'End time must be after start time.',
+        path: ['endTime'],
+      });
+    }
+
+    if (data.repeatFrequency === 'none' && data.repeatCount !== 1) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Repeat count must be 1 when no repetition is selected.',
+        path: ['repeatCount'],
+      });
+    }
+
+    if (data.repeatFrequency !== 'none' && data.repeatCount < 2) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Repeat count must be at least 2 for repeating bookings.',
+        path: ['repeatCount'],
+      });
+    }
+  });
 
 
 export async function submitBooking(
-  formData: { roomId: string; date: string; startTime: string; endTime: string; title: string; userName: string; userEmail: string }
-): Promise<{ booking?: Booking; error?: string; fieldErrors?: Record<string, string[] | undefined> }> {
-  
+  formData: {
+    roomId: string;
+    date: string;
+    startTime: string;
+    endTime: string;
+    title: string;
+    userName: string;
+    userEmail: string;
+    repeatFrequency?: 'none' | 'daily' | 'weekly';
+    repeatCount?: number;
+  }
+): Promise<{ bookings?: Booking[]; error?: string; fieldErrors?: Record<string, string[] | undefined> }> {
+
   const validationResult = bookingSubmissionSchema.safeParse(formData);
   if (!validationResult.success) {
     return { error: "Validation failed. Check your inputs.", fieldErrors: validationResult.error.flatten().fieldErrors };
@@ -953,33 +993,86 @@ export async function submitBooking(
     }
   }
   
-  const { roomId, date, startTime, endTime, title, userName, userEmail } = validationResult.data;
-  
+  const {
+    roomId,
+    date,
+    startTime,
+    endTime,
+    title,
+    userName,
+    userEmail,
+    repeatFrequency,
+    repeatCount,
+  } = validationResult.data;
+
   await new Promise(resolve => setTimeout(resolve, 700));
 
-  const { slots: currentIndividualSlots, error: availabilityError } = await getAvailableTimeSlots(roomId, date);
-  if (availabilityError) {
-    return { error: `Could not verify slot availability: ${availabilityError}` };
-  }
+  const incrementDays = repeatFrequency === 'daily' ? 1 : repeatFrequency === 'weekly' ? 7 : 0;
+  const datesToBook: string[] = [];
+  let currentDateForLoop = parse(date, 'yyyy-MM-dd', new Date());
 
-  let isRangeValid = true;
-  let expectedCurrentSlotStartTime = startTime;
-  const tempDateForParsing = parse(date, "yyyy-MM-dd", new Date()); 
+  const occurrences = repeatCount ?? 1;
+  for (let occurrenceIndex = 0; occurrenceIndex < occurrences; occurrenceIndex++) {
+    if (occurrenceIndex === 0) {
+      datesToBook.push(date);
+      continue;
+    }
 
-  while (isBefore(parse(expectedCurrentSlotStartTime, "HH:mm", tempDateForParsing), parse(endTime, "HH:mm", tempDateForParsing))) {
-    const foundSlot = currentIndividualSlots.find(s => s.startTime === expectedCurrentSlotStartTime);
-    if (!foundSlot) {
-      isRangeValid = false;
+    if (incrementDays === 0) {
       break;
     }
-    expectedCurrentSlotStartTime = foundSlot.endTime; 
+
+    currentDateForLoop = addDays(currentDateForLoop, incrementDays);
+    datesToBook.push(format(currentDateForLoop, 'yyyy-MM-dd'));
   }
-  if (expectedCurrentSlotStartTime !== endTime) {
-    isRangeValid = false;
-  }
-  
-  if (!isRangeValid) {
-    return { error: 'Sorry, one or more time slots in the selected range are no longer available or the range is invalid. Please refresh and try again.' };
+
+  const ensureRangeAvailable = async (targetDate: string) => {
+    const { slots: currentIndividualSlots, error: availabilityError } = await getAvailableTimeSlots(roomId, targetDate);
+    if (availabilityError) {
+      const readableDate = format(parse(targetDate, 'yyyy-MM-dd', new Date()), 'PPP');
+      return { error: `Could not verify slot availability for ${readableDate}: ${availabilityError}` };
+    }
+
+    let isRangeValid = true;
+    let expectedCurrentSlotStartTime = startTime;
+    const parsedTargetDate = parse(targetDate, 'yyyy-MM-dd', new Date());
+
+    while (
+      isBefore(
+        parse(expectedCurrentSlotStartTime, 'HH:mm', parsedTargetDate),
+        parse(endTime, 'HH:mm', parsedTargetDate)
+      )
+    ) {
+      const foundSlot = currentIndividualSlots.find((s) => s.startTime === expectedCurrentSlotStartTime);
+      if (!foundSlot) {
+        isRangeValid = false;
+        break;
+      }
+      expectedCurrentSlotStartTime = foundSlot.endTime;
+    }
+
+    if (expectedCurrentSlotStartTime !== endTime) {
+      isRangeValid = false;
+    }
+
+    if (!isRangeValid) {
+      const readableDate = format(parse(targetDate, 'yyyy-MM-dd', new Date()), 'PPP');
+      return {
+        error:
+          occurrences > 1
+            ? `Sorry, one or more time slots in the selected range are unavailable on ${readableDate}. Please adjust the schedule and try again.`
+            : 'Sorry, one or more time slots in the selected range are no longer available or the range is invalid. Please refresh and try again.',
+      };
+    }
+
+    return {};
+  };
+
+  for (const dateToBook of datesToBook) {
+    const availabilityResult = await ensureRangeAvailable(dateToBook);
+    if (availabilityResult.error) {
+      return { error: availabilityResult.error };
+    }
   }
 
   const { rooms } = await getRooms();
@@ -990,20 +1083,22 @@ export async function submitBooking(
 
   const bookingTimeRangeString = `${startTime} - ${endTime}`;
 
-  const newBooking: Booking = {
-    id: `booking-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+  const bookingsToCreate: Booking[] = datesToBook.map((dateToBook, index) => ({
+    id: `booking-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 7)}`,
     roomId,
     roomName: room.name,
-    date,
+    date: dateToBook,
     time: bookingTimeRangeString,
     title,
     userName,
     userEmail,
-  };
+  }));
 
-  await addMockBooking(newBooking); 
-  
-  return { booking: newBooking };
+  for (const booking of bookingsToCreate) {
+    await addMockBooking(booking);
+  }
+
+  return { bookings: bookingsToCreate };
 }
 
 const bookingUpdateSchema = z.object({

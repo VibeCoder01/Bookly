@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Room, TimeSlot, Booking, BookingFormData } from '@/types';
+import type { Room, TimeSlot, Booking } from '@/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
@@ -14,7 +14,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { format, parseISO, isValid } from 'date-fns';
-import { CalendarIcon, Clock, Building2, User, Mail, Loader2, AlertTriangle, Eye, ArrowRight, Bookmark } from 'lucide-react';
+import {
+  CalendarIcon,
+  Clock,
+  Building2,
+  User,
+  Mail,
+  Loader2,
+  AlertTriangle,
+  Eye,
+  ArrowRight,
+  Bookmark,
+  Repeat2,
+} from 'lucide-react';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { getAvailableTimeSlots, submitBooking, getBookingsForRoomAndDate } from '@/lib/actions';
 import { RoomBookingsDialog } from './RoomBookingsDialog';
@@ -34,23 +46,50 @@ interface BookingFormProps {
   isUserNameReadOnly?: boolean;
 }
 
-const formSchema = z.object({
-  roomId: z.string().min(1, 'Please select a room.'),
-  date: z.date({ required_error: 'Please select a date.' }),
-  startTime: z.string().min(1, 'Please select a start time.'),
-  endTime: z.string().min(1, 'Please select an end time.'),
-  title: z.string().min(3, 'Title must be at least 3 characters.').max(100, 'Title must be 100 characters or less.'),
-  userName: z.string().min(2, 'Name must be at least 2 characters.').max(50),
-  userEmail: z.string().email('Please enter a valid email address.'),
-}).refine(data => {
-    if(data.startTime && data.endTime) {
-        return data.startTime < data.endTime;
+const formSchema = z
+  .object({
+    roomId: z.string().min(1, 'Please select a room.'),
+    date: z.date({ required_error: 'Please select a date.' }),
+    startTime: z.string().min(1, 'Please select a start time.'),
+    endTime: z.string().min(1, 'Please select an end time.'),
+    title: z
+      .string()
+      .min(3, 'Title must be at least 3 characters.')
+      .max(100, 'Title must be 100 characters or less.'),
+    userName: z.string().min(2, 'Name must be at least 2 characters.').max(50),
+    userEmail: z.string().email('Please enter a valid email address.'),
+    repeatFrequency: z.enum(['none', 'daily', 'weekly']).default('none'),
+    repeatCount: z.coerce
+      .number()
+      .int('Repeat count must be a whole number.')
+      .min(1, 'Repeat count must be at least 1.')
+      .max(20, 'Repeat count cannot exceed 20.'),
+  })
+  .superRefine((data, ctx) => {
+    if (data.startTime && data.endTime && data.startTime >= data.endTime) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'End time must be after start time.',
+        path: ['endTime'],
+      });
     }
-    return true;
-}, {
-    message: "End time must be after start time.",
-    path: ["endTime"],
-});
+
+    if (data.repeatFrequency === 'none' && data.repeatCount !== 1) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Repeat count must be 1 when no repetition is selected.',
+        path: ['repeatCount'],
+      });
+    }
+
+    if (data.repeatFrequency !== 'none' && data.repeatCount < 2) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Repeat count must be at least 2 for repeating bookings.',
+        path: ['repeatCount'],
+      });
+    }
+  });
 
 
 type FormValues = z.infer<typeof formSchema>;
@@ -100,6 +139,8 @@ export function BookingForm({
       title: '',
       userName: defaultUserName ?? '',
       userEmail: '',
+      repeatFrequency: 'none',
+      repeatCount: 1,
     },
   });
 
@@ -139,6 +180,21 @@ export function BookingForm({
   const watchedEndTime = form.watch('endTime'); // For reactive button disabling
   const watchedUserName = form.watch('userName');
   const watchedUserEmail = form.watch('userEmail');
+  const watchedRepeatFrequency = form.watch('repeatFrequency');
+
+  useEffect(() => {
+    const currentRepeatCount = form.getValues('repeatCount');
+    if (watchedRepeatFrequency === 'none') {
+      if (currentRepeatCount !== 1) {
+        form.setValue('repeatCount', 1, { shouldDirty: true, shouldValidate: true });
+      }
+      return;
+    }
+
+    if (currentRepeatCount < 2) {
+      form.setValue('repeatCount', 2, { shouldDirty: true, shouldValidate: true });
+    }
+  }, [watchedRepeatFrequency, form]);
 
   // Browser storage is no longer used for persisting user details.
   // All booking data is stored centrally on the server via SQLite.
@@ -260,12 +316,18 @@ export function BookingForm({
            if(selectedRoomId && selectedDate) fetchIndividualSlots(selectedRoomId, selectedDate);
         }
         onBookingAttemptCompleted(null);
-      } else if (result.booking) {
+      } else if (result.bookings && result.bookings.length > 0) {
+        const firstBooking = result.bookings[0];
+        const occurrences = result.bookings.length;
+        const description =
+          occurrences === 1
+            ? `Room ${firstBooking.roomName} booked for ${firstBooking.date} from ${data.startTime} to ${data.endTime}.`
+            : `Room ${firstBooking.roomName} booked for ${occurrences} occurrences starting ${firstBooking.date} (${data.startTime} - ${data.endTime}).`;
         toast({
           title: 'Booking Successful!',
-          description: `Room ${result.booking.roomName} booked for ${result.booking.date} from ${data.startTime} to ${data.endTime}.`,
+          description,
         });
-        onBookingAttemptCompleted(result.booking);
+        onBookingAttemptCompleted(firstBooking);
         router.push('/');
       }
     } catch (error) {
@@ -523,6 +585,62 @@ export function BookingForm({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="repeatFrequency" className="flex items-center">
+                  <Repeat2 className="mr-2 h-5 w-5 text-primary" /> Repeat Booking
+                </Label>
+                <Controller
+                  name="repeatFrequency"
+                  control={form.control}
+                  render={({ field }) => (
+                    <Select
+                      onValueChange={(value) => {
+                        field.onChange(value);
+                      }}
+                      value={field.value}
+                      defaultValue={field.value}
+                    >
+                      <SelectTrigger id="repeatFrequency" aria-label="Select repeat frequency">
+                        <SelectValue placeholder="Does not repeat" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Does not repeat</SelectItem>
+                        <SelectItem value="daily">Daily</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {form.formState.errors.repeatFrequency && (
+                  <p className="text-sm text-destructive">{form.formState.errors.repeatFrequency.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Choose how often this booking should repeat. Daily repeats every day, weekly repeats every 7 days.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="repeatCount" className="flex items-center">
+                  <Repeat2 className="mr-2 h-5 w-5 text-primary" /> Number of Occurrences
+                </Label>
+                <Input
+                  id="repeatCount"
+                  type="number"
+                  min={watchedRepeatFrequency === 'none' ? 1 : 2}
+                  max={20}
+                  disabled={watchedRepeatFrequency === 'none'}
+                  className={cn(watchedRepeatFrequency === 'none' ? 'bg-muted cursor-not-allowed' : undefined)}
+                  {...form.register('repeatCount', { valueAsNumber: true })}
+                />
+                {form.formState.errors.repeatCount && (
+                  <p className="text-sm text-destructive">{form.formState.errors.repeatCount.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Includes the first booking. Maximum of 20 occurrences per submission.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                     <Label htmlFor="userName" className="flex items-center">
                     <User className="mr-2 h-5 w-5 text-primary" /> Your Name
@@ -583,5 +701,3 @@ export function BookingForm({
     </>
   );
 }
-
-    
