@@ -42,12 +42,6 @@ export default async function HomePage({
       </div>
       <div className="pb-6 flex justify-center">
         <div className="flex flex-wrap items-center gap-3">
-          <Link href="/admin" passHref>
-            <Button variant="ghost" size="sm">
-              <UserCog className="mr-2 h-5 w-5" />
-              Admin
-            </Button>
-          </Link>
           {currentUser && (
             <form action={logoutUserToHome}>
               <Button variant="outline" size="sm" type="submit">
@@ -55,6 +49,12 @@ export default async function HomePage({
               </Button>
             </form>
           )}
+          <Link href="/admin" passHref>
+            <Button variant="ghost" size="sm">
+              <UserCog className="mr-2 h-5 w-5" />
+              Admin
+            </Button>
+          </Link>
           {currentAdmin && (
             <form action={logoutAdmin}>
               <Button variant="outline" size="sm" type="submit">
