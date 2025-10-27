@@ -357,6 +357,13 @@ export async function logoutUser(redirectTo: string = '/user/login') {
   redirect(redirectTo);
 }
 
+export async function logoutUserAndRedirectToAdmin() {
+  const cookieStore = await cookies();
+  cookieStore.delete(USER_AUTH_COOKIE);
+  cookieStore.delete(USER_NAME_COOKIE);
+  redirect('/admin');
+}
+
 // --- App User Management ---
 
 export async function listAppUsers(): Promise<{ users: { username: string }[]; error?: string }> {
