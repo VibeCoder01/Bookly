@@ -96,6 +96,7 @@ export interface AppConfiguration {
   allowAnonymousUsers?: boolean;
   allowAnonymousBookingDeletion?: boolean;
   allowAnonymousBookingEditing?: boolean;
+  allowPastBookings?: boolean;
 }
 
 export interface RoomFormData {

@@ -4,7 +4,7 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text, ImageIcon, KeyRound, LogOut, Scaling, CalendarDays, KeySquare, Slash, UserCog } from 'lucide-react';
+import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text, ImageIcon, KeyRound, LogOut, Scaling, CalendarDays, KeySquare, Slash, UserCog, History } from 'lucide-react';
 import React, { useState, useEffect, useMemo, useCallback, useRef, useTransition } from 'react';
 import type { Booking, Room, AppConfiguration } from '@/types';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -62,6 +62,7 @@ interface AdminConfigFormState {
   allowAnonymousUsers: boolean;
   allowAnonymousBookingDeletion: boolean;
   allowAnonymousBookingEditing: boolean;
+  allowPastBookings: boolean;
 }
 
 const convertMinutesToDurationString = (minutes: number): string => {
@@ -103,6 +104,7 @@ export default function AdminPage() {
     allowAnonymousUsers: true,
     allowAnonymousBookingDeletion: true,
     allowAnonymousBookingEditing: true,
+    allowPastBookings: true,
   });
   const [currentLogo, setCurrentLogo] = useState<string | undefined>(undefined);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
@@ -153,6 +155,7 @@ export default function AdminPage() {
         allowAnonymousUsers: currentConfig.allowAnonymousUsers ?? true,
         allowAnonymousBookingDeletion: currentConfig.allowAnonymousBookingDeletion ?? true,
         allowAnonymousBookingEditing: currentConfig.allowAnonymousBookingEditing ?? true,
+        allowPastBookings: currentConfig.allowPastBookings ?? true,
       });
       setCurrentLogo(currentConfig.appLogo);
     } catch (err) {
@@ -176,6 +179,7 @@ export default function AdminPage() {
         allowAnonymousUsers: true,
         allowAnonymousBookingDeletion: true,
         allowAnonymousBookingEditing: true,
+        allowPastBookings: true,
       });
       setCurrentLogo(undefined);
     } finally {
@@ -289,6 +293,7 @@ export default function AdminPage() {
       allowAnonymousUsers: config.allowAnonymousUsers,
       allowAnonymousBookingDeletion: config.allowAnonymousBookingDeletion,
       allowAnonymousBookingEditing: config.allowAnonymousBookingEditing,
+      allowPastBookings: config.allowPastBookings,
     };
 
     if (!canManageBranding) {
@@ -385,6 +390,7 @@ export default function AdminPage() {
       case 'allowAnonymousUsers': return <UserCog className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'allowAnonymousBookingDeletion': return <Trash2 className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'allowAnonymousBookingEditing': return <Pencil className="mr-2 h-4 w-4 text-muted-foreground" />;
+      case 'allowPastBookings': return <History className="mr-2 h-4 w-4 text-muted-foreground" />;
       default: return null;
     }
   };
@@ -963,6 +969,21 @@ export default function AdminPage() {
                                     onCheckedChange={(checked) => handleConfigChange('allowAnonymousBookingEditing', checked)}
                                     disabled={isApplyingChanges}
                                     aria-label="Toggle anonymous booking editing"
+                                />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium pl-6 flex items-center">
+                                {getIconForSetting('allowPastBookings')} Allow Bookings in the Past
+                            </TableCell>
+                            <TableCell className="text-right pr-6">
+                              <div className="flex justify-end">
+                                <Switch
+                                    checked={config.allowPastBookings}
+                                    onCheckedChange={(checked) => handleConfigChange('allowPastBookings', checked)}
+                                    disabled={isApplyingChanges}
+                                    aria-label="Toggle allowing bookings in the past"
                                 />
                               </div>
                             </TableCell>

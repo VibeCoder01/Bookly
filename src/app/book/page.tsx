@@ -61,6 +61,7 @@ export default async function BookPage({
       requiresAuthForBooking={requiresAuthForBooking}
       authenticatedUserName={authenticatedUserName}
       includeWeekends={config.includeWeekends ?? false}
+      allowPastBookings={config.allowPastBookings ?? true}
     />
   );
 }

@@ -10,5 +10,6 @@
   "weekStartsOnMonday": false,
   "includeWeekends": false,
   "showHomePageKey": true,
-  "showSlotStrike": true
+  "showSlotStrike": true,
+  "allowPastBookings": true
 }

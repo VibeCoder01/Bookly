@@ -646,6 +646,7 @@ const appConfigurationObjectSchema = z.object({
   allowAnonymousUsers: z.boolean().optional(),
   allowAnonymousBookingDeletion: z.boolean().optional(),
   allowAnonymousBookingEditing: z.boolean().optional(),
+  allowPastBookings: z.boolean().optional(),
 });
 
 const appConfigurationSchema = appConfigurationObjectSchema.refine(data => {
@@ -868,7 +869,20 @@ export async function getAvailableTimeSlots(
   }
   
   const appConfig = await readConfigurationFromFile();
-  const { slotDurationMinutes: configuredSlotDuration, startOfDay: currentSystemStartOfDay, endOfDay: currentSystemEndOfDay } = appConfig;
+  const {
+    slotDurationMinutes: configuredSlotDuration,
+    startOfDay: currentSystemStartOfDay,
+    endOfDay: currentSystemEndOfDay,
+    allowPastBookings,
+  } = appConfig;
+
+  const allowBookingInPast = allowPastBookings ?? true;
+  const now = new Date();
+  const todayStart = startOfDay(now);
+
+  if (!allowBookingInPast && isBefore(baseDate, todayStart)) {
+    return { slots: [], error: 'Bookings in the past are disabled. Please select a future date.' };
+  }
 
   const [startHour, startMinute] = currentSystemStartOfDay.split(':').map(Number);
   const [endHour, endMinute] = currentSystemEndOfDay.split(':').map(Number);
@@ -908,6 +922,10 @@ export async function getAvailableTimeSlots(
   const availableSlots = generatedSlots.filter((slot) => {
     const slotStartDateTime = parse(`${date} ${slot.startTime}`, 'yyyy-MM-dd HH:mm', new Date());
     const slotEndDateTime = parse(`${date} ${slot.endTime}`, 'yyyy-MM-dd HH:mm', new Date());
+
+    if (!allowBookingInPast && isBefore(slotStartDateTime, now)) {
+      return false;
+    }
 
     return !existingBookingsForRoomAndDate.some((booking) => {
       const existingBookingTimes = parseBookingTime(booking.time, booking.date);
@@ -1001,6 +1019,7 @@ export async function submitBooking(
   const config = await readConfigurationFromFile();
   const allowAnonymous = config.allowAnonymousUsers ?? true;
   const includeWeekends = config.includeWeekends ?? false;
+  const allowPastBookings = config.allowPastBookings ?? true;
   if (!allowAnonymous) {
     const user = await getCurrentUser();
     if (!user) {
@@ -1053,6 +1072,19 @@ export async function submitBooking(
     }
 
     datesToBook.push(format(currentDateForLoop, 'yyyy-MM-dd'));
+  }
+
+  if (!allowPastBookings) {
+    const now = new Date();
+    for (const dateToBook of datesToBook) {
+      const bookingStartDateTime = parse(`${dateToBook} ${startTime}`, 'yyyy-MM-dd HH:mm', new Date());
+      if (isBefore(bookingStartDateTime, now)) {
+        const readableDate = format(parse(dateToBook, 'yyyy-MM-dd', new Date()), 'PPP');
+        return {
+          error: `Bookings in the past are disabled. Please choose a future time. (Attempted ${readableDate} at ${startTime}).`,
+        };
+      }
+    }
   }
 
   const ensureRangeAvailable = async (targetDate: string) => {
@@ -1294,6 +1326,7 @@ const exportedSettingsSchema = z.object({
     allowAnonymousUsers: z.boolean().optional(),
     allowAnonymousBookingDeletion: z.boolean().optional(),
     allowAnonymousBookingEditing: z.boolean().optional(),
+    allowPastBookings: z.boolean().optional(),
   }),
   rooms: z.array(z.object({
     id: z.string(),
