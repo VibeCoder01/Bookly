@@ -30,6 +30,8 @@ export default async function BookPage({
   const allowAnonymousDeletion = config.allowAnonymousBookingDeletion ?? true;
   const allowAnonymousEditing = config.allowAnonymousBookingEditing ?? true;
   const isAuthenticated = Boolean(currentUser || currentAdmin);
+  const requiresAuthForBooking = !allowAnonymous;
+  const authenticatedUserName = currentUser?.username ?? currentAdmin?.username ?? null;
 
   if (!allowAnonymous && !isAuthenticated) {
     const entries = Object.entries(resolvedSearchParams ?? {}).flatMap(([key, value]) => {
@@ -56,6 +58,8 @@ export default async function BookPage({
       requiresAuthForDeletion={requiresAuthForDeletion}
       canEditBookings={canEditBookings}
       requiresAuthForEditing={requiresAuthForEditing}
+      requiresAuthForBooking={requiresAuthForBooking}
+      authenticatedUserName={authenticatedUserName}
     />
   );
 }

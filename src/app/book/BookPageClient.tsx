@@ -15,9 +15,18 @@ type BookPageClientProps = {
   requiresAuthForDeletion: boolean;
   canEditBookings: boolean;
   requiresAuthForEditing: boolean;
+  requiresAuthForBooking: boolean;
+  authenticatedUserName: string | null;
 };
 
-function BookPageContents({ canDeleteBookings, requiresAuthForDeletion, canEditBookings, requiresAuthForEditing }: BookPageClientProps) {
+function BookPageContents({
+  canDeleteBookings,
+  requiresAuthForDeletion,
+  canEditBookings,
+  requiresAuthForEditing,
+  requiresAuthForBooking,
+  authenticatedUserName,
+}: BookPageClientProps) {
   const searchParams = useSearchParams();
   const initialRoomId = searchParams.get('roomId');
   const initialDate = searchParams.get('date');
@@ -26,6 +35,12 @@ function BookPageContents({ canDeleteBookings, requiresAuthForDeletion, canEditB
   const { setUserName } = useUser();
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
+
+  useEffect(() => {
+    if (requiresAuthForBooking && authenticatedUserName) {
+      setUserName(authenticatedUserName);
+    }
+  }, [requiresAuthForBooking, authenticatedUserName, setUserName]);
 
   useEffect(() => {
     const fetchRoomsData = async () => {
@@ -76,6 +91,8 @@ function BookPageContents({ canDeleteBookings, requiresAuthForDeletion, canEditB
                 requiresAuthForDeletion={requiresAuthForDeletion}
                 canEditBookings={canEditBookings}
                 requiresAuthForEditing={requiresAuthForEditing}
+                defaultUserName={requiresAuthForBooking ? authenticatedUserName ?? '' : undefined}
+                isUserNameReadOnly={requiresAuthForBooking && Boolean(authenticatedUserName)}
               />
             )}
           </CardContent>
