@@ -44,6 +44,7 @@ interface BookingFormProps {
   requiresAuthForEditing?: boolean;
   defaultUserName?: string;
   isUserNameReadOnly?: boolean;
+  includeWeekends?: boolean;
 }
 
 const formSchema = z
@@ -59,6 +60,11 @@ const formSchema = z
     userName: z.string().min(2, 'Name must be at least 2 characters.').max(50),
     userEmail: z.string().email('Please enter a valid email address.'),
     repeatFrequency: z.enum(['none', 'daily', 'weekly']).default('none'),
+    repeatInterval: z.coerce
+      .number()
+      .int('Repeat interval must be a whole number.')
+      .min(1, 'Repeat interval must be at least 1.')
+      .max(52, 'Repeat interval cannot exceed 52.'),
     repeatCount: z.coerce
       .number()
       .int('Repeat count must be a whole number.')
@@ -89,6 +95,14 @@ const formSchema = z
         path: ['repeatCount'],
       });
     }
+
+    if (data.repeatFrequency === 'none' && data.repeatInterval !== 1) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Repeat interval must be 1 when no repetition is selected.',
+        path: ['repeatInterval'],
+      });
+    }
   });
 
 
@@ -106,6 +120,7 @@ export function BookingForm({
   requiresAuthForEditing = false,
   defaultUserName,
   isUserNameReadOnly = false,
+  includeWeekends = true,
 }: BookingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -141,6 +156,7 @@ export function BookingForm({
       userEmail: '',
       repeatFrequency: 'none',
       repeatCount: 1,
+      repeatInterval: 1,
     },
   });
 
@@ -181,6 +197,8 @@ export function BookingForm({
   const watchedUserName = form.watch('userName');
   const watchedUserEmail = form.watch('userEmail');
   const watchedRepeatFrequency = form.watch('repeatFrequency');
+  const watchedRepeatInterval = form.watch('repeatInterval');
+  const repeatIntervalUnit = watchedRepeatFrequency === 'weekly' ? 'week' : 'day';
 
   useEffect(() => {
     const currentRepeatCount = form.getValues('repeatCount');
@@ -188,11 +206,19 @@ export function BookingForm({
       if (currentRepeatCount !== 1) {
         form.setValue('repeatCount', 1, { shouldDirty: true, shouldValidate: true });
       }
+      if (form.getValues('repeatInterval') !== 1) {
+        form.setValue('repeatInterval', 1, { shouldDirty: true, shouldValidate: true });
+      }
       return;
     }
 
     if (currentRepeatCount < 2) {
       form.setValue('repeatCount', 2, { shouldDirty: true, shouldValidate: true });
+    }
+
+    const currentRepeatInterval = form.getValues('repeatInterval');
+    if (currentRepeatInterval < 1) {
+      form.setValue('repeatInterval', 1, { shouldDirty: true, shouldValidate: true });
     }
   }, [watchedRepeatFrequency, form]);
 
@@ -584,7 +610,7 @@ export function BookingForm({
                 )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="repeatFrequency" className="flex items-center">
                   <Repeat2 className="mr-2 h-5 w-5 text-primary" /> Repeat Booking
@@ -605,8 +631,8 @@ export function BookingForm({
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Does not repeat</SelectItem>
-                        <SelectItem value="daily">Daily</SelectItem>
-                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="daily">Every N days</SelectItem>
+                        <SelectItem value="weekly">Every N weeks</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -615,7 +641,42 @@ export function BookingForm({
                   <p className="text-sm text-destructive">{form.formState.errors.repeatFrequency.message}</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Choose how often this booking should repeat. Daily repeats every day, weekly repeats every 7 days.
+                  Choose how often this booking should repeat. Adjust the interval and occurrence count to fit your schedule.
+                  {!includeWeekends && (
+                    <>
+                      {' '}
+                      Weekend dates are skipped when repeats fall on Saturday or Sunday.
+                    </>
+                  )}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="repeatInterval" className="flex items-center">
+                  <Repeat2 className="mr-2 h-5 w-5 text-primary" /> Repeat every
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="repeatInterval"
+                    type="number"
+                    min={1}
+                    max={52}
+                    disabled={watchedRepeatFrequency === 'none'}
+                    className={cn(
+                      'w-full',
+                      watchedRepeatFrequency === 'none' ? 'bg-muted cursor-not-allowed' : undefined
+                    )}
+                    {...form.register('repeatInterval', { valueAsNumber: true })}
+                  />
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">
+                    {repeatIntervalUnit}
+                    {watchedRepeatInterval > 1 ? 's' : ''}
+                  </span>
+                </div>
+                {form.formState.errors.repeatInterval && (
+                  <p className="text-sm text-destructive">{form.formState.errors.repeatInterval.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Minimum interval is 1 {repeatIntervalUnit}. Increase this to spread recurring bookings further apart.
                 </p>
               </div>
               <div className="space-y-2">

@@ -932,6 +932,11 @@ const bookingSubmissionSchema = z
     userName: z.string().min(2, 'Name must be at least 2 characters.'),
     userEmail: z.string().email('Invalid email address.'),
     repeatFrequency: z.enum(['none', 'daily', 'weekly']).default('none'),
+    repeatInterval: z.coerce
+      .number()
+      .int('Repeat interval must be a whole number.')
+      .min(1, 'Repeat interval must be at least 1.')
+      .max(52, 'Repeat interval cannot exceed 52.'),
     repeatCount: z.coerce
       .number()
       .int('Repeat count must be a whole number.')
@@ -962,6 +967,14 @@ const bookingSubmissionSchema = z
         path: ['repeatCount'],
       });
     }
+
+    if (data.repeatFrequency === 'none' && data.repeatInterval !== 1) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Repeat interval must be 1 when no repetition is selected.',
+        path: ['repeatInterval'],
+      });
+    }
   });
 
 
@@ -976,6 +989,7 @@ export async function submitBooking(
     userEmail: string;
     repeatFrequency?: 'none' | 'daily' | 'weekly';
     repeatCount?: number;
+    repeatInterval?: number;
   }
 ): Promise<{ bookings?: Booking[]; error?: string; fieldErrors?: Record<string, string[] | undefined> }> {
 
@@ -986,6 +1000,7 @@ export async function submitBooking(
 
   const config = await readConfigurationFromFile();
   const allowAnonymous = config.allowAnonymousUsers ?? true;
+  const includeWeekends = config.includeWeekends ?? false;
   if (!allowAnonymous) {
     const user = await getCurrentUser();
     if (!user) {
@@ -1003,11 +1018,18 @@ export async function submitBooking(
     userEmail,
     repeatFrequency,
     repeatCount,
+    repeatInterval,
   } = validationResult.data;
 
   await new Promise(resolve => setTimeout(resolve, 700));
 
-  const incrementDays = repeatFrequency === 'daily' ? 1 : repeatFrequency === 'weekly' ? 7 : 0;
+  const intervalValue = repeatInterval ?? 1;
+  const incrementDays =
+    repeatFrequency === 'daily'
+      ? intervalValue
+      : repeatFrequency === 'weekly'
+      ? intervalValue * 7
+      : 0;
   const datesToBook: string[] = [];
   let currentDateForLoop = parse(date, 'yyyy-MM-dd', new Date());
 
@@ -1023,6 +1045,13 @@ export async function submitBooking(
     }
 
     currentDateForLoop = addDays(currentDateForLoop, incrementDays);
+
+    if (!includeWeekends) {
+      while (isWeekend(currentDateForLoop)) {
+        currentDateForLoop = addDays(currentDateForLoop, 1);
+      }
+    }
+
     datesToBook.push(format(currentDateForLoop, 'yyyy-MM-dd'));
   }
 
