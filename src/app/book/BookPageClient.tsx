@@ -18,6 +18,7 @@ type BookPageClientProps = {
   requiresAuthForBooking: boolean;
   authenticatedUserName: string | null;
   includeWeekends: boolean;
+  allowPastBookings: boolean;
 };
 
 function BookPageContents({
@@ -28,6 +29,7 @@ function BookPageContents({
   requiresAuthForBooking,
   authenticatedUserName,
   includeWeekends,
+  allowPastBookings,
 }: BookPageClientProps) {
   const searchParams = useSearchParams();
   const initialRoomId = searchParams.get('roomId');
@@ -96,6 +98,7 @@ function BookPageContents({
                 defaultUserName={requiresAuthForBooking ? authenticatedUserName ?? '' : undefined}
                 isUserNameReadOnly={requiresAuthForBooking && Boolean(authenticatedUserName)}
                 includeWeekends={includeWeekends}
+                allowPastBookings={allowPastBookings}
               />
             )}
           </CardContent>

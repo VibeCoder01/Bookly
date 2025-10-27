@@ -45,6 +45,7 @@ interface BookingFormProps {
   defaultUserName?: string;
   isUserNameReadOnly?: boolean;
   includeWeekends?: boolean;
+  allowPastBookings?: boolean;
 }
 
 const formSchema = z
@@ -121,6 +122,7 @@ export function BookingForm({
   defaultUserName,
   isUserNameReadOnly = false,
   includeWeekends = true,
+  allowPastBookings = true,
 }: BookingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -477,7 +479,16 @@ export function BookingForm({
                           field.onChange(date);
                           setIsDatePickerOpen(false);
                       }}
-                      disabled={(date) => date < new Date(new Date().setHours(0,0,0,0)) }
+                      disabled={(date) => {
+                        if (allowPastBookings) {
+                          return false;
+                        }
+                        const startOfToday = new Date();
+                        startOfToday.setHours(0, 0, 0, 0);
+                        const candidateDate = new Date(date);
+                        candidateDate.setHours(0, 0, 0, 0);
+                        return candidateDate < startOfToday;
+                      }}
                       initialFocus
                     />
                   </PopoverContent>

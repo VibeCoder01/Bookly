@@ -23,6 +23,7 @@ const DEFAULT_CONFIG: AppConfiguration = {
   allowAnonymousUsers: true,
   allowAnonymousBookingDeletion: true,
   allowAnonymousBookingEditing: true,
+  allowPastBookings: true,
 };
 
 export const readConfigurationFromFile = async (): Promise<AppConfiguration> => {
@@ -39,6 +40,9 @@ export const readConfigurationFromFile = async (): Promise<AppConfiguration> => 
   }
   if (sanitized.allowAnonymousBookingEditing === undefined) {
     sanitized.allowAnonymousBookingEditing = true;
+  }
+  if (sanitized.allowPastBookings === undefined) {
+    sanitized.allowPastBookings = true;
   }
   return sanitized as AppConfiguration;
 };
