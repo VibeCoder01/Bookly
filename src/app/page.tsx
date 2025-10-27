@@ -1,7 +1,13 @@
 
-import { getRoomsWithDailyUsage, getCurrentConfiguration, getCurrentUser, getCurrentAdmin, logoutAdmin } from '@/lib/actions';
+import {
+  getRoomsWithDailyUsage,
+  getCurrentConfiguration,
+  getCurrentUser,
+  getCurrentAdmin,
+  logoutAdmin,
+  logoutUserAndRedirectToAdmin,
+} from '@/lib/actions';
 import { RoomGrid } from '@/components/bookly/RoomGrid';
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { UserCog } from 'lucide-react';
 
@@ -40,12 +46,12 @@ export default async function HomePage({
       </div>
       <div className="pb-6 flex justify-center">
         <div className="flex flex-wrap items-center gap-3">
-          <Link href="/admin" passHref>
-            <Button variant="ghost" size="sm">
+          <form action={logoutUserAndRedirectToAdmin}>
+            <Button variant="ghost" size="sm" type="submit">
               <UserCog className="mr-2 h-5 w-5" />
               Admin
             </Button>
-          </Link>
+          </form>
           {currentAdmin && (
             <form action={logoutAdmin}>
               <Button variant="outline" size="sm" type="submit">
