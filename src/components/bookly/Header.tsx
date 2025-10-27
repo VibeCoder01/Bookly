@@ -3,12 +3,13 @@
 
 import { CalendarCheck, Wifi } from 'lucide-react';
 import Link from 'next/link';
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useTransition, useCallback } from 'react';
 import type { AppConfiguration } from '@/types';
 import Image from 'next/image';
 import { useUser } from '@/context/UserContext';
-import { getCurrentAdmin, getCurrentUser } from '@/lib/actions';
+import { getCurrentAdmin, getCurrentUser, logoutUser } from '@/lib/actions';
 import { usePathname } from 'next/navigation';
+import { Button } from '@/components/ui/button';
 
 interface HeaderProps {
   config: AppConfiguration;
@@ -23,6 +24,13 @@ export function Header({ config, initialAdminInfo, initialUserInfo }: HeaderProp
   const pathname = usePathname();
   const [adminInfo, setAdminInfo] = useState<{ username: string; isPrimary: boolean } | null>(initialAdminInfo);
   const [userInfo, setUserInfo] = useState<{ username: string } | null>(initialUserInfo);
+  const [isLoggingOut, startLogoutTransition] = useTransition();
+
+  const handleUserLogout = useCallback(() => {
+    startLogoutTransition(() => {
+      logoutUser(pathname || '/');
+    });
+  }, [pathname, startLogoutTransition]);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,21 +129,21 @@ export function Header({ config, initialAdminInfo, initialUserInfo }: HeaderProp
               </span>
             </span>
           ) : userInfo ? (
-            <span className="text-foreground text-sm flex items-center gap-2" title="Authenticated user">
-              User:
-              <span className="font-semibold text-primary">{userInfo.username}</span>
-            </span>
+            <>
+              <span className="text-foreground text-sm flex items-center gap-2" title="Authenticated user">
+                User:
+                <span className="font-semibold text-primary">{userInfo.username}</span>
+              </span>
+              <Button variant="outline" size="sm" onClick={handleUserLogout} disabled={isLoggingOut}>
+                {isLoggingOut ? 'Logging out...' : 'Logout User'}
+              </Button>
+            </>
           ) : (
             userName && (
               <span className="text-foreground text-sm">
                 Welcome, <span className="font-semibold text-primary">{userName}</span>!
               </span>
             )
-          )}
-          {!adminInfo && !userInfo && (
-            <Link href="/user/login" className="text-sm text-primary hover:underline">
-              User Login
-            </Link>
           )}
         </div>
       </div>
