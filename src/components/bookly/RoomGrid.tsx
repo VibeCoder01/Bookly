@@ -190,7 +190,7 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
     }, [gridData]);
 
     return (
-        <TooltipProvider delayDuration={2000}>
+        <TooltipProvider delayDuration={1000}>
             <div className="w-full max-w-7xl mx-auto mb-6">
                  <div className="flex items-center justify-center gap-4">
                     <Button variant="outline" size="icon" onClick={handlePrevWeek} disabled={isLoading}>
