@@ -5,11 +5,21 @@ import BookPageClient from './BookPageClient';
 
 export const dynamic = 'force-dynamic';
 
-type PageProps = {
-  searchParams?: Record<string, string | string[] | undefined>;
-};
+type BookPageSearchParams =
+  | Record<string, string | string[] | undefined>
+  | Promise<Record<string, string | string[] | undefined>>
+  | undefined;
 
-export default async function BookPage({ searchParams }: PageProps) {
+export default async function BookPage({
+  searchParams,
+}: {
+  searchParams?: BookPageSearchParams;
+}) {
+  const resolvedSearchParams =
+    searchParams && typeof (searchParams as Promise<any>)?.then === 'function'
+      ? await searchParams
+      : (searchParams as Record<string, string | string[] | undefined> | undefined);
+
   const [config, currentUser, currentAdmin] = await Promise.all([
     getCurrentConfiguration(),
     getCurrentUser(),
@@ -22,7 +32,7 @@ export default async function BookPage({ searchParams }: PageProps) {
   const isAuthenticated = Boolean(currentUser || currentAdmin);
 
   if (!allowAnonymous && !isAuthenticated) {
-    const entries = Object.entries(searchParams ?? {}).flatMap(([key, value]) => {
+    const entries = Object.entries(resolvedSearchParams ?? {}).flatMap(([key, value]) => {
       if (Array.isArray(value)) {
         return value.map((v) => [key, v]);
       }
