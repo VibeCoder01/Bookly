@@ -31,6 +31,8 @@ export interface BookingFormData {
   endTime: string;   // Individual slot end time HH:MM for the selected range
   userName: string;
   userEmail: string;
+  repeatFrequency?: 'none' | 'daily' | 'weekly';
+  repeatCount?: number;
 }
 
 export interface RoomBookingsDialogProps {
