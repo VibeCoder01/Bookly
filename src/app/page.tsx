@@ -1,5 +1,5 @@
 
-import { getRoomsWithDailyUsage, getCurrentConfiguration, getCurrentUser, getCurrentAdmin, logoutAdmin, logoutUser } from '@/lib/actions';
+import { getRoomsWithDailyUsage, getCurrentConfiguration, getCurrentUser, getCurrentAdmin, logoutAdmin } from '@/lib/actions';
 import { RoomGrid } from '@/components/bookly/RoomGrid';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -29,8 +29,6 @@ export default async function HomePage({
     getCurrentAdmin(),
   ]);
 
-  const logoutUserToHome = logoutUser.bind(null, '/');
-
   return (
     <main className="flex flex-col flex-grow">
       <div className="flex-grow flex flex-col items-center justify-center p-6">
@@ -42,13 +40,6 @@ export default async function HomePage({
       </div>
       <div className="pb-6 flex justify-center">
         <div className="flex flex-wrap items-center gap-3">
-          {currentUser && (
-            <form action={logoutUserToHome}>
-              <Button variant="outline" size="sm" type="submit">
-                Logout User
-              </Button>
-            </form>
-          )}
           <Link href="/admin" passHref>
             <Button variant="ghost" size="sm">
               <UserCog className="mr-2 h-5 w-5" />
