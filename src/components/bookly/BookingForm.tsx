@@ -30,6 +30,8 @@ interface BookingFormProps {
   requiresAuthForDeletion?: boolean;
   canEditBookings?: boolean;
   requiresAuthForEditing?: boolean;
+  defaultUserName?: string;
+  isUserNameReadOnly?: boolean;
 }
 
 const formSchema = z.object({
@@ -63,6 +65,8 @@ export function BookingForm({
   requiresAuthForDeletion = false,
   canEditBookings = false,
   requiresAuthForEditing = false,
+  defaultUserName,
+  isUserNameReadOnly = false,
 }: BookingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -94,10 +98,16 @@ export function BookingForm({
       startTime: '',
       endTime: '',
       title: '',
-      userName: '',
+      userName: defaultUserName ?? '',
       userEmail: '',
     },
   });
+
+  useEffect(() => {
+    if (typeof defaultUserName === 'string') {
+      form.setValue('userName', defaultUserName, { shouldDirty: false });
+    }
+  }, [defaultUserName, form]);
 
   const initialSelectionRef = useRef<{
     roomId?: string;
@@ -517,7 +527,14 @@ export function BookingForm({
                     <Label htmlFor="userName" className="flex items-center">
                     <User className="mr-2 h-5 w-5 text-primary" /> Your Name
                     </Label>
-                    <Input id="userName" placeholder="e.g. John Doe" {...form.register('userName')} />
+                    <Input
+                      id="userName"
+                      placeholder="e.g. John Doe"
+                      readOnly={isUserNameReadOnly}
+                      aria-readonly={isUserNameReadOnly}
+                      className={cn(isUserNameReadOnly ? 'bg-muted cursor-not-allowed' : undefined)}
+                      {...form.register('userName')}
+                    />
                     {form.formState.errors.userName && (
                     <p className="text-sm text-destructive">{form.formState.errors.userName.message}</p>
                     )}
