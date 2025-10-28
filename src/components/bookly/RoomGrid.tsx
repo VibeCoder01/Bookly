@@ -11,16 +11,8 @@ import { SlotDetailsDialog } from '@/components/bookly/SlotDetailsDialog';
 import { getRoomsWithDailyUsage } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
-import { ChevronLeft, ChevronRight, Loader2, Palette } from 'lucide-react';
-import {
-  PANEL_COLOR_OPTIONS,
-  PANEL_COLOR_DEFAULT_VALUE,
-  PANEL_COLOR_VALUE_SET,
-  getPanelColorOption,
-  type PanelColorValue,
-} from '@/lib/panel-colors';
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { usePanelColor } from '@/context/PanelColorContext';
 
 interface RoomGridProps {
     initialRoomsWithUsage: RoomWithDailyUsage[];
@@ -46,9 +38,6 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
     const searchParams = useSearchParams();
     const router = useRouter();
 
-    const panelColorOverrideEnabled = config.panelColorOverrideEnabled ?? false;
-    const panelColorOverrideValue = config.panelColorOverride;
-
     const [isSlotDetailsOpen, setIsSlotDetailsOpen] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState<{ date: string; slot: SlotStatus; colorClass?: string; } | null>(null);
 
@@ -59,13 +48,6 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
     });
     const [isLoading, setIsLoading] = useState(false);
     const isInitialMount = useRef(true);
-    const [userPanelColor, setUserPanelColor] = useState<PanelColorValue>(PANEL_COLOR_DEFAULT_VALUE);
-    const [hasLoadedPanelColor, setHasLoadedPanelColor] = useState(false);
-    const storageKey = useMemo(
-        () => `bookly:panel-color:${currentUser?.username ?? 'anonymous'}`,
-        [currentUser?.username]
-    );
-
     useEffect(() => {
         if (isInitialMount.current) {
             isInitialMount.current = false;
@@ -90,30 +72,6 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
 
         fetchNewData();
     }, [viewDate, router, searchParams]);
-
-    useEffect(() => {
-        setHasLoadedPanelColor(false);
-
-        if (typeof window === 'undefined') {
-            return;
-        }
-
-        const storedValue = window.localStorage.getItem(storageKey);
-        if (storedValue && PANEL_COLOR_VALUE_SET.has(storedValue as PanelColorValue)) {
-            setUserPanelColor(storedValue as PanelColorValue);
-        } else {
-            setUserPanelColor(PANEL_COLOR_DEFAULT_VALUE);
-        }
-        setHasLoadedPanelColor(true);
-    }, [storageKey]);
-
-    useEffect(() => {
-        if (!hasLoadedPanelColor || typeof window === 'undefined') {
-            return;
-        }
-
-        window.localStorage.setItem(storageKey, userPanelColor);
-    }, [storageKey, userPanelColor, hasLoadedPanelColor]);
 
     const { legendData, titleToColorMap } = useMemo(() => {
         const uniqueTitles = new Set<string>();
@@ -140,29 +98,7 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
         return { legendData: legendItems, titleToColorMap: titleColorMap };
     }, [gridData]);
 
-    const overridePanelColorOption = useMemo(
-        () => getPanelColorOption(panelColorOverrideValue),
-        [panelColorOverrideValue]
-    );
-    const activePanelColorOption = useMemo(
-        () =>
-            panelColorOverrideEnabled
-                ? overridePanelColorOption
-                : getPanelColorOption(userPanelColor),
-        [panelColorOverrideEnabled, overridePanelColorOption, userPanelColor]
-    );
-    const panelColorMessage = panelColorOverrideEnabled
-        ? 'Panel colour set by your administrator.'
-        : 'Choose the panel colour used for room cards.';
-
-    const handlePanelColorChange = (value: string) => {
-        if (panelColorOverrideEnabled) {
-            return;
-        }
-        if (PANEL_COLOR_VALUE_SET.has(value as PanelColorValue)) {
-            setUserPanelColor(value as PanelColorValue);
-        }
-    };
+    const { activePanelColorOption } = usePanelColor();
 
     const allowAnonymousUsers = config.allowAnonymousUsers ?? true;
     const isUserLoggedIn = Boolean(currentUser);
@@ -257,48 +193,7 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
 
     return (
         <TooltipProvider delayDuration={1000}>
-            <div className="w-full max-w-7xl mx-auto mb-6 space-y-6">
-                <div className="flex flex-col items-center gap-3">
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Palette className="h-4 w-4" />
-                        <span>{panelColorMessage}</span>
-                    </div>
-                    {panelColorOverrideEnabled ? (
-                        <div className="flex items-center gap-3">
-                            <div className={cn('h-8 w-8 rounded-md border border-border shadow-sm', overridePanelColorOption.previewClass)} />
-                            <span className="text-sm font-medium text-foreground">{overridePanelColorOption.label}</span>
-                        </div>
-                    ) : (
-                        <RadioGroup
-                            value={userPanelColor}
-                            onValueChange={handlePanelColorChange}
-                            className="flex flex-wrap items-center justify-center gap-4"
-                        >
-                            {PANEL_COLOR_OPTIONS.map((option) => (
-                                <div key={option.value} className="flex items-center gap-2">
-                                    <RadioGroupItem value={option.value} id={`panel-color-${option.value}`} />
-                                    <Label
-                                        htmlFor={`panel-color-${option.value}`}
-                                        className={cn(
-                                            'flex cursor-pointer items-center gap-2 text-sm font-medium',
-                                            option.value === userPanelColor ? 'text-foreground' : 'text-muted-foreground'
-                                        )}
-                                    >
-                                        <span
-                                            className={cn(
-                                                'h-6 w-6 rounded-md border border-border shadow-sm transition-all',
-                                                option.previewClass,
-                                                option.value === userPanelColor &&
-                                                    'ring-2 ring-offset-2 ring-offset-background ring-ring'
-                                            )}
-                                        />
-                                        {option.label}
-                                    </Label>
-                                </div>
-                            ))}
-                        </RadioGroup>
-                    )}
-                </div>
+            <div className="w-full max-w-7xl mx-auto mb-6">
                 <div className="flex items-center justify-center gap-4">
                     <Button variant="outline" size="icon" onClick={handlePrevWeek} disabled={isLoading}>
                         <ChevronLeft className="h-4 w-4" />
