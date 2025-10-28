@@ -40,11 +40,7 @@ export function middleware(request: NextRequest) {
   const response = NextResponse.next();
   const secure = process.env.NODE_ENV === 'production';
 
-  if (isAdminAuthenticated && !isAdminRelatedRequest) {
-    response.cookies.delete(AUTH_COOKIE_NAME);
-    response.cookies.delete(ADMIN_USER_COOKIE);
-    response.cookies.delete(ADMIN_PRIMARY_COOKIE);
-  } else if (isAdminAuthenticated && isAdminRelatedRequest) {
+  if (isAdminAuthenticated && isAdminRelatedRequest) {
     response.cookies.set(AUTH_COOKIE_NAME, 'true', {
       httpOnly: true,
       secure,
