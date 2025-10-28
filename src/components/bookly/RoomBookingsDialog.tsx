@@ -23,9 +23,10 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button, buttonVariants } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CalendarDays, UserCircle, Mail, Trash2, Loader2, Pencil } from 'lucide-react';
+import { CalendarDays, UserCircle, Trash2, Loader2, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { deleteBooking } from '@/lib/actions';
 import { cn } from '@/lib/utils';
@@ -61,6 +62,7 @@ export function RoomBookingsDialog({
   const [localBookings, setLocalBookings] = useState<Booking[]>(bookings);
   const [bookingToDelete, setBookingToDelete] = useState<Booking | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [pendingDeleteMode, setPendingDeleteMode] = useState<'single' | 'future' | null>(null);
   const [bookingToEdit, setBookingToEdit] = useState<Booking | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
@@ -91,10 +93,11 @@ export function RoomBookingsDialog({
       : 'You do not have permission to edit bookings'
     : undefined;
   
-  const handleDelete = async () => {
+  const handleDelete = async (mode: 'single' | 'future' = 'single') => {
     if (!bookingToDelete) return;
     if (!canDeleteBookings) {
       setBookingToDelete(null);
+      setPendingDeleteMode(null);
       toast({
         variant: 'destructive',
         title: 'Login Required',
@@ -106,17 +109,29 @@ export function RoomBookingsDialog({
     }
 
     setIsDeleting(true);
-    const result = await deleteBooking(bookingToDelete.id);
+    setPendingDeleteMode(mode);
+    const result = await deleteBooking(bookingToDelete.id, { mode });
 
     if (result.success) {
-        toast({ title: 'Booking Deleted', description: `The booking for "${bookingToDelete.title}" has been deleted.` });
-        setLocalBookings(prev => prev.filter(b => b.id !== bookingToDelete.id));
+        const deletedIds = new Set(result.deletedIds ?? []);
+        const deletedCount = deletedIds.size;
+        const description =
+          mode === 'future'
+            ? deletedCount > 1
+              ? `${deletedCount} bookings in this series (including this one) were deleted.`
+              : 'The selected booking was deleted.'
+            : `The booking for "${bookingToDelete.title}" has been deleted.`;
+        toast({ title: 'Booking Deleted', description });
+        if (deletedIds.size > 0) {
+          setLocalBookings(prev => prev.filter(b => !deletedIds.has(b.id)));
+        }
         onDataModified();
     } else {
         toast({ variant: 'destructive', title: 'Error Deleting Booking', description: result.error });
     }
 
     setIsDeleting(false);
+    setPendingDeleteMode(null);
     setBookingToDelete(null);
   };
 
@@ -182,7 +197,16 @@ export function RoomBookingsDialog({
                   {localBookings.map((booking) => (
                     <TableRow key={booking.id}>
                       <TableCell className="font-medium">{booking.time}</TableCell>
-                      <TableCell>{booking.title}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <span>{booking.title}</span>
+                          {booking.isSeriesBooking && booking.seriesId && (
+                            <Badge variant="secondary" className="uppercase tracking-wide text-[10px]">
+                              Series
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex flex-col space-y-1 text-sm">
                           <span className="flex items-center">
@@ -246,20 +270,68 @@ export function RoomBookingsDialog({
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={canDeleteBookings && !!bookingToDelete} onOpenChange={(isOpen) => !isOpen && setBookingToDelete(null)}>
+      <AlertDialog open={canDeleteBookings && !!bookingToDelete} onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          setBookingToDelete(null);
+          setPendingDeleteMode(null);
+        }
+      }}>
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                    This will permanently delete the booking "{bookingToDelete?.title}" for {bookingToDelete?.time}. This action cannot be undone.
+                  {bookingToDelete?.isSeriesBooking && bookingToDelete.seriesId ? (
+                    <>
+                      The booking "{bookingToDelete.title}" is part of a series. Choose whether to delete just this booking or this
+                      and all future bookings in the series.
+                    </>
+                  ) : (
+                    <>This will permanently delete the booking "{bookingToDelete?.title}" for {bookingToDelete?.time}. This action cannot be undone.</>
+                  )}
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogCancel onClick={() => setBookingToDelete(null)}>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className={cn(buttonVariants({ variant: "destructive" }))} disabled={isDeleting || !canDeleteBookings}>
-                  {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Delete
-                </AlertDialogAction>
+                <AlertDialogCancel
+                  onClick={() => {
+                    setBookingToDelete(null);
+                    setPendingDeleteMode(null);
+                  }}
+                >
+                  Cancel
+                </AlertDialogCancel>
+                {bookingToDelete?.isSeriesBooking && bookingToDelete.seriesId ? (
+                  <div className="flex flex-col space-y-2 sm:flex-row sm:space-x-2 sm:space-y-0">
+                    <AlertDialogAction
+                      onClick={() => handleDelete('single')}
+                      className={cn(buttonVariants({ variant: 'secondary' }))}
+                      disabled={isDeleting || !canDeleteBookings}
+                    >
+                      {isDeleting && pendingDeleteMode === 'single' && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Delete this booking
+                    </AlertDialogAction>
+                    <AlertDialogAction
+                      onClick={() => handleDelete('future')}
+                      className={cn(buttonVariants({ variant: 'destructive' }))}
+                      disabled={isDeleting || !canDeleteBookings}
+                    >
+                      {isDeleting && pendingDeleteMode === 'future' && (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      )}
+                      Delete this and future bookings
+                    </AlertDialogAction>
+                  </div>
+                ) : (
+                  <AlertDialogAction
+                    onClick={() => handleDelete('single')}
+                    className={cn(buttonVariants({ variant: 'destructive' }))}
+                    disabled={isDeleting || !canDeleteBookings}
+                  >
+                    {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Delete
+                  </AlertDialogAction>
+                )}
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
