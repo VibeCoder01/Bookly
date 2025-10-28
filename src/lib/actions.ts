@@ -8,7 +8,7 @@ import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes, isW
 import fs from 'fs';
 import path from 'path';
 import { getPersistedBookings, addMockBooking, writeAllBookings } from './mock-data';
-import { revalidatePath, noStore } from 'next/cache';
+import { revalidatePath, unstable_noStore as noStore } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AUTH_COOKIE_NAME, ADMIN_USER_COOKIE, ADMIN_PRIMARY_COOKIE, USER_AUTH_COOKIE, USER_NAME_COOKIE } from '@/lib/auth';
