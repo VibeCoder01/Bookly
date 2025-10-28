@@ -39,10 +39,10 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { RoomFormDialog } from '@/components/bookly/RoomFormDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import Image from 'next/image';
 import { CalendarCheck } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { PANEL_COLOR_OPTIONS, getPanelColorOption, PANEL_COLOR_DEFAULT_VALUE, type PanelColorValue } from '@/lib/panel-colors';
+import { LogoImage } from '@/components/bookly/LogoImage';
 
 
 interface GroupedBookings {
@@ -1324,7 +1324,7 @@ export default function AdminPage() {
                         {isLoadingConfig ? (
                             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                         ) : currentLogo ? (
-                          <Image src={currentLogo} alt="Current App Logo" width={40} height={40} className="object-contain" unoptimized />
+                          <LogoImage src={currentLogo} alt="Current App Logo" />
                         ) : (
                           <CalendarCheck className="h-8 w-8 text-muted-foreground" />
                         )}
