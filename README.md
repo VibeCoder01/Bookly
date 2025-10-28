@@ -94,6 +94,26 @@ npm run dev
 
 Open [http://localhost:9002](http://localhost:9002) in your browser to view the application.
 
+The development server listens on port `9002`. To experiment with the Turbopack-powered
+dev server shipped with Next.js, append the `--turbo` flag when starting the app:
+
+```bash
+npm run dev -- --turbo
+```
+
+### Helpful Scripts
+
+Once dependencies are installed you can use the following scripts to build and validate the
+project:
+
+- `npm run build` — Create an optimized production build in the `.next/` directory.
+- `npm start` — Serve the production build locally after running `npm run build`.
+- `npm run lint` — Lint the codebase with `next lint` to catch stylistic and common issues.
+- `npm run typecheck` — Run the TypeScript compiler in no-emit mode to ensure type safety.
+
+Running the lint and typecheck commands before committing helps maintain consistent code
+quality, especially when working with Server Actions and shared UI components.
+
 ## Project Structure
 
 - `src/app/`: Contains the main pages and layouts for the application (e.g., `page.tsx` for the home page and `admin/page.tsx` for the admin dashboard).
@@ -116,6 +136,14 @@ Bookly divides its persisted data between a lightweight JSON file and a structur
 - **Room definitions (`data/rooms.json`):** All room metadata—IDs, display names, and capacities—is kept in a JSON file. The room server actions (`getRooms`, `addRoom`, `updateRoom`, `deleteRoom`) exclusively read from and write to this file, ensuring room changes are quick to load and easy to export.
 - **Bookings, configuration, and accounts (`data/bookly.sqlite`):** The SQLite database contains tables for bookings, application configuration, and both admin and end-user credentials. Helper modules (`config-store`, `sqlite-db`, `mock-data`) wrap all access to these tables so that CRUD operations, import/export routines, and authentication flows operate against the database as the source of truth.
 - **Import/export bridge:** Backup routines gather configuration (from SQLite), rooms (from `rooms.json`), and bookings (from SQLite) into one JSON payload. Restores perform the inverse, pushing each dataset back into its native store to keep the JSON file and database synchronized.
+
+### Configuring the SQLite CLI
+
+The application shells out to the `sqlite3` binary for data access. Ensure the executable is
+available on your `PATH` before launching the app. Administrators can override the binary
+location from the **Admin → Configuration → Database** section if it lives elsewhere on your
+machine. After updating the path, Bookly will automatically use the new location for all
+subsequent imports, exports, and server actions.
 
 ## License
 
