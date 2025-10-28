@@ -8,6 +8,7 @@ import {
   logoutUserAndRedirectToAdmin,
 } from '@/lib/actions';
 import { RoomGrid } from '@/components/bookly/RoomGrid';
+import { ThemeToggle } from '@/components/bookly/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { UserCog } from 'lucide-react';
 
@@ -39,13 +40,20 @@ export default async function HomePage({
     <main className="flex flex-col flex-grow">
       <div className="flex-grow flex flex-col items-center justify-center p-6">
         {roomsWithUsage.length > 0 ? (
-            <RoomGrid initialRoomsWithUsage={roomsWithUsage} config={config} currentUser={currentUser} />
+          <RoomGrid
+            initialRoomsWithUsage={roomsWithUsage}
+            config={config}
+            currentUser={currentUser}
+          />
         ) : (
-           <p className="text-muted-foreground">No rooms have been configured. Please add a room in the admin panel.</p>
+          <p className="text-muted-foreground">
+            No rooms have been configured. Please add a room in the admin panel.
+          </p>
         )}
       </div>
       <div className="pb-6 flex justify-center">
         <div className="flex flex-wrap items-center gap-3">
+          <ThemeToggle />
           <form action={logoutUserAndRedirectToAdmin}>
             <Button variant="ghost" size="sm" type="submit">
               <UserCog className="mr-2 h-5 w-5" />
