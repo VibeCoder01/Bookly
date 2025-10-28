@@ -8,7 +8,7 @@ import { format, parse, setHours, setMinutes, isBefore, isEqual, addMinutes, isW
 import fs from 'fs';
 import path from 'path';
 import { getPersistedBookings, addMockBooking, writeAllBookings } from './mock-data';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, noStore } from 'next/cache';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AUTH_COOKIE_NAME, ADMIN_USER_COOKIE, ADMIN_PRIMARY_COOKIE, USER_AUTH_COOKIE, USER_NAME_COOKIE } from '@/lib/auth';
@@ -860,6 +860,7 @@ export async function revertToDefaultLogo(): Promise<{ success: boolean; error?:
 }
 
 export async function getCurrentConfiguration(): Promise<AppConfiguration> {
+  noStore();
   await new Promise(resolve => setTimeout(resolve, 100));
   return await readConfigurationFromFile();
 }
