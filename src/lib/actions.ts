@@ -17,9 +17,18 @@ import { getAdminUser, addAdminUserToDb, readAdminUsersFromDb, deleteAdminUser, 
 
 export async function getCurrentAdmin(): Promise<{ username: string; isPrimary: boolean } | null> {
   const cookieStore = await cookies();
-  const primaryCookieValue = cookieStore.get(ADMIN_PRIMARY_COOKIE)?.value === 'true';
+  const isAuthenticated = cookieStore.get(AUTH_COOKIE_NAME)?.value === 'true';
+  if (!isAuthenticated) {
+    return null;
+  }
+
+  const primaryCookieRaw = cookieStore.get(ADMIN_PRIMARY_COOKIE)?.value;
+  const primaryCookieValue = primaryCookieRaw === 'true';
   const usernameCookie = cookieStore.get(ADMIN_USER_COOKIE)?.value;
 
+  // When the admin session is active but the username cookie is missing (which could
+  // happen on older sessions), fall back to the primary admin account if the primary
+  // flag is still present.
   const username = usernameCookie || (primaryCookieValue ? 'admin' : undefined);
 
   if (!username) {
