@@ -71,20 +71,15 @@ function run(sql: string) {
 
 function ensureBookingSeriesColumns() {
   ensureDb();
-  const statements = [
-    'ALTER TABLE bookings ADD COLUMN isSeriesBooking INTEGER DEFAULT 0;',
-    'ALTER TABLE bookings ADD COLUMN seriesId TEXT;'
-  ];
+  const columns = query('PRAGMA table_info(bookings);') as Array<{ name: string }>;
+  const columnNames = new Set(columns.map((column) => column.name));
 
-  for (const statement of statements) {
-    try {
-      execFileSync(SQLITE_CMD, [DB_PATH, statement]);
-    } catch (err: any) {
-      const message = String(err?.stderr ?? err?.message ?? err);
-      if (!message.includes('duplicate column name')) {
-        throw err;
-      }
-    }
+  if (!columnNames.has('isSeriesBooking')) {
+    run('ALTER TABLE bookings ADD COLUMN isSeriesBooking INTEGER DEFAULT 0;');
+  }
+
+  if (!columnNames.has('seriesId')) {
+    run('ALTER TABLE bookings ADD COLUMN seriesId TEXT;');
   }
 }
 
