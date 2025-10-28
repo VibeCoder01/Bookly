@@ -1160,6 +1160,9 @@ export async function submitBooking(
 
   const bookingTimeRangeString = `${startTime} - ${endTime}`;
 
+  const isSeriesBooking = occurrences > 1;
+  const seriesId = isSeriesBooking ? `series-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` : undefined;
+
   const bookingsToCreate: Booking[] = datesToBook.map((dateToBook, index) => ({
     id: `booking-${Date.now()}-${index}-${Math.random().toString(36).substring(2, 7)}`,
     roomId,
@@ -1169,6 +1172,8 @@ export async function submitBooking(
     title,
     userName,
     userEmail,
+    isSeriesBooking,
+    seriesId,
   }));
 
   for (const booking of bookingsToCreate) {
@@ -1267,7 +1272,7 @@ export async function getBookingsForRoomAndDate(
 
 export async function getAllBookings(): Promise<{ bookings: Booking[]; error?: string }> {
   await new Promise(resolve => setTimeout(resolve, 600));
-  
+
   const allBookings = await getPersistedBookings();
   const sortedBookings = [...allBookings].sort((a, b) => {
     const dateComparison = a.date.localeCompare(b.date);
@@ -1281,11 +1286,38 @@ export async function getAllBookings(): Promise<{ bookings: Booking[]; error?: s
   return { bookings: sortedBookings };
 }
 
-export async function deleteBooking(bookingId: string): Promise<{ success: boolean; error?: string }> {
+function isSameOrFutureSeriesOccurrence(reference: Booking, candidate: Booking): boolean {
+  if (!reference.seriesId || reference.seriesId !== candidate.seriesId) {
+    return false;
+  }
+
+  const dateComparison = candidate.date.localeCompare(reference.date);
+  if (dateComparison > 0) {
+    return true;
+  }
+
+  if (dateComparison < 0) {
+    return false;
+  }
+
+  const getStartTime = (booking: Booking) => {
+    const [start] = booking.time.split(' - ');
+    return start ?? '00:00';
+  };
+
+  return getStartTime(candidate) >= getStartTime(reference);
+}
+
+export async function deleteBooking(
+  bookingId: string,
+  options?: { mode?: 'single' | 'future' }
+): Promise<{ success: boolean; error?: string; deletedIds?: string[] }> {
+    const mode = options?.mode ?? 'single';
+
     if (!bookingId) {
         return { success: false, error: 'Booking ID is required.' };
     }
-    
+
     try {
         const [config, admin, user] = await Promise.all([
             getCurrentConfiguration(),
@@ -1301,11 +1333,40 @@ export async function deleteBooking(bookingId: string): Promise<{ success: boole
         }
 
         const allBookings = await getPersistedBookings();
-        const bookingsCount = allBookings.length;
-        const updatedBookings = allBookings.filter(booking => booking.id !== bookingId);
+        const bookingToRemove = allBookings.find(booking => booking.id === bookingId);
 
-        if (updatedBookings.length === bookingsCount) {
+        if (!bookingToRemove) {
             return { success: false, error: 'Booking not found.' };
+        }
+
+        let updatedBookings: Booking[] = allBookings;
+        let deletedIds: string[] = [];
+
+        if (mode === 'future') {
+            if (!bookingToRemove.isSeriesBooking || !bookingToRemove.seriesId) {
+                return { success: false, error: 'This booking is not part of a series.' };
+            }
+
+            const idsToDelete = new Set<string>();
+
+            for (const booking of allBookings) {
+                if (isSameOrFutureSeriesOccurrence(bookingToRemove, booking)) {
+                    idsToDelete.add(booking.id);
+                }
+            }
+
+            if (idsToDelete.size === 0) {
+                return { success: false, error: 'No future bookings were found for this series.' };
+            }
+
+            updatedBookings = allBookings.filter(booking => !idsToDelete.has(booking.id));
+            deletedIds = Array.from(idsToDelete);
+        } else {
+            updatedBookings = allBookings.filter(booking => booking.id !== bookingId);
+            if (updatedBookings.length === allBookings.length) {
+                return { success: false, error: 'Booking not found.' };
+            }
+            deletedIds = [bookingId];
         }
 
         await writeAllBookings(updatedBookings);
@@ -1314,7 +1375,7 @@ export async function deleteBooking(bookingId: string): Promise<{ success: boole
         revalidatePath('/book');
         revalidatePath('/admin');
 
-        return { success: true };
+        return { success: true, deletedIds };
     } catch (error) {
         console.error(`[Delete Booking Error] Failed to delete booking ID ${bookingId}:`, error);
         return { success: false, error: 'An error occurred while deleting the booking.' };
@@ -1358,6 +1419,8 @@ const exportedSettingsSchema = z.object({
     time: z.string(),
     userName: z.string(),
     userEmail: z.string(),
+    isSeriesBooking: z.boolean().optional().default(false),
+    seriesId: z.string().optional().nullable(),
   })),
 });
 
@@ -1390,11 +1453,16 @@ export async function importAllSettings(jsonContent: string): Promise<{ success:
     }
 
     const { appConfig, rooms, bookings } = validation.data;
+    const normalizedBookings: Booking[] = bookings.map((booking) => ({
+      ...booking,
+      isSeriesBooking: booking.isSeriesBooking ?? false,
+      seriesId: booking.seriesId ?? undefined,
+    }));
 
     await Promise.all([
       writeConfigurationToFile(appConfig),
       writeRoomsToFile(rooms),
-      writeAllBookings(bookings)
+      writeAllBookings(normalizedBookings)
     ]);
 
     return { success: true };

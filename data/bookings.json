@@ -7,7 +7,9 @@
     "time": "11:00 - 15:00",
     "title": "dddd",
     "userName": "Shaun",
-    "userEmail": "sdunmall@gmail.com"
+    "userEmail": "sdunmall@gmail.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   },
   {
     "id": "booking-1751190791210-g7v4l",
@@ -17,7 +19,9 @@
     "time": "10:00 - 11:00",
     "title": "sss",
     "userName": "Shaun",
-    "userEmail": "sdunmall@gmail.com"
+    "userEmail": "sdunmall@gmail.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   },
   {
     "id": "booking-1751191711440-6t2o0",
@@ -27,7 +31,9 @@
     "time": "15:00 - 17:00",
     "title": "ddd",
     "userName": "Shaun",
-    "userEmail": "sdunmall@gmail.com"
+    "userEmail": "sdunmall@gmail.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   },
   {
     "id": "booking-1751193939662-951e1",
@@ -37,7 +43,9 @@
     "time": "10:00 - 13:00",
     "title": "ddd",
     "userName": "Shaun",
-    "userEmail": "sdunmall@gmail.com"
+    "userEmail": "sdunmall@gmail.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   },
   {
     "id": "booking-1751534830072-q7j96",
@@ -47,7 +55,9 @@
     "time": "10:30 - 14:00",
     "title": "222",
     "userName": "222",
-    "userEmail": "222@www.com"
+    "userEmail": "222@www.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   },
   {
     "id": "booking-1751536142589-xyna9",
@@ -57,7 +67,9 @@
     "time": "10:30 - 13:00",
     "title": "www",
     "userName": "www",
-    "userEmail": "www@www.com"
+    "userEmail": "www@www.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   },
   {
     "id": "booking-1751562372003-mwh65",
@@ -67,7 +79,9 @@
     "time": "11:00 - 14:30",
     "title": "www2",
     "userName": "www",
-    "userEmail": "www@www.com"
+    "userEmail": "www@www.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   },
   {
     "id": "booking-1751562442995-9ro6r",
@@ -77,7 +91,9 @@
     "time": "14:30 - 17:00",
     "title": "Stuff to do  lkdsj lkj ljk sdlkj fsdlkj sdflkj dsflkj dfslkj dsflkj dfslkj dsflkj d",
     "userName": "My really long name lkj lj lj lj lkj lkj lj lj ",
-    "userEmail": "www@www.com"
+    "userEmail": "www@www.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   },
   {
     "id": "booking-1751562763903-8rld2",
@@ -87,7 +103,9 @@
     "time": "10:00 - 11:00",
     "title": "www1",
     "userName": "222",
-    "userEmail": "222@www.com"
+    "userEmail": "222@www.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   },
   {
     "id": "booking-1751563935364-nrli0",
@@ -97,7 +115,9 @@
     "time": "09:00 - 10:00",
     "title": "qqq",
     "userName": "222",
-    "userEmail": "222@www.com"
+    "userEmail": "222@www.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   },
   {
     "id": "booking-1751572854220-4nosp",
@@ -107,7 +127,9 @@
     "time": "10:00 - 13:00",
     "title": "Ttt",
     "userName": "Jhfy",
-    "userEmail": "vugh@hygu.com"
+    "userEmail": "vugh@hygu.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   },
   {
     "id": "booking-1751580599007-svnju",
@@ -117,7 +139,9 @@
     "time": "11:00 - 14:30",
     "title": "Hhh",
     "userName": "Jhfy",
-    "userEmail": "vugh@hygu.com"
+    "userEmail": "vugh@hygu.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   },
   {
     "id": "booking-1751580732232-gj6j3",
@@ -127,7 +151,9 @@
     "time": "09:00 - 13:00",
     "title": "Some big long meeting title",
     "userName": "Jhfy",
-    "userEmail": "vugh@hygu.com"
+    "userEmail": "vugh@hygu.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   },
   {
     "id": "booking-1751585926437-vitrv",
@@ -137,7 +163,9 @@
     "time": "09:30 - 10:30",
     "title": "Uuu",
     "userName": "Jhfy",
-    "userEmail": "vugh@hygu.com"
+    "userEmail": "vugh@hygu.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   },
   {
     "id": "booking-1751617627513-az0fc",
@@ -147,7 +175,9 @@
     "time": "10:00 - 14:00",
     "title": "A super duper long meeting name",
     "userName": "Shaun",
-    "userEmail": "sdunmall@gmail.com"
+    "userEmail": "sdunmall@gmail.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   },
   {
     "id": "booking-1751617687455-8ysyj",
@@ -157,6 +187,8 @@
     "time": "09:30 - 11:30",
     "title": "Yet another long meeting name",
     "userName": "Shaun",
-    "userEmail": "sdunmall@gmail.com"
+    "userEmail": "sdunmall@gmail.com",
+    "isSeriesBooking": false,
+    "seriesId": null
   }
 ]

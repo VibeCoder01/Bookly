@@ -21,6 +21,8 @@ export interface Booking {
   time: string; // Combined range, e.g., "09:00 - 11:00"
   userName: string;
   userEmail: string;
+  isSeriesBooking: boolean;
+  seriesId?: string;
 }
 
 export interface BookingFormData {

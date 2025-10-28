@@ -33,7 +33,9 @@ function ensureDb() {
       date TEXT,
       time TEXT,
       userName TEXT,
-      userEmail TEXT
+      userEmail TEXT,
+      isSeriesBooking INTEGER DEFAULT 0,
+      seriesId TEXT
     );
     CREATE TABLE IF NOT EXISTS app_config (
       key TEXT PRIMARY KEY,
@@ -64,6 +66,25 @@ function run(sql: string) {
   } catch (err) {
     console.error('[SQLite] Error executing SQL', err);
     throw new Error('Failed to execute sqlite3 command. Make sure the sqlite3 CLI is installed and accessible.');
+  }
+}
+
+function ensureBookingSeriesColumns() {
+  ensureDb();
+  const statements = [
+    'ALTER TABLE bookings ADD COLUMN isSeriesBooking INTEGER DEFAULT 0;',
+    'ALTER TABLE bookings ADD COLUMN seriesId TEXT;'
+  ];
+
+  for (const statement of statements) {
+    try {
+      execFileSync(SQLITE_CMD, [DB_PATH, statement]);
+    } catch (err: any) {
+      const message = String(err?.stderr ?? err?.message ?? err);
+      if (!message.includes('duplicate column name')) {
+        throw err;
+      }
+    }
   }
 }
 
@@ -98,17 +119,27 @@ export async function writeRoomsToDb(rooms: Room[]): Promise<void> {
 }
 
 export async function readBookingsFromDb(): Promise<Booking[]> {
-  return query('SELECT id, roomId, roomName, title, date, time, userName, userEmail FROM bookings;');
+  ensureBookingSeriesColumns();
+  const rows = query('SELECT id, roomId, roomName, title, date, time, userName, userEmail, isSeriesBooking, seriesId FROM bookings;');
+  return rows.map((row: any) => ({
+    ...row,
+    isSeriesBooking: Boolean(row.isSeriesBooking),
+    seriesId: row.seriesId ?? undefined,
+  })) as Booking[];
 }
 
 export async function addBookingToDb(b: Booking): Promise<void> {
-  run(`INSERT OR REPLACE INTO bookings (id, roomId, roomName, title, date, time, userName, userEmail) VALUES (${esc(b.id)}, ${esc(b.roomId)}, ${esc(b.roomName)}, ${esc(b.title)}, ${esc(b.date)}, ${esc(b.time)}, ${esc(b.userName)}, ${esc(b.userEmail)});`);
+  ensureBookingSeriesColumns();
+  const isSeries = b.isSeriesBooking ? 1 : 0;
+  run(`INSERT OR REPLACE INTO bookings (id, roomId, roomName, title, date, time, userName, userEmail, isSeriesBooking, seriesId) VALUES (${esc(b.id)}, ${esc(b.roomId)}, ${esc(b.roomName)}, ${esc(b.title)}, ${esc(b.date)}, ${esc(b.time)}, ${esc(b.userName)}, ${esc(b.userEmail)}, ${isSeries}, ${esc(b.seriesId)});`);
 }
 
 export async function writeAllBookingsToDb(bookings: Booking[]): Promise<void> {
+  ensureBookingSeriesColumns();
   const stmts = ['BEGIN;', 'DELETE FROM bookings;'];
   for (const b of bookings) {
-    stmts.push(`INSERT INTO bookings (id, roomId, roomName, title, date, time, userName, userEmail) VALUES (${esc(b.id)}, ${esc(b.roomId)}, ${esc(b.roomName)}, ${esc(b.title)}, ${esc(b.date)}, ${esc(b.time)}, ${esc(b.userName)}, ${esc(b.userEmail)});`);
+    const isSeries = b.isSeriesBooking ? 1 : 0;
+    stmts.push(`INSERT INTO bookings (id, roomId, roomName, title, date, time, userName, userEmail, isSeriesBooking, seriesId) VALUES (${esc(b.id)}, ${esc(b.roomId)}, ${esc(b.roomName)}, ${esc(b.title)}, ${esc(b.date)}, ${esc(b.time)}, ${esc(b.userName)}, ${esc(b.userEmail)}, ${isSeries}, ${esc(b.seriesId)});`);
   }
   stmts.push('COMMIT;');
   run(stmts.join(' '));
