@@ -1,7 +1,7 @@
 
 'use client';
 
-import { CalendarCheck, Wifi } from 'lucide-react';
+import { CalendarCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect, useTransition, useCallback } from 'react';
 import type { AppConfiguration } from '@/types';
@@ -18,8 +18,6 @@ interface HeaderProps {
 }
 
 export function Header({ config, initialAdminInfo, initialUserInfo }: HeaderProps) {
-  const [ipAddress, setIpAddress] = useState<string | null>(null);
-  const [isLoadingIp, setIsLoadingIp] = useState(true);
   const { userName } = useUser();
   const pathname = usePathname();
   const [adminInfo, setAdminInfo] = useState<{ username: string; isPrimary: boolean } | null>(initialAdminInfo);
@@ -31,27 +29,6 @@ export function Header({ config, initialAdminInfo, initialUserInfo }: HeaderProp
       logoutUser(pathname || '/');
     });
   }, [pathname, startLogoutTransition]);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch('/api/ip')
-      .then((res) => res.json())
-      .then((data) => {
-        if (!cancelled) {
-          setIpAddress(data.ip || 'N/A');
-          setIsLoadingIp(false);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setIpAddress('Error fetching IP');
-          setIsLoadingIp(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     setAdminInfo(initialAdminInfo);
@@ -107,16 +84,6 @@ export function Header({ config, initialAdminInfo, initialUserInfo }: HeaderProp
           </div>
         </Link>
         <div className="flex items-center space-x-4">
-          {isLoadingIp ? (
-            <span className="text-xs text-muted-foreground">Loading IP...</span>
-          ) : (
-            ipAddress && (
-              <div className="flex items-center text-xs text-muted-foreground" title="Your IP Address">
-                <Wifi className="mr-1 h-3 w-3" />
-                <span>{ipAddress}</span>
-              </div>
-            )
-          )}
           {adminInfo ? (
             <span
               className="text-foreground text-sm flex items-center gap-2"
