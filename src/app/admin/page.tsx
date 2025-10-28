@@ -4,7 +4,7 @@
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button, buttonVariants } from '@/components/ui/button';
 import Link from 'next/link';
-import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text, ImageIcon, KeyRound, LogOut, Scaling, CalendarDays, KeySquare, Slash, UserCog, History } from 'lucide-react';
+import { Home, ListChecks, Loader2, AlertTriangle, Settings, CheckCircle, Clock, CalendarClock, Building, Pencil, Trash2, PlusCircle, Sofa, Database, Download, Upload, Text, ImageIcon, KeyRound, LogOut, Scaling, CalendarDays, KeySquare, Slash, UserCog, History, Palette } from 'lucide-react';
 import React, { useState, useEffect, useMemo, useCallback, useRef, useTransition } from 'react';
 import type { Booking, Room, AppConfiguration } from '@/types';
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -42,6 +42,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import Image from 'next/image';
 import { CalendarCheck } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { PANEL_COLOR_OPTIONS, getPanelColorOption, PANEL_COLOR_DEFAULT_VALUE, type PanelColorValue } from '@/lib/panel-colors';
 
 
 interface GroupedBookings {
@@ -55,6 +56,8 @@ interface AdminConfigFormState {
   startOfDay: string;
   endOfDay: string;
   homePageScale: string;
+  panelColorOverrideEnabled: boolean;
+  panelColorOverride: PanelColorValue;
   weekStartsOnMonday: boolean;
   includeWeekends: boolean;
   showHomePageKey: boolean;
@@ -97,6 +100,8 @@ export default function AdminPage() {
     startOfDay: '',
     endOfDay: '',
     homePageScale: 'sm',
+    panelColorOverrideEnabled: false,
+    panelColorOverride: PANEL_COLOR_DEFAULT_VALUE,
     weekStartsOnMonday: false,
     includeWeekends: false,
     showHomePageKey: true,
@@ -148,6 +153,8 @@ export default function AdminPage() {
         startOfDay: currentConfig.startOfDay,
         endOfDay: currentConfig.endOfDay,
         homePageScale: currentConfig.homePageScale || 'sm',
+        panelColorOverrideEnabled: !!currentConfig.panelColorOverrideEnabled,
+        panelColorOverride: getPanelColorOption(currentConfig.panelColorOverride).value,
         weekStartsOnMonday: !!currentConfig.weekStartsOnMonday,
         includeWeekends: !!currentConfig.includeWeekends,
         showHomePageKey: !!currentConfig.showHomePageKey,
@@ -172,6 +179,8 @@ export default function AdminPage() {
         startOfDay: '09:00',
         endOfDay: '17:00',
         homePageScale: 'sm',
+        panelColorOverrideEnabled: false,
+        panelColorOverride: PANEL_COLOR_DEFAULT_VALUE,
         weekStartsOnMonday: false,
         includeWeekends: false,
         showHomePageKey: true,
@@ -271,6 +280,11 @@ export default function AdminPage() {
     }, {} as GroupedBookings);
   }, [allBookings, rooms, roomMap]);
 
+  const selectedPanelColorOption = useMemo(
+    () => getPanelColorOption(config.panelColorOverride),
+    [config.panelColorOverride]
+  );
+
 
   const handleConfigChange = (field: keyof AdminConfigFormState, value: string | boolean) => {
     setConfig(prevConfig => ({ ...prevConfig, [field]: value }));
@@ -286,6 +300,8 @@ export default function AdminPage() {
       startOfDay: config.startOfDay,
       endOfDay: config.endOfDay,
       homePageScale: config.homePageScale as 'xs' | 'sm' | 'md',
+      panelColorOverrideEnabled: config.panelColorOverrideEnabled,
+      panelColorOverride: config.panelColorOverride,
       weekStartsOnMonday: config.weekStartsOnMonday,
       includeWeekends: config.includeWeekends,
       showHomePageKey: config.showHomePageKey,
@@ -383,6 +399,9 @@ export default function AdminPage() {
       case 'startOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'endOfDay': return <CalendarClock className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'homePageScale': return <Scaling className="mr-2 h-4 w-4 text-muted-foreground" />;
+      case 'panelColorOverrideEnabled':
+      case 'panelColorOverride':
+        return <Palette className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'weekStartsOnMonday': return <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'includeWeekends': return <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />;
       case 'showHomePageKey': return <KeySquare className="mr-2 h-4 w-4 text-muted-foreground" />;
@@ -926,6 +945,47 @@ export default function AdminPage() {
                                           <SelectItem value="md">Large</SelectItem>
                                       </SelectContent>
                                   </Select>
+                              </TableCell>
+                          </TableRow>
+                          <TableRow>
+                              <TableCell className="font-medium pl-6 flex items-center">
+                                  {getIconForSetting('panelColorOverrideEnabled')} Force Panel Colour
+                              </TableCell>
+                              <TableCell className="text-right pr-6">
+                                <div className="flex justify-end">
+                                  <Switch
+                                    checked={config.panelColorOverrideEnabled}
+                                    onCheckedChange={(checked) => handleConfigChange('panelColorOverrideEnabled', checked)}
+                                    disabled={isApplyingChanges}
+                                    aria-label="Toggle forcing a fixed panel colour on the home page"
+                                  />
+                                </div>
+                              </TableCell>
+                          </TableRow>
+                          <TableRow>
+                              <TableCell className="font-medium pl-6 flex items-center">
+                                  {getIconForSetting('panelColorOverride')} Panel Colour Selection
+                              </TableCell>
+                              <TableCell className="text-right pr-6">
+                                <div className="flex items-center justify-end gap-3">
+                                  <div className={cn('h-8 w-8 rounded-md border border-border shadow-sm', selectedPanelColorOption.previewClass)} />
+                                  <Select
+                                    value={config.panelColorOverride}
+                                    onValueChange={(v) => handleConfigChange('panelColorOverride', v)}
+                                    disabled={isApplyingChanges}
+                                  >
+                                    <SelectTrigger className="w-full sm:w-[220px] ml-auto text-right">
+                                      <SelectValue placeholder="Select colour" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {PANEL_COLOR_OPTIONS.map((option) => (
+                                        <SelectItem key={option.value} value={option.value}>
+                                          {option.label}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
                               </TableCell>
                           </TableRow>
                           <TableRow>

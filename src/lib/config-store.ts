@@ -1,6 +1,7 @@
 'use server';
 
 import type { AppConfiguration } from '@/types';
+import { PANEL_COLOR_DEFAULT_VALUE, PANEL_COLOR_VALUE_SET } from './panel-colors';
 import { hashPassword } from './crypto';
 import { readConfigFromDb, writeConfigToDb } from './sqlite-db';
 
@@ -24,6 +25,7 @@ const DEFAULT_CONFIG: AppConfiguration = {
   allowAnonymousBookingDeletion: true,
   allowAnonymousBookingEditing: true,
   allowPastBookings: true,
+  panelColorOverrideEnabled: false,
 };
 
 export const readConfigurationFromFile = async (): Promise<AppConfiguration> => {
@@ -43,6 +45,12 @@ export const readConfigurationFromFile = async (): Promise<AppConfiguration> => 
   }
   if (sanitized.allowPastBookings === undefined) {
     sanitized.allowPastBookings = true;
+  }
+  if (sanitized.panelColorOverrideEnabled === undefined) {
+    sanitized.panelColorOverrideEnabled = false;
+  }
+  if (sanitized.panelColorOverride && !PANEL_COLOR_VALUE_SET.has(sanitized.panelColorOverride)) {
+    sanitized.panelColorOverride = PANEL_COLOR_DEFAULT_VALUE;
   }
   return sanitized as AppConfiguration;
 };

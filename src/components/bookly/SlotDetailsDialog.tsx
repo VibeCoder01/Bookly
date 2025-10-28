@@ -26,9 +26,10 @@ interface SlotDetailsDialogProps {
     colorClass?: string;
   } | null;
   showStrike?: boolean;
+  panelBorderClass?: string;
 }
 
-export function SlotDetailsDialog({ isOpen, onOpenChange, details, showStrike }: SlotDetailsDialogProps) {
+export function SlotDetailsDialog({ isOpen, onOpenChange, details, showStrike, panelBorderClass }: SlotDetailsDialogProps) {
   if (!details) {
     return null;
   }
@@ -57,7 +58,8 @@ export function SlotDetailsDialog({ isOpen, onOpenChange, details, showStrike }:
             <div className="flex items-center gap-3">
               <div
                   className={cn(
-                      'h-5 w-5 shrink-0 rounded-sm border-2 border-accent-foreground/30 relative',
+                      'h-5 w-5 shrink-0 rounded-sm border-2 relative',
+                      panelBorderClass || 'border-accent-foreground/30',
                       colorClass || 'bg-transparent'
                   )}
               >

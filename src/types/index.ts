@@ -1,4 +1,4 @@
-
+import type { PanelColorValue } from '@/lib/panel-colors';
 
 export interface Room {
   id: string;
@@ -99,6 +99,8 @@ export interface AppConfiguration {
   allowAnonymousBookingDeletion?: boolean;
   allowAnonymousBookingEditing?: boolean;
   allowPastBookings?: boolean;
+  panelColorOverrideEnabled?: boolean;
+  panelColorOverride?: PanelColorValue;
 }
 
 export interface RoomFormData {
