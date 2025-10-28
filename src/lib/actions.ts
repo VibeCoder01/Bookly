@@ -16,6 +16,8 @@ import { verifyPassword, hashPassword } from './crypto';
 import { getAdminUser, addAdminUserToDb, readAdminUsersFromDb, deleteAdminUser, renameAdminUser, readAppUsersFromDb, getAppUser, addAppUserToDb, deleteAppUser, renameAppUser } from './sqlite-db';
 import { PANEL_COLOR_VALUES, PANEL_COLOR_DEFAULT_VALUE, type PanelColorValue } from './panel-colors';
 
+const APP_LOGO_FILE_NAME = 'app-logo.png';
+
 export async function getCurrentAdmin(): Promise<{ username: string; isPrimary: boolean } | null> {
   const cookieStore = await cookies();
   const isAuthenticated = cookieStore.get(AUTH_COOKIE_NAME)?.value === 'true';
@@ -777,47 +779,64 @@ export async function updateAppLogo(
     return { success: false, error: 'No file was selected or the file is empty.' };
   }
   
-  if (!['image/png', 'image/jpeg', 'image/svg+xml', 'image/webp'].includes(file.type)) {
-      return { success: false, error: 'Invalid file type. Please upload a PNG, JPG, SVG or WEBP.'}
+  if (file.type !== 'image/png') {
+    return { success: false, error: 'Invalid file type. Please upload a PNG image.' };
   }
 
   try {
     const fileBuffer = Buffer.from(await file.arrayBuffer());
-    const logoFileName = `app-logo-${Date.now()}${path.extname(file.name)}`;
     const publicDirectory = path.join(process.cwd(), 'public');
 
     if (!fs.existsSync(publicDirectory)) {
         await fs.promises.mkdir(publicDirectory, { recursive: true });
     }
-    
-    const logoPath = path.join(publicDirectory, logoFileName);
-    
+
+    const logoPath = path.join(publicDirectory, APP_LOGO_FILE_NAME);
+
     const config = await readConfigurationFromFile();
     const oldLogoPath = config.appLogo;
 
     await fs.promises.writeFile(logoPath, fileBuffer);
 
-    const newLogoPublicPath = `/${logoFileName}`;
+    const newLogoPublicPath = `/${APP_LOGO_FILE_NAME}?v=${Date.now()}`;
     config.appLogo = newLogoPublicPath;
     await writeConfigurationToFile(config);
-    
-    if (oldLogoPath && oldLogoPath.startsWith('/app-logo-')) {
-        const oldLogoFilePath = path.join(publicDirectory, oldLogoPath.substring(1));
-        try {
-            if (fs.existsSync(oldLogoFilePath)) {
-                await fs.promises.unlink(oldLogoFilePath);
-            }
-        } catch (cleanupError) {
-            console.error(`[Logo Cleanup] Failed to delete old logo file ${oldLogoPath}:`, cleanupError);
-        }
-    }
-    
+
+    await cleanupLegacyLogo(publicDirectory, oldLogoPath);
+
     revalidatePath('/', 'layout');
 
     return { success: true, logoPath: newLogoPublicPath };
   } catch (error) {
     console.error('[Logo Upload Error]', error);
     return { success: false, error: 'Failed to save the new logo.' };
+  }
+}
+
+async function cleanupLegacyLogo(publicDirectory: string, oldLogoPath?: string) {
+  if (!oldLogoPath) {
+    return;
+  }
+
+  const trimmedOldPath = oldLogoPath.startsWith('/') ? oldLogoPath.slice(1) : oldLogoPath;
+  const [oldLogoFileName] = trimmedOldPath.split('?');
+
+  if (!oldLogoFileName || oldLogoFileName === APP_LOGO_FILE_NAME) {
+    return;
+  }
+
+  if (!oldLogoFileName.startsWith('app-logo-')) {
+    return;
+  }
+
+  const oldLogoFilePath = path.join(publicDirectory, oldLogoFileName);
+
+  try {
+    if (fs.existsSync(oldLogoFilePath)) {
+      await fs.promises.unlink(oldLogoFilePath);
+    }
+  } catch (cleanupError) {
+    console.error(`[Logo Cleanup] Failed to delete old logo file ${oldLogoPath}:`, cleanupError);
   }
 }
 
@@ -839,17 +858,17 @@ export async function revertToDefaultLogo(): Promise<{ success: boolean; error?:
     
     await writeConfigurationToFile(config);
 
-    if (oldLogoPath.startsWith('/app-logo-')) {
-        const publicDirectory = path.join(process.cwd(), 'public');
-        const oldLogoFilePath = path.join(publicDirectory, oldLogoPath.substring(1));
-        try {
-            if (fs.existsSync(oldLogoFilePath)) {
-                await fs.promises.unlink(oldLogoFilePath);
-            }
-        } catch (cleanupError) {
-            console.error(`[Logo Cleanup] Non-critical error: Failed to delete old logo file ${oldLogoPath}:`, cleanupError);
-        }
+    const publicDirectory = path.join(process.cwd(), 'public');
+    const stableLogoPath = path.join(publicDirectory, APP_LOGO_FILE_NAME);
+    try {
+      if (fs.existsSync(stableLogoPath)) {
+        await fs.promises.unlink(stableLogoPath);
+      }
+    } catch (cleanupError) {
+      console.error(`[Logo Cleanup] Non-critical error: Failed to delete logo file ${APP_LOGO_FILE_NAME}:`, cleanupError);
     }
+
+    await cleanupLegacyLogo(publicDirectory, oldLogoPath);
 
     revalidatePath('/', 'layout');
     return { success: true };
