@@ -6,6 +6,7 @@ import { getCurrentConfiguration, getCurrentAdmin, getCurrentUser } from '@/lib/
 import { Header } from '@/components/bookly/Header';
 import { UserProvider } from '@/context/UserContext';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { PanelColorProvider } from '@/context/PanelColorContext';
 
 export const metadata: Metadata = {
   title: 'Bookly - Room Booking App',
@@ -34,8 +35,10 @@ export default async function RootLayout({
       <body className="font-body antialiased bg-background text-foreground min-h-screen flex flex-col transition-colors">
         <ThemeProvider>
           <UserProvider>
-            <Header config={config} initialAdminInfo={adminInfo} initialUserInfo={userInfo} />
-            {children}
+            <PanelColorProvider config={config} currentUser={userInfo}>
+              <Header config={config} initialAdminInfo={adminInfo} initialUserInfo={userInfo} />
+              {children}
+            </PanelColorProvider>
           </UserProvider>
           <Toaster />
         </ThemeProvider>

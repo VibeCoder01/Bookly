@@ -10,6 +10,7 @@ import { useUser } from '@/context/UserContext';
 import { getCurrentAdmin, getCurrentUser, logoutUser } from '@/lib/actions';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { PanelColorPreferencesDialog } from '@/components/bookly/PanelColorPreferencesDialog';
 
 interface HeaderProps {
   config: AppConfiguration;
@@ -84,6 +85,7 @@ export function Header({ config, initialAdminInfo, initialUserInfo }: HeaderProp
           </div>
         </Link>
         <div className="flex items-center space-x-4">
+          <PanelColorPreferencesDialog />
           {adminInfo ? (
             <span
               className="text-foreground text-sm flex items-center gap-2"
