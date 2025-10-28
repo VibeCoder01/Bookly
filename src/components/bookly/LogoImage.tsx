@@ -1,4 +1,7 @@
+
 'use client';
+
+import Image from 'next/image';
 
 import { cn } from '@/lib/utils';
 
@@ -27,14 +30,13 @@ export function LogoImage({ src, alt, size = 40, className }: LogoImageProps) {
   const resolvedSrc = resolveLogoSrc(src);
 
   return (
-    <img
+    <Image
       src={resolvedSrc}
       alt={alt}
       width={size}
       height={size}
-      loading="lazy"
-      decoding="async"
       className={cn('object-contain', className)}
+      unoptimized
     />
   );
 }

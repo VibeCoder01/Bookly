@@ -32,6 +32,7 @@ const DEFAULT_CONFIG: AppConfiguration = {
 };
 
 const PUBLIC_DIRECTORY = path.join(process.cwd(), 'public');
+const APP_LOGO_FILE_NAME = 'app-logo.png';
 
 export const readConfigurationFromFile = async (): Promise<AppConfiguration> => {
   const cfg = await readConfigFromDb(DEFAULT_CONFIG);
@@ -78,14 +79,23 @@ async function ensureAppLogoAvailability(config: AppConfiguration): Promise<AppC
     return config;
   }
 
-  const expectedFilePath = path.join(PUBLIC_DIRECTORY, relativeLogoPath);
+  const [relativeLogoFile] = relativeLogoPath.split('?');
+
+  if (!relativeLogoFile) {
+    return config;
+  }
+
+  const expectedFilePath = path.join(PUBLIC_DIRECTORY, relativeLogoFile);
   const logoExists = fs.existsSync(expectedFilePath);
 
   if (logoExists) {
     return config;
   }
 
-  if (!relativeLogoPath.startsWith('app-logo-')) {
+  if (
+    relativeLogoFile !== APP_LOGO_FILE_NAME &&
+    !relativeLogoFile.startsWith('app-logo-')
+  ) {
     return config;
   }
 
