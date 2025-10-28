@@ -369,6 +369,7 @@ export default function AdminPage() {
     if (result.success && result.logoPath) {
         toast({ title: 'Logo Updated', description: 'Your new logo has been uploaded.' });
         setCurrentLogo(result.logoPath);
+        router.refresh();
         if (fileInput) fileInput.value = '';
     } else {
         toast({ variant: 'destructive', title: 'Logo Upload Failed', description: result.error || 'An unexpected error occurred.' });
@@ -384,6 +385,7 @@ export default function AdminPage() {
     if (result.success) {
         toast({ title: 'Logo Reverted', description: 'The application is now using the default logo.' });
         setCurrentLogo(undefined);
+        router.refresh();
     } else {
         toast({ variant: 'destructive', title: 'Revert Failed', description: result.error || 'An unexpected error occurred.' });
     }
