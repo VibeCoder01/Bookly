@@ -14,6 +14,7 @@ import { redirect } from 'next/navigation';
 import { AUTH_COOKIE_NAME, ADMIN_USER_COOKIE, ADMIN_PRIMARY_COOKIE, USER_AUTH_COOKIE, USER_NAME_COOKIE } from '@/lib/auth';
 import { verifyPassword, hashPassword } from './crypto';
 import { getAdminUser, addAdminUserToDb, readAdminUsersFromDb, deleteAdminUser, renameAdminUser, readAppUsersFromDb, getAppUser, addAppUserToDb, deleteAppUser, renameAppUser } from './sqlite-db';
+import { PANEL_COLOR_VALUES, PANEL_COLOR_DEFAULT_VALUE, type PanelColorValue } from './panel-colors';
 
 export async function getCurrentAdmin(): Promise<{ username: string; isPrimary: boolean } | null> {
   const cookieStore = await cookies();
@@ -641,6 +642,7 @@ const MAX_SLOT_DURATION = 120;
 const timeStringSchema = z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Invalid time format. Use HH:MM.");
 const DEFAULT_APP_NAME = 'Bookly';
 const DEFAULT_APP_SUBTITLE = 'Room booking system';
+const panelColorEnum = z.enum(PANEL_COLOR_VALUES as [PanelColorValue, ...PanelColorValue[]]);
 
 const appConfigurationObjectSchema = z.object({
   appName: z.string().min(1, "App Name cannot be empty."),
@@ -663,6 +665,8 @@ const appConfigurationObjectSchema = z.object({
   allowAnonymousBookingDeletion: z.boolean().optional(),
   allowAnonymousBookingEditing: z.boolean().optional(),
   allowPastBookings: z.boolean().optional(),
+  panelColorOverrideEnabled: z.boolean().optional(),
+  panelColorOverride: panelColorEnum.optional(),
 });
 
 const appConfigurationSchema = appConfigurationObjectSchema.refine(data => {
@@ -724,6 +728,10 @@ export async function updateAppConfiguration(
       processedUpdates.appSubtitle = DEFAULT_APP_SUBTITLE;
     }
     
+    if (processedUpdates.panelColorOverrideEnabled && !processedUpdates.panelColorOverride) {
+      processedUpdates.panelColorOverride = PANEL_COLOR_DEFAULT_VALUE;
+    }
+
     const validation = appConfigurationUpdateSchema.safeParse(processedUpdates);
     if (!validation.success) {
         return { success: false, error: 'Invalid configuration data provided.', fieldErrors: validation.error.flatten().fieldErrors };
@@ -734,7 +742,8 @@ export async function updateAppConfiguration(
     const finalValidation = appConfigurationSchema.safeParse(newConfig);
     if (!finalValidation.success) {
         const fieldErrors = finalValidation.error.flatten().fieldErrors;
-        const firstField = Object.keys(fieldErrors).find(
+        const fieldErrorKeys = Object.keys(fieldErrors) as (keyof typeof fieldErrors)[];
+        const firstField = fieldErrorKeys.find(
             key => fieldErrors[key] && fieldErrors[key]!.length > 0
         );
         const firstMessage = firstField ? fieldErrors[firstField]![0] : undefined;
@@ -1404,6 +1413,8 @@ const exportedSettingsSchema = z.object({
     allowAnonymousBookingDeletion: z.boolean().optional(),
     allowAnonymousBookingEditing: z.boolean().optional(),
     allowPastBookings: z.boolean().optional(),
+    panelColorOverrideEnabled: z.boolean().optional(),
+    panelColorOverride: panelColorEnum.optional(),
   }),
   rooms: z.array(z.object({
     id: z.string(),
@@ -1452,7 +1463,11 @@ export async function importAllSettings(jsonContent: string): Promise<{ success:
       return { success: false, error: `Invalid file format: ${validation.error.issues[0].message}` };
     }
 
-    const { appConfig, rooms, bookings } = validation.data;
+    const { appConfig: parsedConfig, rooms, bookings } = validation.data;
+    const normalizedConfig: AppConfiguration = {
+      ...parsedConfig,
+      appLogo: parsedConfig.appLogo ?? undefined,
+    };
     const normalizedBookings: Booking[] = bookings.map((booking) => ({
       ...booking,
       isSeriesBooking: booking.isSeriesBooking ?? false,
@@ -1460,7 +1475,7 @@ export async function importAllSettings(jsonContent: string): Promise<{ success:
     }));
 
     await Promise.all([
-      writeConfigurationToFile(appConfig),
+      writeConfigurationToFile(normalizedConfig),
       writeRoomsToFile(rooms),
       writeAllBookings(normalizedBookings)
     ]);

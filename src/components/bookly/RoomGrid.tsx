@@ -11,7 +11,16 @@ import { SlotDetailsDialog } from '@/components/bookly/SlotDetailsDialog';
 import { getRoomsWithDailyUsage } from '@/lib/actions';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Label } from '@/components/ui/label';
+import { ChevronLeft, ChevronRight, Loader2, Palette } from 'lucide-react';
+import {
+  PANEL_COLOR_OPTIONS,
+  PANEL_COLOR_DEFAULT_VALUE,
+  PANEL_COLOR_VALUE_SET,
+  getPanelColorOption,
+  type PanelColorValue,
+} from '@/lib/panel-colors';
 
 interface RoomGridProps {
     initialRoomsWithUsage: RoomWithDailyUsage[];
@@ -37,6 +46,9 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
     const searchParams = useSearchParams();
     const router = useRouter();
 
+    const panelColorOverrideEnabled = config.panelColorOverrideEnabled ?? false;
+    const panelColorOverrideValue = config.panelColorOverride;
+
     const [isSlotDetailsOpen, setIsSlotDetailsOpen] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState<{ date: string; slot: SlotStatus; colorClass?: string; } | null>(null);
 
@@ -47,6 +59,12 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
     });
     const [isLoading, setIsLoading] = useState(false);
     const isInitialMount = useRef(true);
+    const [userPanelColor, setUserPanelColor] = useState<PanelColorValue>(PANEL_COLOR_DEFAULT_VALUE);
+    const [hasLoadedPanelColor, setHasLoadedPanelColor] = useState(false);
+    const storageKey = useMemo(
+        () => `bookly:panel-color:${currentUser?.username ?? 'anonymous'}`,
+        [currentUser?.username]
+    );
 
     useEffect(() => {
         if (isInitialMount.current) {
@@ -73,6 +91,30 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
         fetchNewData();
     }, [viewDate, router, searchParams]);
 
+    useEffect(() => {
+        setHasLoadedPanelColor(false);
+
+        if (typeof window === 'undefined') {
+            return;
+        }
+
+        const storedValue = window.localStorage.getItem(storageKey);
+        if (storedValue && PANEL_COLOR_VALUE_SET.has(storedValue as PanelColorValue)) {
+            setUserPanelColor(storedValue as PanelColorValue);
+        } else {
+            setUserPanelColor(PANEL_COLOR_DEFAULT_VALUE);
+        }
+        setHasLoadedPanelColor(true);
+    }, [storageKey]);
+
+    useEffect(() => {
+        if (!hasLoadedPanelColor || typeof window === 'undefined') {
+            return;
+        }
+
+        window.localStorage.setItem(storageKey, userPanelColor);
+    }, [storageKey, userPanelColor, hasLoadedPanelColor]);
+
     const { legendData, titleToColorMap } = useMemo(() => {
         const uniqueTitles = new Set<string>();
         gridData.forEach(room => {
@@ -97,6 +139,30 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
 
         return { legendData: legendItems, titleToColorMap: titleColorMap };
     }, [gridData]);
+
+    const overridePanelColorOption = useMemo(
+        () => getPanelColorOption(panelColorOverrideValue),
+        [panelColorOverrideValue]
+    );
+    const activePanelColorOption = useMemo(
+        () =>
+            panelColorOverrideEnabled
+                ? overridePanelColorOption
+                : getPanelColorOption(userPanelColor),
+        [panelColorOverrideEnabled, overridePanelColorOption, userPanelColor]
+    );
+    const panelColorMessage = panelColorOverrideEnabled
+        ? 'Panel colour set by your administrator.'
+        : 'Choose the panel colour used for room cards.';
+
+    const handlePanelColorChange = (value: string) => {
+        if (panelColorOverrideEnabled) {
+            return;
+        }
+        if (PANEL_COLOR_VALUE_SET.has(value as PanelColorValue)) {
+            setUserPanelColor(value as PanelColorValue);
+        }
+    };
 
     const allowAnonymousUsers = config.allowAnonymousUsers ?? true;
     const isUserLoggedIn = Boolean(currentUser);
@@ -191,18 +257,59 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
 
     return (
         <TooltipProvider delayDuration={1000}>
-            <div className="w-full max-w-7xl mx-auto mb-6">
-                 <div className="flex items-center justify-center gap-4">
+            <div className="w-full max-w-7xl mx-auto mb-6 space-y-6">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Palette className="h-4 w-4" />
+                        <span>{panelColorMessage}</span>
+                    </div>
+                    {panelColorOverrideEnabled ? (
+                        <div className="flex items-center gap-3">
+                            <div className={cn('h-8 w-8 rounded-md border border-border shadow-sm', overridePanelColorOption.previewClass)} />
+                            <span className="text-sm font-medium text-foreground">{overridePanelColorOption.label}</span>
+                        </div>
+                    ) : (
+                        <RadioGroup
+                            value={userPanelColor}
+                            onValueChange={handlePanelColorChange}
+                            className="flex flex-wrap items-center justify-center gap-4"
+                        >
+                            {PANEL_COLOR_OPTIONS.map((option) => (
+                                <div key={option.value} className="flex items-center gap-2">
+                                    <RadioGroupItem value={option.value} id={`panel-color-${option.value}`} />
+                                    <Label
+                                        htmlFor={`panel-color-${option.value}`}
+                                        className={cn(
+                                            'flex cursor-pointer items-center gap-2 text-sm font-medium',
+                                            option.value === userPanelColor ? 'text-foreground' : 'text-muted-foreground'
+                                        )}
+                                    >
+                                        <span
+                                            className={cn(
+                                                'h-6 w-6 rounded-md border border-border shadow-sm transition-all',
+                                                option.previewClass,
+                                                option.value === userPanelColor &&
+                                                    'ring-2 ring-offset-2 ring-offset-background ring-ring'
+                                            )}
+                                        />
+                                        {option.label}
+                                    </Label>
+                                </div>
+                            ))}
+                        </RadioGroup>
+                    )}
+                </div>
+                <div className="flex items-center justify-center gap-4">
                     <Button variant="outline" size="icon" onClick={handlePrevWeek} disabled={isLoading}>
                         <ChevronLeft className="h-4 w-4" />
                         <span className="sr-only">Previous 5 days</span>
                     </Button>
                     <div className="text-center font-semibold text-lg w-64">
                         {isLoading ? (
-                             <div className="flex items-center justify-center text-muted-foreground">
+                            <div className="flex items-center justify-center text-muted-foreground">
                                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                                 <span>Loading...</span>
-                             </div>
+                            </div>
                         ) : (
                             <span>Usage from {firstDayInView}</span>
                         )}
@@ -218,7 +325,8 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
                     <div
                     key={room.id}
                     className={cn(
-                        "rounded-xl shadow-lg flex flex-col bg-accent text-accent-foreground hover:bg-accent/90 transition-all duration-200 ease-in-out transform hover:-translate-y-1 overflow-hidden",
+                        'rounded-xl shadow-lg flex flex-col transition-all duration-200 ease-in-out transform hover:-translate-y-1 overflow-hidden',
+                        activePanelColorOption.cardClass,
                         styles.container,
                         isLoading && "opacity-50 pointer-events-none"
                     )}
@@ -239,7 +347,7 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
                             {room.dailyUsage.map((day) => {
                             return (
                                 <div key={day.date} className="flex items-center gap-2">
-                                <span className={cn("font-mono font-bold text-accent-foreground/70 text-center", styles.dayLetter)}>
+                                <span className={cn('font-mono font-bold text-center', activePanelColorOption.mutedTextClass, styles.dayLetter)}>
                                     {format(new Date(day.date + 'T00:00:00'), 'EEEEE')}
                                 </span>
                                 <div className={cn("flex flex-1", styles.slotGap)}>
@@ -251,7 +359,8 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
                                                     <div
                                                         onClick={() => handleSlotClick(room, day.date, slot)}
                                                         className={cn(
-                                                            'flex-1 rounded-sm border-2 border-accent-foreground/30 cursor-pointer relative',
+                                                            'flex-1 rounded-sm border-2 cursor-pointer relative',
+                                                            activePanelColorOption.borderClass,
                                                             styles.usageBar,
                                                             slot.isBooked && slot.title
                                                                 ? titleToColorMap.get(slot.title)
@@ -292,7 +401,7 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
                     <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-3">
                         {legendData.map(({ title, colorClass }) => (
                             <div key={title} className="flex items-center gap-2">
-                                <div className={cn('h-4 w-4 rounded-sm border-2 border-accent-foreground/30 relative', colorClass)}>
+                                <div className={cn('h-4 w-4 rounded-sm border-2 relative', activePanelColorOption.borderClass, colorClass)}>
                                     {config.showSlotStrike && (
                                       <div
                                           className="absolute inset-0 bg-center bg-no-repeat bg-cover"
@@ -309,11 +418,12 @@ export function RoomGrid({ initialRoomsWithUsage, config, currentUser }: RoomGri
                 </div>
             )}
 
-            <SlotDetailsDialog 
-                isOpen={isSlotDetailsOpen} 
-                onOpenChange={setIsSlotDetailsOpen} 
+            <SlotDetailsDialog
+                isOpen={isSlotDetailsOpen}
+                onOpenChange={setIsSlotDetailsOpen}
                 details={selectedSlot}
                 showStrike={config.showSlotStrike}
+                panelBorderClass={activePanelColorOption.borderClass}
             />
         </TooltipProvider>
     );
