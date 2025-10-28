@@ -181,6 +181,7 @@ export function BookingForm({
     applied: normalizedInitialStartTime ? false : true,
     notifiedUnavailable: false,
   });
+  const lastSlotFetchErrorRef = useRef<string | null>(null);
 
   useEffect(() => {
     initialSelectionRef.current = {
@@ -201,6 +202,7 @@ export function BookingForm({
   const watchedRepeatFrequency = form.watch('repeatFrequency');
   const watchedRepeatInterval = form.watch('repeatInterval');
   const repeatIntervalUnit = watchedRepeatFrequency === 'weekly' ? 'week' : 'day';
+  const selectedDateKey = selectedDate ? selectedDate.toDateString() : '';
 
   useEffect(() => {
     const currentRepeatCount = form.getValues('repeatCount');
@@ -237,8 +239,12 @@ export function BookingForm({
       const formattedDate = format(dateToFetch, 'yyyy-MM-dd');
       const result = await getAvailableTimeSlots(roomIdToFetch, formattedDate);
       if (result.error) {
-        toast({ variant: 'destructive', title: 'Error fetching slots', description: result.error });
+        if (lastSlotFetchErrorRef.current !== result.error) {
+          toast({ variant: 'destructive', title: 'Error fetching slots', description: result.error });
+          lastSlotFetchErrorRef.current = result.error;
+        }
       } else {
+        lastSlotFetchErrorRef.current = null;
         setAllAvailableIndividualSlots(result.slots);
         const pendingSelection = initialSelectionRef.current;
         if (pendingSelection && !pendingSelection.applied) {
@@ -265,11 +271,19 @@ export function BookingForm({
         }
       }
     } catch (error) {
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch time slots.' });
+      const fallbackErrorMessage = 'Could not fetch time slots.';
+      if (lastSlotFetchErrorRef.current !== fallbackErrorMessage) {
+        toast({ variant: 'destructive', title: 'Error', description: fallbackErrorMessage });
+        lastSlotFetchErrorRef.current = fallbackErrorMessage;
+      }
     } finally {
       setIsLoadingSlots(false);
     }
   }, [toast, form]);
+
+  useEffect(() => {
+    lastSlotFetchErrorRef.current = null;
+  }, [selectedRoomId, selectedDateKey]);
 
   useEffect(() => {
     if (selectedRoomId && selectedDate) {
