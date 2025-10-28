@@ -5,12 +5,12 @@ import { CalendarCheck } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useEffect, useTransition, useCallback } from 'react';
 import type { AppConfiguration } from '@/types';
-import Image from 'next/image';
 import { useUser } from '@/context/UserContext';
 import { getCurrentAdmin, getCurrentUser, logoutUser } from '@/lib/actions';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { PanelColorPreferencesDialog } from '@/components/bookly/PanelColorPreferencesDialog';
+import { LogoImage } from '@/components/bookly/LogoImage';
 
 interface HeaderProps {
   config: AppConfiguration;
@@ -73,7 +73,7 @@ export function Header({ config, initialAdminInfo, initialUserInfo }: HeaderProp
       <div className="container mx-auto px-4 flex items-center justify-between">
         <Link href="/" className="flex items-center group">
           {config.appLogo ? (
-            <Image src={config.appLogo} alt={`${config.appName} Logo`} width={40} height={40} className="mr-3" unoptimized />
+            <LogoImage src={config.appLogo} alt={`${config.appName} Logo`} className="mr-3" />
           ) : (
             <CalendarCheck className="h-10 w-10 text-primary mr-3 group-hover:text-primary/80 transition-colors" />
           )}
